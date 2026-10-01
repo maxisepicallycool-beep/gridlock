@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.5.2 — Tutorial: you decide when to move on
+- When you finish a lesson step the tutorial now waits and shows a Next button (or press Enter) instead of moving on by itself
+- New fire lesson, "Construction takes time": a live countdown while the station is built, and why to build stations before you need them (20 to 70 seconds in a real game, depending on difficulty)
+
 ## 1.5.1 — The game owns the keyboard
 - Keys no longer make the Mac's "can't do that" beep
 - Esc opens the pause menu and no longer takes the app out of full screen

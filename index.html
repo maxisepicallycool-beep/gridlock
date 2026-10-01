@@ -308,7 +308,7 @@ const SPEED=2.6, MAXD=8;
 const HOUSE_REST=5,LOT_REST=5;   // seconds a returned car waits at home / a parked car waits in its bay
 const STALL_FRAC=.75, STALL_GRACE=20, STALL_IDLE=25;   // cut-off countdown: share of a colour's houses stalled / grace for a new colour / seconds with no progress
 const DIFFS=[
-  {id:'tutorial',name:'Tutorial',tag:'Learn the game',col:'#2fb67c',demandBase:4,demandMin:3,stall:999,dlimit:999,dcap:99,weekLen:99999,firstWeek:99999,cardMul:1,startMul:1,growth:0,maxOut:2,fleet:2,fireChance:0,fireBurn:80,fireOW:true,fireBuild:6,anyDest:true,crash:0,notify:true,noFail:true,infinite:true},
+  {id:'tutorial',name:'Tutorial',tag:'Learn the game',col:'#2fb67c',demandBase:4,demandMin:3,stall:999,dlimit:999,dcap:99,weekLen:99999,firstWeek:99999,cardMul:1,startMul:1,growth:0,maxOut:2,fleet:2,fireChance:0,fireBurn:80,fireOW:true,fireBuild:15,anyDest:true,crash:0,notify:true,noFail:true,infinite:true},
   {id:'relaxed', name:'Relaxed',  tag:'Take your time',          col:'#2fb67c',demandBase:14,  demandMin:7,  stall:35,dlimit:22,dcap:7,weekLen:50,firstWeek:60,cardMul:1.3, startMul:1.5, growth:.75,maxOut:2,fleet:0,fireChance:0,fireBurn:80,fireOW:true,fireBuild:20,anyDest:false,crash:0,notify:true},
   {id:'standard',name:'Standard', tag:'The intended ride',       col:'#4c9be8',demandBase:11,  demandMin:4.5,stall:22.5,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true},
   {id:'rush',    name:'Rush Hour',tag:'Busy, busy, busy',        col:'#ff8b3d',demandBase:8.5, demandMin:3.5,stall:18,dlimit:10,dcap:5,weekLen:38,firstWeek:44,cardMul:.85, startMul:.8,  growth:1.4,maxOut:2,fleet:2,fireChance:.10,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:0,notify:true},
@@ -1921,7 +1921,10 @@ function tutSteps(){
     {ch:'Highways',t:'Build a highway',x:'Pick <b>Highway</b> (key <b>3</b>) and drag along the orange ghost. Highways are elevated and fast, and they fly over roads. They must <b>start and end on the side of a road</b>, never its end.',
       cond:()=>{if(!anyHwy())return false;const q=route(T().h.an*2,goals[0],false,false,true);return !!q&&q.length<T().len0*.8;},ghost:{type:'hwy',a:()=>T().A,b:()=>T().B}},
     {ch:'Fires',scene:'fire',t:'Be ready for fires',x:'Houses can catch fire. This town has no fire station yet. Fire stations must sit <b>right beside a road and face it</b>.',next:true,target:()=>T().hs},
-    {ch:'Fires',t:'Place a fire station',x:'Pick the <b>Fire station</b> (key <b>8</b>) and click the ghost station. It takes a few seconds to build, then it is ready.',cond:()=>depts.length>0&&depts[0].linked&&time>=depts[0].readyAt,ghost:{type:'station',x:()=>T().sx,y:()=>T().sy,dir:()=>T().sd}},
+    {ch:'Fires',t:'Place a fire station',x:'Pick the <b>Fire station</b> (key <b>8</b>) and click the ghost station.',x2:'Your station is going up.',cond:()=>depts.length>0&&depts[0].linked,ghost:{type:'station',x:()=>T().sx,y:()=>T().sy,dir:()=>T().sd}},
+    {ch:'Fires',t:'Construction takes time',live:true,
+      x:()=>{const left=depts[0]?Math.max(0,Math.ceil(depts[0].readyAt-time)):0;return 'A new station needs time to build: watch the countdown on the scaffolding, <b>'+left+'s</b> left. It is short here; in a real game it takes <b>20 to 70 seconds</b> depending on the difficulty.<br><br>A fire that starts while the station is still going up has to wait, so <b>build stations early</b>, before you need them.';},
+      x2:'The station is ready for its first call.',cond:()=>depts.length>0&&time>=depts[0].readyAt,target:()=>depts.length?[depts[0]]:[]},
     {ch:'Fires',t:'A house is on fire!',x:'The station is ready, and a house is burning. Watch the truck race out. Cars in its way <b>ease over to the right</b>, then pull back out once it has passed.',
       setup:()=>{TUT.ignitedAt=0;TUT.burn=null;},
       cond:()=>{
@@ -1959,9 +1962,9 @@ function tutShow(){
   const chs=[...new Set(TUT.steps.map(q=>q.ch))],ci=chs.indexOf(st.ch)+1;
   el.style.display='block';el.classList.toggle('ok',done);
   el.innerHTML=`<div class="cstep">Lesson ${ci} of ${chs.length} · ${st.ch}</div><div class="cbar"><i style="width:${(TUT.i+(done?1:0))/n*100}%"></i></div>
-    <h3>${done?'✓ ':''}${st.t}</h3><p>${st.x}</p>
+    <h3>${done?'✓ ':''}${st.t}</h3><p>${done?'<b>Nice work!</b> '+(st.x2||''):(typeof st.x==='function'?st.x():st.x)}</p>
     <div class="cbtns">${st.final?'<button class="sbtn" data-c="play">Keep playing</button><button class="sbtn" data-c="menu">Main menu</button><button class="sbtn ghost" data-c="again">Replay</button>'
-      :st.next?'<button class="sbtn" data-c="next">Next</button>':(done?'':'<button class="sbtn ghost" data-c="skip">Skip</button>')}
+      :(st.next||done)?'<button class="sbtn" data-c="next">Next</button>':'<button class="sbtn ghost" data-c="skip">Skip</button>'}
       ${st.final?'':'<button class="sbtn ghost" data-c="redo" title="Rebuild this lesson’s scene">Restart lesson</button><button class="sbtn ghost" data-c="exit">Exit</button>'}</div>`;
 }
 function tutAdvance(){if(TUT)tutEnter(Math.min(TUT.steps.length-1,TUT.i+1));}
@@ -1971,8 +1974,9 @@ function tutTick(){
 }
 function tutTick2(){
   const now=performance.now();
-  if(TUT.doneAt){if(now-TUT.doneAt>1500)tutAdvance();return;}
+  if(TUT.doneAt)return;   // finished: the player moves on with the Next button
   const st=TUT.steps[TUT.i];
+  if(st.live&&now>(TUT.liveNext||0)){TUT.liveNext=now+500;tutShow();}
   if(st.ghost&&now>TUT.gnext){TUT.gnext=now+350;TUT.ghost=st.ghost.type==='sign'||st.ghost.type==='station'?null:tutGhostEdges(st.ghost);}
   if(now<TUT.nextCheck)return;TUT.nextCheck=now+250;
   if(st.cond&&st.cond()){TUT.doneAt=now;TUT.ghost=null;tutShow();}
@@ -2059,6 +2063,7 @@ addEventListener('keydown',e=>{
     return;
   }
   if(mode==='menu')return;
+  if(TUT&&e.key==='Enter'){const nb=document.querySelector('#coach [data-c=next]');if(nb){nb.click();return;}}
   const mod=e.metaKey||e.ctrlKey;
   if(mod&&e.key.toLowerCase()==='z'){e.preventDefault();undoLast();return;}
   if(mod)return;
