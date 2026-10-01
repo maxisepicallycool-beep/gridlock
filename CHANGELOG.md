@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.9.2 — Pins that stay until you notice the building
+- The pin over a new house or destination now stays until you interact with it: click the building, rest the pointer on it for a moment, or connect a road to it (a building that spawned already beside a road does not count as connected by you). The ring around it keeps pulsing while the pin is up, and saved cities remember which buildings you have seen
+- A building that still has a pin but is off the screen gets an arrow on the edge of the screen in its colour; click the arrow to jump to it
+- New Settings section, Locator pins: turn the pins off, choose Until I interact or a Set time (3 to 60 seconds), whether hovering counts, whether connecting a road counts, edge arrows on or off, pin size (small, normal, large), and a Mark all as seen button
+
 ## 1.9.1 — The AI's info on the main menu
 - The main menu now has an AI city panel under Best runs: game time, the week and its progress, trips, cars, houses, destinations, fire stations, roads built (or wrecks on crash difficulties) and the clock on Realism, plus how many of each piece the AI has left (road, one-way road, highway, one-way highway, bridge, stop sign or traffic coordinator, fire station) and what it is doing right now. The AI plays with a limited set of pieces like a player does, so the counts go down as it builds and up as it gets cards and recycles roads
 - Settings, Main menu AI: a switch to hide the panel

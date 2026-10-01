@@ -312,7 +312,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.9.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.9.2';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -380,7 +380,7 @@ const DIFFS=[
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
-const SET_DEF={theme:'dark',mapNatural:false,noHw:false,aiInfo:true,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
+const SET_DEF={theme:'dark',mapNatural:false,noHw:false,aiInfo:true,loc:true,locMode:'until',locTime:15,locHover:true,locConnect:true,locEdge:true,locSize:1,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
   tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:15,n_toastTime:4,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
@@ -2108,7 +2108,7 @@ function sbEnsureColor(c){const i=colorOrder.indexOf(c);if(i>=S.colors){for(let 
 function sbBuild(dest,kind,fx,fy){
   const w=dest?2:1,x=dest?Math.round(fx-1):Math.floor(fx),y=dest?Math.round(fy-1):Math.floor(fy);
   if(!inB(x,y)||!freeFor(x,y,w,0)){toast('No room for that here');return;}
-  const b={id:++bldId,color:sbColor,dest,x,y,w,cells:[],demand:dest?0:1,out:0,gar:D.fleet,pend:[],timer:rnd(4,8),retry:0,pulse:0,born:time,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?kind:0};
+  const b={seen:true,id:++bldId,color:sbColor,dest,x,y,w,cells:[],demand:dest?0:1,out:0,gar:D.fleet,pend:[],timer:rnd(4,8),retry:0,pulse:0,born:time,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?kind:0};
   const ok=[];for(let d=0;d<8;d++)if(dirValid(b,d))ok.push(d);
   if(!ok.length){toast('That spot has no free side for a driveway');return;}
   let best=ok[0],bd=1e9;   // face the nearest road if there is one
@@ -2425,13 +2425,15 @@ function drawArrow(cx,y0,t){
 function worldPos(e){return [(e.clientX-ox)/cs,(e.clientY-oy)/cs];}
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('pointerdown',e=>{
-  if(S.modal)return;try{cv.setPointerCapture(e.pointerId);}catch(_){}
+  if(S.modal)return;
+  if(locEdgeHits.length){const r=cv.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;const h=locEdgeHits.find(q=>Math.hypot(q.x-px,q.y-py)<20);if(h&&blds.includes(h.b)){focusOn(h.b);return;}}   // an edge arrow: jump to that buildingtry{cv.setPointerCapture(e.pointerId);}catch(_){}
   const [fx,fy]=worldPos(e),x=Math.floor(fx),y=Math.floor(fy);if(!inB(x,y))return;
   if(isSb()&&tool.startsWith('sb:')&&e.button===0){sbPaint=true;sbAct(fx,fy,true);return;}
   if(layerMode==='routes'&&e.button===0&&tool!=='erase'&&!(isSb()&&tool.startsWith('sb:'))){probeAt(fx,fy);return;}   // in the Routes view a click inspects a road instead of building
   if(e.button===2&&!Settings.v.rightErase)return;
   if(e.button===2||tool==='erase'){erasing=true;eraseAtPointer(fx,fy);return;}
   const ci=cellIdx(x,y),c=cells[ci];
+  if(c.bld)locAck(c.bld);
   if(c.bld){if(c.bld.dest&&D.id!=='sandbox')toast('Destinations can\u2019t be rotated');else if(c.bld.dept)toast('Fire stations face the road they were built on');else{if(c.bld.dest)for(const q of cars)if(!q.dead&&q.lotB===c.bld)killCar(q,'rot');rotateBld(c.bld,e.shiftKey?-1:1);}return;}
   if(tool==='stop'){placeStop(ci,fx,fy,e.shiftKey);return;}
   if(tool==='fire'){placeDept(fx,fy);return;}
@@ -3398,22 +3400,70 @@ function drawRipples(){   // the only animated scenery: drifting ripples on the 
 }
 let fogImg=null,batT=0;
 const hash1=(i,k)=>{const v=Math.sin(i*127.1+k*311.7)*43758.5453;return v-Math.floor(v);};
-function drawLocators(){   // a pin in the building's colour bobs above every new house and destination for 3 seconds
-  if(S.demo||S.tut||mode!=='play')return;
+/* ---------- locator pins: a pin in the building's colour marks every new house and destination until you interact with it (or for a set time) ---------- */
+let locLast=0;
+function locAck(b){if(b)b.seen=true;}
+function locShown(b){   // does this building still have a pin?
+  if(b.dept||b.color<0||b.seen)return false;
+  const v=Settings.v,t=time-b.born;if(t<0)return false;
+  return v.locMode==='timed'?t<=v.locTime:true;
+}
+function locTick(){   // noticing: hovering over it for a moment, or connecting a road to it, counts as having seen it
+  const now=performance.now(),dt=Math.min(.25,Math.max(0,(now-locLast)/1000));locLast=now;
+  const v=Settings.v;
   for(const b of blds){
-    if(b.dept||b.color<0)continue;
-    const t=time-b.born;if(t<0||t>3)continue;
+    if(b.seen||b.dept)continue;
+    if(b._l0===undefined)b._l0=b.linked;   // (one that spawned already beside a road does not count as connected by you)
+    else if(v.locConnect&&!b._l0&&b.linked){b.seen=true;continue;}
+    if(v.locHover&&hover&&cells[cellIdx(hover[0],hover[1])].bld===b){b.hoverT=(b.hoverT||0)+dt;if(b.hoverT>=.6)b.seen=true;}else b.hoverT=0;
+  }
+}
+function drawLocators(){
+  if(S.demo||S.tut||mode!=='play'||!Settings.v.loc)return;
+  locTick();
+  const v=Settings.v,sz=+v.locSize||1,T=performance.now()/1000;
+  for(const b of blds){
+    if(!locShown(b))continue;
     if(b.x<vx0-1||b.x>vx1+1||b.y<vy0-1||b.y>vy1+1)continue;
-    const a=Math.min(1,t*5)*Math.min(1,(3-t)*2.5),bob=Math.sin(performance.now()/1000*6)*4,tip=-8+bob,cy=tip-22;
-    ctx.save();ctx.translate(b.x+b.w/2,b.y-(b.dest?.1:.06));ctx.scale(1/cs,1/cs);ctx.globalAlpha=a;
+    const t=time-b.born,a=Math.min(1,t*5)*(v.locMode==='timed'?Math.min(1,(v.locTime-t)*2.5):1),bob=Math.sin(T*6)*4,tip=-8+bob,cy=tip-22;
+    ctx.save();ctx.translate(b.x+b.w/2,b.y-(b.dest?.1:.06));ctx.scale(sz/cs,sz/cs);ctx.globalAlpha=a;
     const path=()=>{ctx.beginPath();ctx.moveTo(0,tip);ctx.lineTo(-9.6,cy+5.4);ctx.arc(0,cy,11,2.63,Math.PI*2+.513);ctx.closePath();};
     ctx.lineJoin='round';path();ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.stroke();
     ctx.fillStyle=PAL[b.color].c;path();ctx.fill();
     if(b.color2>=0){ctx.save();ctx.beginPath();ctx.rect(0,cy-14,16,50);ctx.clip();ctx.fillStyle=PAL[b.color2].c;path();ctx.fill();ctx.restore();}
     ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,cy,4,0,7);ctx.fill();
-    ctx.strokeStyle=PAL[b.color].c;ctx.globalAlpha=a*.6*(1-t/3);ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,10+t*14,0,7);ctx.stroke();   // a ring spreading out from the building
+    const ph=v.locMode==='timed'?Math.min(1,t/3):(T*.6)%1;   // a ring spreading out from the building (it keeps repeating while the pin stays)
+    ctx.strokeStyle=PAL[b.color].c;ctx.globalAlpha=a*.6*(1-ph);ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,10+ph*16,0,7);ctx.stroke();
     ctx.restore();
   }
+}
+let locEdgeHits=[];
+function drawLocatorEdges(){
+  locEdgeHits=[];   // buildings off the screen that still have a pin get a small marker on the edge, pointing their way
+  if(S.demo||S.tut||mode!=='play'||!Settings.v.loc||!Settings.v.locEdge)return;
+  const cx=cw/2,cy=ch/2,L=34,R=cw-34,Tp=104,B=ch-132,list=[];
+  for(const b of blds){
+    if(!locShown(b))continue;
+    const sx=(b.x+b.w/2)*cs+ox,sy=(b.y+b.w/2)*cs+oy;
+    if(sx>L&&sx<R&&sy>Tp-30&&sy<B+60)continue;   // its pin is on the screen
+    list.push({b,sx,sy,d:Math.hypot(sx-cx,sy-cy)});
+  }
+  list.sort((p,q)=>p.d-q.d);
+  const c2=mainCtx;c2.save();c2.setTransform(dpr,0,0,dpr,0,0);
+  for(const it of list.slice(0,10)){
+    const dx=it.sx-cx,dy=it.sy-cy,k=Math.min((R-cx)/Math.max(1e-6,Math.abs(dx)),(B-cy)/Math.max(1e-6,Math.abs(dy)),(cy-Tp)/Math.max(1e-6,Math.abs(dy)));
+    let x=cx+dx*Math.min(1,k),y=cy+dy*Math.min(1,k);x=Math.max(L,Math.min(R,x));y=Math.max(Tp,Math.min(B,y));
+    const ang=Math.atan2(dy,dx),col=PAL[it.b.color].c;locEdgeHits.push({x,y,b:it.b});
+    c2.save();c2.translate(x,y);
+    c2.rotate(ang);c2.fillStyle='#fff';c2.beginPath();c2.moveTo(21,0);c2.lineTo(12,-8);c2.lineTo(12,8);c2.closePath();c2.fill();   // arrow toward it
+    c2.fillStyle=col;c2.beginPath();c2.moveTo(18,0);c2.lineTo(13,-4.5);c2.lineTo(13,4.5);c2.closePath();c2.fill();
+    c2.rotate(-ang);
+    c2.fillStyle='#fff';c2.beginPath();c2.arc(0,0,12,0,7);c2.fill();c2.fillStyle=col;c2.beginPath();c2.arc(0,0,9,0,7);c2.fill();
+    if(it.b.color2>=0){c2.save();c2.beginPath();c2.rect(0,-10,10,20);c2.clip();c2.fillStyle=PAL[it.b.color2].c;c2.beginPath();c2.arc(0,0,9,0,7);c2.fill();c2.restore();}
+    c2.fillStyle='#fff';c2.beginPath();c2.arc(0,0,3.2,0,7);c2.fill();
+    c2.restore();
+  }
+  c2.restore();
 }
 function drawFog(){   // slow drifting mist that belongs to the map (it stays put when you pan and zoom), a bit thicker after dark
   if(!fogImg){fogImg=glowImg('rgba(205,210,235,');}
@@ -3476,6 +3526,7 @@ function draw(){
   drawAI();
   drawGhost();
   ctx.restore();
+  drawLocatorEdges();
 }
 
 /* ---------- saves ---------- */
@@ -3550,7 +3601,7 @@ function serialize(){
     for(let d=0;d<8;d++){const e=arr[d];if(!e||e.ghost)continue;const bi=nbIdx(i,d);if(bi<i)continue;edges.push([i,d,layer==='f'?1:0,e.k,e.ow]);}
   }
   const signs=[],tls=[];for(let i=0;i<W*H;i++){const sg=cells[i].sg;if(sg)for(let s=0;s<8;s++)if(sg[s])signs.push([i,s,sgCode(sg[s])]);if(cells[i].tl)tls.push([i,cells[i].tl]);}
-  const bl=blds.map(b=>[b.x,b.y,b.w,b.color,b.dest?1:0,b.dir,Math.min(MAXD,b.demand+b.out),+b.timer.toFixed(2),b.kind||0,b.color2>=0?b.color2:-1]);
+  const bl=blds.map(b=>[b.x,b.y,b.w,b.color,b.dest?1:0,b.dir,Math.min(MAXD,b.demand+b.out),+b.timer.toFixed(2),b.kind||0,b.color2>=0?b.color2:-1,b.seen?1:0]);
   const dp=depts.map(d=>[d.x,d.y,d.dir,Math.max(0,+(d.readyAt-time).toFixed(1))]);
   return {v:2,rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
     colorBorn:S.colorBorn,stallT:S.stallT.map(v=>+v.toFixed(2)),inv,time:+time.toFixed(2),mid:!!S.mid,edges,signs,tl:tls,bl,dp,tr:Object.keys(sbTerr).map(k=>[+k,sbTerr[k]?1:0]),ns:sbNoSpawn?1:0};
@@ -3571,8 +3622,8 @@ function restore(sv){
   for(const [i,d,ly,k,ow] of st.edges)setEdge(ly?'f':'g',i,d,k,ow);
   for(const [i,s,code] of st.signs)setSign(i,s,code||1);
   for(const [i,tl] of (st.tl||[]))if(cells[i]&&cells[i].tl&&tl&&Array.isArray(tl.ph)&&tl.sig===cells[i].tl.sig)cells[i].tl=tl;   // a saved signal plan, if the lights still match it
-  for(const [x,y,w,color,dest,dir,demand,timer,kind,color2] of st.bl){
-    const b={id:++bldId,color,dest:!!dest,x,y,w,cells:[],demand,out:0,gar:D.fleet,pend:[],timer,retry:0,pulse:0,born:time-5,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?(typeof kind==='number'?kind:(x+y)%3):0,color2:dest&&color2>=0?color2:-1};
+  for(const [x,y,w,color,dest,dir,demand,timer,kind,color2,seen] of st.bl){
+    const b={id:++bldId,color,dest:!!dest,x,y,w,cells:[],demand,out:0,gar:D.fleet,pend:[],timer,retry:0,pulse:0,born:time-5,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?(typeof kind==='number'?kind:(x+y)%3):0,color2:dest&&color2>=0?color2:-1,seen:seen===undefined?true:!!seen};
     setDir(b,dir);for(let j=0;j<w;j++)for(let i=0;i<w;i++){const ci=cellIdx(x+i,y+j);cells[ci].bld=b;b.cells.push(ci);}
     blds.push(b);
   }
@@ -3725,6 +3776,15 @@ const SCREENS={
         +tog('musicBg','Keep playing in the background','When the window is hidden or another app is in front')
         +row('Now playing',Music.missing?'The songs could not be downloaded \u2014 connect to the internet and restart':(Music.loading?'Downloading the songs\u2026 (only the first time)':(Music.nowPlaying()?'\u266A '+Music.nowPlaying().n+(Music.nowPlaying().a?' \u2014 '+Music.nowPlaying().a:''):(v.music?'Starting\u2026':'Music is off'))),'<button class="sbtn" data-act="nextsong">Next song</button>')
         +`<div class="srow" style="display:block"><div class="st"><b>Songs</b><small>Daytime 1 and Daytime 2 play by day. Night 1 and Night 2 play by night.</small></div></div>`)}
+      ${sec('Locator pins',
+        tog('loc','Pins on new buildings','A pin in the building\u2019s colour marks every new house and destination')
+        +row('How long they stay','Until you interact with the building (click it, rest the pointer on it, or connect a road to it), or just for a set time',seg('locMode',[['until','Until I interact'],['timed','Set time']]))
+        +sld('locTime','Set time','How long a pin stays when it is on a set time',3,60,1,'sec')
+        +tog('locHover','Hovering counts','Resting the pointer on a building for a moment counts as noticing it')
+        +tog('locConnect','Connecting counts','Joining a road to a building counts as noticing it')
+        +tog('locEdge','Edge arrows','A building that still has a pin but is off the screen gets an arrow on the edge of the screen, pointing its way')
+        +row('Pin size','',seg('locSize',[[0.8,'Small'],[1,'Normal'],[1.35,'Large']]))
+        +row('Mark all as seen','Clear every pin right now (during a game)','<button class="sbtn" data-act="locseen">Mark all</button>'))}
       ${sec('Notifications',
         tog('n_crit','Critical alerts','Destinations backed up by late cars and trips cut off')
         +tog('n_fire','Fire alerts','Houses on fire and fire station news')
@@ -3847,6 +3907,7 @@ function act(a,d){
     case 'testhorn':Snd.init();setTimeout(()=>Snd.play(.18,1.5,0),120);break;
     case 'nextsong':Music.skip();setTimeout(()=>{if(MS.screen==='settings')refreshSettings();},500);break;
     case 'resetset':Settings.reset();buildKeymap();refreshSettings();break;
+    case 'locseen':{let n=0;if(typeof blds!=='undefined')for(const b of blds)if(!b.seen&&!b.dept){b.seen=true;n++;}toast(n?'Cleared '+n+' pin'+(n>1?'s':''):'No pins to clear',true);break;}
     case 'resetkeys':Settings.set('keys','');buildKeymap();refreshSettings();break;
     case 'back':MS.confirm=null;Menu.show(MS.screen==='realism'?'new':mode==='play'?'pause':'main');break;
     case 'realism':Menu.show('realism');break;
