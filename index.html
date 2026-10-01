@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.10';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.11';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1377,7 +1377,7 @@ function updateCar(c,dt){
     c.u=.9;
     if(c.blocked<0){c.blocked+=dt;if(c.blocked<0)return;c.blocked=0;reroute(c);return;}
     const d=s.dout;
-    if(edgeTo[n*8+d]!==nx){if(!reroute(c)){c.lost=(c.lost||0)+1;if(c.lost>6){c.home.demand++;killCar(c);}}return;}
+    if(edgeTo[n*8+d]!==nx&&!(c.gn&&c.gn[0]===n&&c.gn[1]===nx)){if(!reroute(c)){c.lost=(c.lost||0)+1;if(c.lost>6){c.home.demand++;killCar(c);}}return;}
     if(stopAt(nx,d)&&c.stopped!==nx){      // full stop at the line
       if(c.stopWait<0)c.stopWait=.6;
       c.stopWait-=dt;if(c.stopWait>0)return;c.stopped=nx;c.stopWait=-1;
@@ -1853,12 +1853,12 @@ function findEraseTarget(fx,fy){
 function edgeNodes(layer,ai,d){const bi=nbIdx(ai,d);return layer==='g'?[ai*2,bi*2]:[bnode[ai],bnode[bi]];}
 function edgeInUse(layer,ai,d){
   const [na,nb]=edgeNodes(layer,ai,d);
-  const hits=(path,from)=>{for(let k=Math.max(0,from);k<path.length-1;k++){const x=path[k],y=path[k+1];if((x===na&&y===nb)||(x===nb&&y===na))return true;}return false;};
+  const hits=(path,from,c)=>{for(let k=Math.max(0,from);k<path.length-1;k++){const x=path[k],y=path[k+1];if((x===na&&y===nb)||(x===nb&&y===na)){if(c&&c.gn&&c.gn[0]===x&&c.gn[1]===y)continue;return true;}}return false;};   // (a car already cleared to finish this stretch doesn't hold it)
   for(const c of cars){if(c.dead)continue;
     if(c.ph==='dwell'||isPark(c.ph)){   // a car sitting at its destination still has to drive home
       const end=c.path[c.path.length-1],p=routeTo(end,c.home.an*2)||routeTo(end,c.home.an*2,true);   // a way home that avoids ghost roads frees them
       if(p&&hits(p,0))return true;
-    } else if(hits(c.path,c.i-1))return true;}
+    } else if(hits(c.path,c.i,c))return true;}
   return false;
 }
 function removeEdge(layer,ai,d,e){if(!e.refunded)inv[keyOfEntry(layer,e)]++;setEdge(layer,ai,d,-1,0);}
@@ -1867,11 +1867,12 @@ function leaveGhosts(){   // cars whose way ahead uses a fading road switch to a
   for(const c of cars){
     if(c.dead||c.ph!=='drive'||c.truck||c.big)continue;
     const P=c.path;let hit=false;
-    for(let k=c.i+1;k<P.length-1&&!hit;k++){const d=edgeDirOf(P[k],P[k+1]);if(d>=0&&egh[P[k]*8+d])hit=true;}
+    let cur=false;
+    for(let k=c.i;k<P.length-1&&!hit;k++){const d=edgeDirOf(P[k],P[k+1]);if(d>=0&&egh[P[k]*8+d]){hit=true;if(k===c.i)cur=true;}}
     if(!hit)continue;
     const s0=P[c.i+1],goal=c.leg===0?(c.dest&&blds.includes(c.dest)?c.dest.an*2:-1):c.home.an*2;if(goal<0)continue;
     const q=routeTo(s0,goal);
-    if(q&&q.length&&q[0]===s0){if(c.res){holdRelease(P[c.i+1],c);c.res=false;}leaveQueue(c);c.stopped=-1;c.stopWait=-1;c.path=P.slice(0,c.i+2).concat(q.slice(1));}
+    if(q&&q.length&&q[0]===s0){if(c.res){holdRelease(P[c.i+1],c);c.res=false;}leaveQueue(c);c.stopped=-1;c.stopWait=-1;c.path=P.slice(0,c.i+2).concat(q.slice(1));if(cur)c.gn=[P[c.i],P[c.i+1]];}   // on the fading stretch itself: it may finish it even though the road is gone
   }
 }
 function sweepGhosts(){

@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.6.11 — Ghost roads vanish at once
+- The moment another route exists, a ghost road is removed straight away, even if a car is still on it. That car just finishes the stretch it is on and carries on along the new route
+
 ## 1.6.10 — Ghost roads clear sooner
 - A road you erased fades out as a ghost while cars are still on it. Now, the moment another route to the same place exists, cars switch to it and the ghost road is cleared (it used to wait for every car to drive past it). Parked cars count too: if there is a way home that does not use the ghost road, it is freed
 
