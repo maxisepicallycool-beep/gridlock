@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.2.5 — Update fallbacks
+- If GitHub is slow, blocked or rate-limited, Gridlock tries backup addresses before giving up
+- A damaged downloaded update can never replace the built-in game
+
 ## 1.2.4 — Instant update checks
 - Updates now show up the moment they are published, with no waiting for GitHub's cache
 
