@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.2.4 — Instant update checks
+- Updates now show up the moment they are published, with no waiting for GitHub's cache
+
 ## 1.2.3 — Test update 2
 - Another test update to check the new fast update check
 - Nothing in the game has changed
