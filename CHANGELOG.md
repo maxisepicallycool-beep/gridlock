@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.5.3 — Highways can join highways
+- A highway can now start or end on another highway, not just on a side of a road, so you can build highway networks. Cars switch between highways at the join
+- A highway still can't end in the open or on the end of a road
+- The coloured night glow around houses is gone (destinations keep a soft hint, and lit windows stay)
+
 ## 1.5.2 — Tutorial: you decide when to move on
 - When you finish a lesson step the tutorial now waits and shows a Next button (or press Enter) instead of moving on by itself
 - New fire lesson, "Construction takes time": a live countdown while the station is built, and why to build stations before you need them (20 to 70 seconds in a real game, depending on difficulty)
