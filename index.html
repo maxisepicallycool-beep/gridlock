@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.7.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.7.2';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -345,13 +345,17 @@ let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
 const SET_DEF={theme:'dark',mapNatural:false,noHw:false,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
-  tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:8,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
+  tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:15,n_toastTime:4,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
 const Settings={v:Object.assign({},SET_DEF),
   load(){
-    let j=null;
-    try{if(window.__SETTINGS&&typeof window.__SETTINGS==='object')j=window.__SETTINGS;}catch(e){}
-    if(!j){try{j=JSON.parse(localStorage.getItem('gridlock-settings')||'{}');}catch(e){j={};}}
+    // two copies exist: the one the app injected when it started (can be stale after an in-app update) and the browser's own,
+    // written on every change. Each carries a timestamp; the newest wins, and on a tie the browser's copy does.
+    let a=null,b=null;
+    try{if(window.__SETTINGS&&typeof window.__SETTINGS==='object')a=window.__SETTINGS;}catch(e){}
+    try{const t=localStorage.getItem('gridlock-settings');if(t)b=JSON.parse(t);}catch(e){}
+    let j=a&&b?((+a._t||0)>(+b._t||0)?a:b):(b||a||{});
+    if(!j._sv&&j.n_show===8)j=Object.assign({},j,{n_show:15});   // the old default alert time was 8 s: longer now
     for(const k in SET_DEF)if(j[k]!==undefined&&typeof j[k]===typeof SET_DEF[k])this.v[k]=j[k];
     try{if(window.__QUIET===true)this.v.updateQuiet=true;}catch(e){}   // the app remembers this too (its own update window has the same choice)
     const old=this.v.theme,hadLum=j.lum!==undefined;   // the old Light / Midnight / Match-system themes became the brightness slider
@@ -360,7 +364,7 @@ const Settings={v:Object.assign({},SET_DEF),
     else if(old!=='dark'&&old!=='contrast')this.v.theme='dark';
   },
   save(){
-    const t=JSON.stringify(this.v);
+    const t=JSON.stringify(Object.assign({_t:Date.now(),_sv:2},this.v));
     try{localStorage.setItem('gridlock-settings',t);}catch(e){}
     try{const h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.gridlock;if(h)h.postMessage({op:'settings',json:t});}catch(e){}
   },
@@ -1733,7 +1737,7 @@ function undoLast(){
   const recs=undoStack.pop();for(let i=recs.length-1;i>=0;i--)undoRec(recs[i]);
 }
 let toastT;
-function toast(m,force){if(!force&&!Settings.v.n_toast)return;const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2000);}
+function toast(m,force){if(!force&&!Settings.v.n_toast)return;const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),Math.max(1,Settings.v.n_toastTime||4)*1000);}
 const isHwy=p=>p&&p.kind===1;
 
 function startStroke(ci){
@@ -3489,7 +3493,8 @@ const SCREENS={
         +tog('n_warn','Warnings','Things that are starting to back up')
         +row('Destination filling up','How long a destination stays nearly full before it warns you',seg('n_delayLoad',[[0,'Instant'],[3,'3 s'],[6,'6 s'],[10,'10 s']]))
         +row('Trips cut off','How long a colour stays cut off before it alerts you',seg('n_delayCut',[[0,'Instant'],[3,'3 s'],[6,'6 s'],[10,'10 s']]))
-        +row('Alerts stay on screen','How long each alert is shown',seg('n_show',[[4,'4 s'],[8,'8 s'],[12,'12 s'],[20,'20 s']]))
+        +sld('n_show','Alerts stay on screen','How long each alert is shown (urgent ones stay 2 s longer)',3,60,1,'sec')
+        +sld('n_toastTime','Hints stay on screen','How long the small pop-ups stay',1,15,1,'sec')
         +row('Repeat an alert after','How long before the same alert can appear again',seg('n_repeat',[[15,'15 s'],[30,'30 s'],[60,'1 min'],[0,'Never']]))
         +tog('n_mark','Markers above buildings','The big bobbing icons over backed-up houses and destinations')
         +tog('n_toast','Hints and messages','Small pop-ups like "No room for that here"'))}
@@ -3553,7 +3558,7 @@ const Menu={
     if(screen==='settings')fillAbout();},
   hide(){menuEl.classList.add('hidden');menuEl.innerHTML='';}
 };
-const SFMT={pct:v=>Math.round(v)+'%',x:v=>(+v).toFixed(1)+'\u00d7',num:v=>String(Math.round(v))};
+const SFMT={sec:v=>Math.round(v)+' s',pct:v=>Math.round(v)+'%',x:v=>(+v).toFixed(1)+'\u00d7',num:v=>String(Math.round(v))};
 function refreshSettings(){const pb=menuEl.querySelector('.pbody'),st=pb?pb.scrollTop:0;Menu.show('settings');const nb=menuEl.querySelector('.pbody');if(nb)nb.scrollTop=st;}
 menuEl.addEventListener('input',e=>{
   if(e.target.id==='cityname')MS.name=e.target.value;if(e.target.id==='seedin')MS.seed=e.target.value;

@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.7.2 — Longer alerts you can set, and settings that stick
+- Alerts now stay on screen for 15 seconds by default (it was 8) and the time is a slider from 3 to 60 seconds in Settings. Urgent alerts stay 2 seconds longer. If you were on the old 8 second default you move to 15
+- New slider, Hints stay on screen (1 to 15 seconds, 4 by default, was 2): the small pop-ups like "No room for that here"
+- Fixed: settings going back to old values after the game updated itself. The page kept the settings from when the app opened, and an in-app update loaded those again. The game now keeps a timestamp on every copy of the settings and always uses the newest
+
 ## 1.7.1 — Locators for new buildings
 - Every new house and destination gets a bobbing pin above it for 3 seconds, in its own colour (split in two for dual destinations), with a ring spreading out from the building. The pin stays the same size on screen at any zoom
 
