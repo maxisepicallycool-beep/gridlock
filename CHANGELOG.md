@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.5.15 — More road for a growing city
+- Road cards now give more road as the game goes on: from week 4 they grow every week, up to two and a half times as many by the late game, on every difficulty (bridges grow a little too)
+- Road cards are also a bit bigger from the start
+
 ## 1.5.14 — No more flashing menus
 - Clicking things on a menu screen (difficulty cards, Delete, key bindings, Settings options) no longer replays the screen's entrance animation, so it doesn't reload or flicker
 - Settings switches and option buttons now change in place instead of redrawing the whole screen, and a redraw keeps your scroll position
