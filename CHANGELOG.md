@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.2.6 — Real car horn
+- Cars now honk with a real car horn recording, played quietly and sped up
+- Every car has its own pitch
+- Honks get louder and more frantic as a swamp or cut-off timer runs out, but never anywhere near full volume
+
 ## 1.2.5 — Update fallbacks
 - If GitHub is slow, blocked or rate-limited, Gridlock tries backup addresses before giving up
 - A damaged downloaded update can never replace the built-in game
