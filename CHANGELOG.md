@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.7.0 — Route shares
+- In the Routes layer, click a road to see what share of the cars use that stretch: a percentage and how many of the current routes it is (for example 37%, 4 of 11), with a split by house colour. The road is highlighted, the label stays readable at any zoom, and the number updates as routes change. Click empty ground to clear it. In the Routes view a click inspects instead of building
+
 ## 1.6.15 — Two layer views instead of Elevation
 - The Elevation layer is now two: Roads only (hides bridges, highways and the cars on them) and Bridges and highways only (fades the ground roads and outlines the elevated ones). The L key cycles through them with the others
 

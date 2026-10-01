@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.15';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.7.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -2234,6 +2234,7 @@ cv.addEventListener('pointerdown',e=>{
   if(S.modal)return;try{cv.setPointerCapture(e.pointerId);}catch(_){}
   const [fx,fy]=worldPos(e),x=Math.floor(fx),y=Math.floor(fy);if(!inB(x,y))return;
   if(isSb()&&tool.startsWith('sb:')&&e.button===0){sbPaint=true;sbAct(fx,fy,true);return;}
+  if(layerMode==='routes'&&e.button===0&&tool!=='erase'&&!(isSb()&&tool.startsWith('sb:'))){probeAt(fx,fy);return;}   // in the Routes view a click inspects a road instead of building
   if(e.button===2&&!Settings.v.rightErase)return;
   if(e.button===2||tool==='erase'){erasing=true;eraseAtPointer(fx,fy);return;}
   const ci=cellIdx(x,y),c=cells[ci];
@@ -2503,12 +2504,12 @@ function drawElevated(){
 }
 /* ---------- layer view ---------- */
 let layerMode='normal';
-const LAYERS=[['normal','Normal','The city as it is','\u25CE','#80869a'],['traffic','Traffic','Where cars flow or get stuck','\u2248','#e5484d'],['roads','Roads only','Hides bridges and highways','\u2501','#4c9be8'],['elev','Bridges and highways only','Fades the ground roads','\u2B06','#ff8b3d'],['routes','Routes','Who drives where, by colour','\u2197','#4c9be8'],['speed','Speed limits','Long straights are fast, junctions slow','\u23F1','#2fb67c'],['fire','Fire cover','How fast a truck reaches each house','\u{1F525}','#d8382f']];
+const LAYERS=[['normal','Normal','The city as it is','\u25CE','#80869a'],['traffic','Traffic','Where cars flow or get stuck','\u2248','#e5484d'],['roads','Roads only','Hides bridges and highways','\u2501','#4c9be8'],['elev','Bridges and highways only','Fades the ground roads','\u2B06','#ff8b3d'],['routes','Routes','Who drives where. Click a road to see its share of cars','\u2197','#4c9be8'],['speed','Speed limits','Long straights are fast, junctions slow','\u23F1','#2fb67c'],['fire','Fire cover','How fast a truck reaches each house','\u{1F525}','#d8382f']];
 const heat=new Float32Array(N);
 function buildLayerMenu(){
   $('layerMenu').innerHTML=LAYERS.map(l=>`<div class="lrow ${layerMode===l[0]?'on':''}" data-l="${l[0]}" style="--lc:${l[4]}"><i>${l[3]}</i><div><b>${l[1]}</b><small>${l[2]}</small></div></div>`).join('');
 }
-function setLayer(k){layerMode=k;const l=LAYERS.find(x=>x[0]===k);$('blayer').textContent=k==='normal'?'Layers':l[1];$('blayer').classList.toggle('on',k!=='normal');$('layerMenu').classList.remove('open');}
+function setLayer(k){layerMode=k;routeProbe=null;const l=LAYERS.find(x=>x[0]===k);$('blayer').textContent=k==='normal'?'Layers':l[1];$('blayer').classList.toggle('on',k!=='normal');$('layerMenu').classList.remove('open');}
 $('bsnd').onclick=()=>{Snd.init();Settings.set('mute',!Settings.v.mute);};
 $('bset').onclick=()=>{if(mode!=='play'||S.over||(S.modal&&S.modal!=='pause'))return;if(S.modal!=='pause')openPause();Menu.show('settings');};
 $('blayer').onclick=()=>{buildLayerMenu();$('layerMenu').classList.toggle('open');};
@@ -2529,13 +2530,39 @@ function drawLayerUnder(){
   }
 }
 let routeCache={t:-9,ver:-1,lines:[]};
+let routeProbe=null;
+function probeAt(fx,fy){   // click a road in the Routes view: what share of the cars use it
+  const t=findEraseTarget(fx,fy);
+  if(!t||t.sign){routeProbe=null;return;}
+  const [na,nb]=edgeNodes(t.layer,t.ci,t.d);
+  routeProbe={na,nb,ci:t.ci,bi:t.bi};
+}
+function drawProbe(){
+  const P=routeProbe;if(!P)return;
+  const L=routeLines(),tot=L.length;let hit=0;const by={};
+  for(const l of L){const n=l.nodes;for(let k=0;k+1<n.length;k++){const x=n[k],y=n[k+1];if((x===P.na&&y===P.nb)||(x===P.nb&&y===P.na)){hit++;by[l.color]=(by[l.color]||0)+1;break;}}}
+  const a=ctr(P.ci),b=ctr(P.bi),mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
+  ctx.save();ctx.lineCap='round';ctx.strokeStyle='#fff';ctx.lineWidth=.3;ctx.globalAlpha=.95;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+  ctx.strokeStyle='#232733';ctx.lineWidth=.14;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();ctx.globalAlpha=1;
+  const cols=Object.keys(by).map(Number).sort((p,q)=>by[q]-by[p]),pct=tot?Math.round(hit/tot*100):0;
+  const cols2=cols;ctx.save();ctx.translate(mx,my);ctx.scale(1/cs,1/cs);   // the label is drawn in screen pixels so it stays readable at any zoom
+  const w=Math.max(150,26+cols2.length*58),h=cols2.length?78:48,flip=(my*cs+oy)<190,bx=-w/2,by0=flip?26:-26-h;
+  ctx.fillStyle='rgba(255,255,255,.97)';ctx.strokeStyle='rgba(35,39,51,.4)';ctx.lineWidth=1.5;rr(bx,by0,w,h,12);ctx.fill();ctx.stroke();
+  ctx.beginPath();if(flip){ctx.moveTo(-9,by0);ctx.lineTo(0,by0-11);ctx.lineTo(9,by0);}else{ctx.moveTo(-9,by0+h);ctx.lineTo(0,by0+h+11);ctx.lineTo(9,by0+h);}ctx.closePath();ctx.fillStyle='rgba(255,255,255,.97)';ctx.fill();
+  ctx.fillStyle='#232733';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 24px -apple-system,Helvetica,sans-serif';
+  ctx.fillText(tot?pct+'%':'No routes',0,by0+22);
+  ctx.font='600 11.5px -apple-system,Helvetica,sans-serif';ctx.fillStyle='#4b5163';ctx.fillText(tot?'of cars drive here ('+hit+' of '+tot+')':'',0,by0+42);
+  cols2.forEach((c,i)=>{const cx=(i-(cols2.length-1)/2)*58;ctx.fillStyle=PAL[c].c;ctx.beginPath();ctx.arc(cx-14,by0+62,6,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle='#232733';ctx.font='700 12.5px -apple-system,Helvetica,sans-serif';ctx.textAlign='left';ctx.fillText(Math.round(by[c]/Math.max(1,hit)*100)+'%',cx-4,by0+63);});
+  ctx.restore();
+  ctx.restore();
+}
 function routeLines(){
   if(routeCache.ver===gfxVer&&time-routeCache.t<1.5)return routeCache.lines;
   const lines=[];
   for(const h of blds){
     if(h.dest||!h.linked)continue;
     const p=routeOut(h.an*2,h.color,h);if(!p||p.length<2)continue;
-    lines.push({col:PAL[h.color].c,pts:p.map(n=>ctr(n>>1))});
+    lines.push({col:PAL[h.color].c,color:h.color,nodes:p,pts:p.map(n=>ctr(n>>1))});
   }
   routeCache={t:time,ver:gfxVer,lines};return lines;
 }
@@ -2575,7 +2602,7 @@ function drawLayerOver(){
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
     const L=routeLines();
     for(const pass of [0,1])for(const l of L){ctx.strokeStyle=pass?l.col:'rgba(255,255,255,.75)';ctx.lineWidth=pass?.15:.27;ctx.globalAlpha=pass?.9:.6;ctx.beginPath();l.pts.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.stroke();}
-    ctx.globalAlpha=1;
+    ctx.globalAlpha=1;drawProbe();
     for(const h of blds){if(h.dest||h.linked)continue;const q=ctr(h.an);ctx.strokeStyle='#e5484d';ctx.lineWidth=.09;ctx.beginPath();ctx.arc(q[0],q[1],.62,0,7);ctx.moveTo(q[0]-.3,q[1]-.3);ctx.lineTo(q[0]+.3,q[1]+.3);ctx.moveTo(q[0]+.3,q[1]-.3);ctx.lineTo(q[0]-.3,q[1]+.3);ctx.stroke();}
     ctx.restore();
   } else if(layerMode==='fire'){
