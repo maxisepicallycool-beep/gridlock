@@ -58,45 +58,52 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
+let updating = false;   // one update check or prompt at a time, so the player is never asked twice
 async function checkForUpdates(manual) {
+  if (updating) return;
+  updating = true;
+  try { await checkForUpdatesInner(manual); } finally { updating = false; }
+}
+async function checkForUpdatesInner(manual) {
   const have = runningVersion();
   const r = await U.checkRemote(have);
   const parent = win || undefined;
   if (!r) { if (manual) dialog.showMessageBox(parent, { type: 'info', message: 'Couldn’t check for updates', detail: 'Connect to the internet and try again.' }); return; }
-  if (r.upToDate) { if (manual) dialog.showMessageBox(parent, { type: 'info', message: 'You’re up to date', detail: 'Gridlock ' + have + ' is the newest version.' }); return; }
   const st = readState();
-  if (!manual && st.ignored === r.version) return;
-  if (st.autoUpdate && !manual && !r.experimental) { await download(r.version, r.notes, true); return; }   // quiet mode never covers experimental builds
+  if (r.upToDate || (!manual && st.ignored === r.version)) {   // no game update to offer: the app itself may still have one
+    const found = await checkAppUpdate(manual);
+    if (!found && manual && r.upToDate) dialog.showMessageBox(parent, { type: 'info', message: 'You’re up to date', detail: 'Gridlock ' + have + ' is the newest version.' });
+    return;
+  }
+  if (st.autoUpdate && !manual && !r.experimental) { await download(r.version, r.notes, true); await checkAppUpdate(false); return; }   // quiet mode never covers experimental builds
+  const app2 = await peekAppUpdate();   // a newer app too? then it all arrives in this one restart
   const res = await dialog.showMessageBox(parent, {
     type: r.experimental ? 'warning' : 'info',
     title: 'Update available',
     message: (r.experimental ? '⚠️ EXPERIMENTAL: ' : '') + 'Gridlock ' + r.version + ' is available',
-    detail: (r.experimental ? 'This update is experimental and may be unstable or change how the game plays.\n\n' : '') + 'You have ' + have + '. What’s new:\n\n' + r.notes.replace(/^## /gm, '').replace(/^- /gm, '• '),
-    buttons: ['Download', 'Ignore'], defaultId: 0, cancelId: 1,
+    detail: (r.experimental ? 'This update is experimental and may be unstable or change how the game plays.\n\n' : '') + 'You have ' + have + '. What’s new:\n\n' + r.notes.replace(/^## /gm, '').replace(/^- /gm, '• ') + (app2 ? '\n\nThis also includes a new version of the app itself. It all installs in one restart.' : ''),
+    buttons: ['Download and Restart', 'Ignore'], defaultId: 0, cancelId: 1,
     checkboxLabel: 'Always download updates automatically', checkboxChecked: false
   });
   if (res.response === 1) { st.ignored = r.version; writeState(st); return; }
   if (res.checkboxChecked) { st.autoUpdate = true; writeState(st); }
-  await download(r.version, r.notes);
+  const ok = await download(r.version, r.notes);
+  if (!ok) return;
+  if (app2 && await stageApp(app2)) { await saveGame(); if (applyStagedApp(true)) { app.exit(0); return; } }
+  await saveGame(); app.relaunch(); app.exit(0);
 }
 
-async function download(version, notes, quiet) {
+async function download(version, notes, quiet) {   // saves the new game file; returns true when it is saved
   const buf = await U.fetchFile('index.html', bundledVersion);
   if (!buf || buf.length < 50000 || !buf.toString('utf8').includes('<canvas')) {
     if (!quiet) dialog.showMessageBox(win || undefined, { type: 'error', message: 'Download failed', detail: 'The update couldn’t be downloaded. Try again later.' });
-    return;
+    return false;
   }
   fs.mkdirSync(updDir(), { recursive: true });
   fs.writeFileSync(path.join(updDir(), 'index.html'), buf);
   fs.writeFileSync(path.join(updDir(), 'version.txt'), version);
   const st = readState(); delete st.ignored; writeState(st);
-  if (quiet) return;   // quiet mode: it is installed the next time the game opens
-  const res = await dialog.showMessageBox(win || undefined, {
-    type: 'info', message: 'Gridlock ' + version + ' downloaded',
-    detail: (notes ? notes.replace(/^## /gm, '').replace(/^- /gm, '• ') + '\n\n' : '') + 'Restart now to play it? Your game is saved first.',
-    buttons: ['Restart Now', 'Later'], defaultId: 0, cancelId: 1
-  });
-  if (res.response === 0) { await saveGame(); app.relaunch(); app.exit(0); }
+  return true;   // quiet mode: it is installed the next time the game opens
 }
 
 async function saveGame() {
@@ -108,7 +115,6 @@ function currentCode() { return Math.max(bundledCode, parseInt(read(path.join(co
 async function maintenance() {   // everything besides the game file: the app's own code, the songs, a newer whole app
   try { await U.syncCode(codeDir(), currentCode(), bundledVersion); } catch (e) {}
   try { await U.syncMusic(path.join(runDir(), 'music'), bundledVersion); } catch (e) {}
-  try { await checkAppUpdate(false); } catch (e) {}
 }
 
 // a newer build of the whole Windows app: downloaded, checked, and swapped in when the game closes
@@ -118,14 +124,19 @@ function canSwapApp() {
   if (path.parse(install).root.toLowerCase() !== path.parse(stageDir()).root.toLowerCase()) return false;   // the swap uses folder moves, which need one drive
   try { fs.accessSync(path.dirname(install), fs.constants.W_OK); return true; } catch (e) { return false; }
 }
-async function checkAppUpdate(manual) {
-  const a = await U.checkApp(appBuild, bundledVersion);
-  if (!a || !canSwapApp()) return;
-  if (stagedBuild() === a.build && fs.existsSync(path.join(stageDir(), 'Gridlock', 'Gridlock.exe'))) { appReady(a, manual); return; }
+async function peekAppUpdate() {   // is a newer, installable app waiting? (null if not)
+  try {
+    const a = await U.checkApp(appBuild, bundledVersion);
+    if (!a || !canSwapApp() || readState().appIgnored === a.build) return null;
+    return a;
+  } catch (e) { return null; }
+}
+async function stageApp(a) {   // download, check and unpack the newer app; true when it is ready to swap in
+  if (stagedBuild() === a.build && fs.existsSync(path.join(stageDir(), 'Gridlock', 'Gridlock.exe'))) return true;
   const r = await fetch(a.url, { signal: AbortSignal.timeout(600000) }).catch(() => null);
-  if (!r || !r.ok) return;
+  if (!r || !r.ok) return false;
   const buf = Buffer.from(await r.arrayBuffer());
-  if (U.sha256(buf) !== a.sha256.toLowerCase()) return;   // the checksum must match
+  if (U.sha256(buf) !== a.sha256.toLowerCase()) return false;   // the checksum must match
   fs.rmSync(stageDir(), { recursive: true, force: true });
   fs.mkdirSync(stageDir(), { recursive: true });
   const zip = path.join(stageDir(), 'app.zip');
@@ -135,9 +146,16 @@ async function checkAppUpdate(manual) {
     p.on('exit', res); p.on('error', res);
   });
   try { fs.unlinkSync(zip); } catch (e) {}
-  if (!fs.existsSync(path.join(stageDir(), 'Gridlock', 'Gridlock.exe'))) return;
+  if (!fs.existsSync(path.join(stageDir(), 'Gridlock', 'Gridlock.exe'))) return false;
   fs.writeFileSync(path.join(stageDir(), 'build.txt'), String(a.build));
+  return true;
+}
+async function checkAppUpdate(manual) {   // an app-only update (no game update waiting): ask once. Returns true when there was one
+  const a = await peekAppUpdate();
+  if (!a) return false;
+  if (!(await stageApp(a))) return false;
   appReady(a, manual);
+  return true;
 }
 let appNotified = 0;
 function appReady(a, manual) {
@@ -191,7 +209,7 @@ ipcMain.handle('bridge', async (e, op, p) => {
 function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: 'Game', submenu: [
-      { label: 'Check for Updates…', click: () => { checkForUpdates(true); checkAppUpdate(true); maintenance(); } },
+      { label: 'Check for Updates…', click: () => { checkForUpdates(true); maintenance(); } },
       { label: 'Full Screen', accelerator: 'F11', click: () => win && win.setFullScreen(!win.isFullScreen()) },
       { type: 'separator' },
       { label: 'Quit', accelerator: 'Alt+F4', click: () => app.quit() }
