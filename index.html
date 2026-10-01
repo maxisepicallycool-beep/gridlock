@@ -271,7 +271,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.5.16';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.5.17';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -287,12 +287,12 @@ const UNIT=DIR.map((v,i)=>[v[0]/LEN[i],v[1]/LEN[i]]);
 const opp=d=>(d+4)&7;
 const DTAB=[5,6,7,4,-1,0,3,2,1];
 const PAL=[
-  {n:'Coral',c:'#f0605d',d:'#b93b3b',l:'#ffb3ae'},
-  {n:'Sky',c:'#4c9be8',d:'#2c6bb5',l:'#b0d5fa'},
-  {n:'Sun',c:'#f4c430',d:'#c39412',l:'#fbe28a'},
-  {n:'Mint',c:'#3cc48b',d:'#22895f',l:'#a3ebcb'},
-  {n:'Grape',c:'#a468e6',d:'#7440b3',l:'#d5b6f7'},
-  {n:'Tangerine',c:'#ff8b3d',d:'#c25c15',l:'#ffc79c'}
+  {n:'Red',c:'#f0605d',d:'#b93b3b',l:'#ffb3ae'},
+  {n:'Blue',c:'#4c9be8',d:'#2c6bb5',l:'#b0d5fa'},
+  {n:'Yellow',c:'#f4c430',d:'#c39412',l:'#fbe28a'},
+  {n:'Green',c:'#3cc48b',d:'#22895f',l:'#a3ebcb'},
+  {n:'Purple',c:'#a468e6',d:'#7440b3',l:'#d5b6f7'},
+  {n:'Orange',c:'#ff8b3d',d:'#c25c15',l:'#ffc79c'}
 ];
 // layer g = ground roads (k0); layer f = elevated (k1 highway, k2 bridge)
 const kn=k=>PIECES.findIndex(p=>p.k===k)+1;   // a piece's hotkey number
@@ -2007,11 +2007,11 @@ function tutSteps(){
   const anyHwy=()=>cells.some(c=>c.f&&c.f.some(e=>e&&e.k===1&&!e.ghost));
   return [
     {ch:'Roads',scene:'first',t:'Welcome to Gridlock',x:'Every house sends cars to the <b>destination of the same colour</b>. Your job is to join them with roads.<br><br>Zoom with the scroll wheel or pinch, move with two-finger scroll, <b>Alt-drag</b> or <b>W A S D</b>. Nothing can go wrong here, so explore.',next:true},
-    {ch:'Roads',t:'Your first road',x:'Pick <b>Road</b> (key <b>'+kn('road')+'</b>) and <b>drag</b> along the blue ghost road from the coral house to the coral store.<br>Roads snap to 8 directions and bend smoothly.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
+    {ch:'Roads',t:'Your first road',x:'Pick <b>Road</b> (key <b>'+kn('road')+'</b>) and <b>drag</b> along the blue ghost road from the red house to the red store.<br>Roads snap to 8 directions and bend smoothly.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
     {ch:'Roads',t:'Watch the traffic',x:'Cars drive to the store, park in a bay, and come back. Wait for <b>3 trips</b>.',cond:()=>plus()>=3,target:()=>[T().d]},
     {ch:'Driveways',scene:'turn',t:'Turn a driveway',x:'This blue house’s driveway points the wrong way. <b>Click the house</b> to turn its driveway (Shift-click turns it the other way) until it faces the gas station.',cond:()=>T().h.dir!==T().dir0,target:()=>[T().h]},
     {ch:'Driveways',t:'Join the pair',x:'Now follow the ghost road from the house to the gas station.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
-    {ch:'Sharing roads',scene:'share',t:'Add the neighbours',x:'The coral road already exists. Two new houses want to use it. Follow the ghost roads and join them to it. Cars always take the <b>shortest route</b>, so everyone shares the same road.',cond:()=>tutOK(T().h2)&&tutOK(T().h3),target:()=>[T().h2,T().h3],ghost:{type:'auto',list:()=>[T().h2,T().h3]}},
+    {ch:'Sharing roads',scene:'share',t:'Add the neighbours',x:'The red road already exists. Two new houses want to use it. Follow the ghost roads and join them to it. Cars always take the <b>shortest route</b>, so everyone shares the same road.',cond:()=>tutOK(T().h2)&&tutOK(T().h3),target:()=>[T().h2,T().h3],ghost:{type:'auto',list:()=>[T().h2,T().h3]}},
     {ch:'Sharing roads',t:'One road, many cars',x:'Watch all three houses send cars down the same road. Wait for <b>6 trips</b>.',cond:()=>plus()>=6,setup:()=>{for(const h of [T().h1,T().h2,T().h3])h.demand=4;}},
     {ch:'Junctions',scene:'junction',t:'A busy crossing',x:'Two roads cross here. Cars give way and take turns, but a busy crossing can jam. Watch them for a moment.',next:true,target:()=>[],ring:()=>T().x},
     {ch:'Junctions',t:'Stop signs',x:'Pick the <b>Stop sign</b> (key <b>'+kn('stop')+'</b>) and click the crossing. Cars on that road stop and give way, so the other road flows. <b>Shift-click</b> puts signs on every approach.',cond:anySign,ghost:{type:'sign',ci:()=>T().x}},

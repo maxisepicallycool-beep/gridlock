@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.5.17 — Plain colour names
+- The six colours are now called Red, Blue, Yellow, Green, Purple and Orange everywhere (alerts, lessons and the sandbox)
+
 ## 1.5.16 — Report a bug on the main menu, no more one-way highways and bridges
 - A Report a bug button in the top right corner of the main menu
 - One-way highways and one-way bridges are gone (they served no purpose): no pieces, no cards. One-way roads stay. Saved cities that had them keep working, and any you were holding become ordinary highways and bridges
