@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.3';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.4';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -2661,13 +2661,64 @@ function lotBase(p,rows,p2){   // every destination sits on a parking lot (the s
   ctx.fillStyle='rgba(30,30,20,.20)';rr(.12,.16,1.84,1.84,.2);ctx.fill();
   ctx.fillStyle=p?p.c:'#7f8794';rr(.04,.06,1.92,1.88,.22);ctx.fill();     // a kerb in the destination's colour (fire stations have a plain one)
   if(p2){ctx.save();ctx.beginPath();ctx.rect(1,0,1,2);ctx.clip();ctx.fillStyle=p2.c;rr(.04,.06,1.92,1.88,.22);ctx.fill();ctx.restore();}   // dual: the other half in the second colour
-  ctx.fillStyle='#5b626e';rr(.15,.17,1.7,1.66,.15);ctx.fill();            // asphalt
-  ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=.028;ctx.lineCap='round';ctx.beginPath();
+  ctx.fillStyle=Settings.v.noHw?'#5b626e':'#4a4158';rr(.15,.17,1.7,1.66,.15);ctx.fill();            // asphalt (a purple-grey cobble in the Halloween look)
+  ctx.strokeStyle=Settings.v.noHw?'rgba(255,255,255,.75)':'rgba(236,230,205,.8)';ctx.lineWidth=.028;ctx.lineCap='round';ctx.beginPath();
   for(const r of rows)for(let k=0;k<=r.n;k++){const x=r.x0+.27*k;ctx.moveTo(x,r.v-.17);ctx.lineTo(x,r.v+.17);}
   ctx.stroke();
 }
+function halves(p,p2,x,w,draw){   // fill a shape in the first colour, then its right half in the second (dual destinations)
+  ctx.fillStyle=p.c;draw();
+  if(p2){ctx.save();ctx.beginPath();ctx.rect(x+w/2,-1,w,4);ctx.clip();ctx.fillStyle=p2.c;draw();ctx.restore();}
+}
+function paintDestHw(p,kind,p2){   // 0 witch's potion shop, 1 potion pumps + crypt, 2 graveyard
+  const q=p2||p,rock=(x,y,w,h)=>{ctx.fillStyle='#8d939c';ctx.beginPath();ctx.moveTo(x,y+h);ctx.lineTo(x,y+w/2);ctx.arc(x+w/2,y+w/2,w/2,Math.PI,0);ctx.lineTo(x+w,y+h);ctx.closePath();ctx.fill();ctx.strokeStyle='rgba(20,20,30,.5)';ctx.lineWidth=.016;ctx.stroke();ctx.fillStyle='rgba(20,20,30,.45)';ctx.fillRect(x+w/2-.008,y+w*.3,.016,h*.4);ctx.fillRect(x+w/2-.03,y+w*.42,.06,.016);};
+  if(kind===1){
+    ctx.fillStyle='rgba(0,0,0,.2)';rr(.3,.26,1.4,.5,.08);ctx.fill();
+    ctx.fillStyle='#d9d3c4';ctx.fillRect(.34,.22,.05,.44);ctx.fillRect(1.02,.22,.05,.44);
+    for(const px of [.44,.84]){   // glass vials of glowing potion
+      ctx.fillStyle='#202838';rr(px,.42,.16,.34,.08);ctx.fill();
+      ctx.fillStyle='#7cff5a';rr(px+.02,.52,.12,.22,.06);ctx.fill();ctx.fillStyle='rgba(255,255,255,.55)';ctx.beginPath();ctx.arc(px+.06,.58,.015,0,7);ctx.arc(px+.1,.64,.012,0,7);ctx.fill();
+      ctx.fillStyle='#3a3f4d';ctx.fillRect(px+.04,.38,.08,.06);
+    }
+    halves(p,p2,.24,1.0,()=>{rr(.24,.14,1.0,.2,.05);ctx.fill();for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(.3+i*.14,.34,.07,0,Math.PI);ctx.fill();}});   // canopy with a scalloped edge
+    ctx.fillStyle='rgba(255,255,255,.3)';ctx.fillRect(.28,.18,.92,.04);
+    // a little crypt for a kiosk
+    ctx.fillStyle='#8d939c';rr(1.36,.28,.44,.38,.03);ctx.fill();ctx.fillStyle=q.c;ctx.beginPath();ctx.moveTo(1.32,.3);ctx.lineTo(1.58,.1);ctx.lineTo(1.84,.3);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#14141a';ctx.beginPath();ctx.moveTo(1.5,.66);ctx.lineTo(1.5,.5);ctx.arc(1.58,.5,.08,Math.PI,0);ctx.lineTo(1.66,.66);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#ffd27a';ctx.beginPath();ctx.arc(1.64,.58,.012,0,7);ctx.fill();
+  } else if(kind===2){
+    ctx.strokeStyle='#1a1a24';ctx.lineWidth=.03;ctx.beginPath();ctx.moveTo(.5,.46);ctx.lineTo(1.6,.46);ctx.stroke();   // iron fence
+    ctx.lineWidth=.022;ctx.beginPath();for(let x=.52;x<1.6;x+=.1){ctx.moveTo(x,.46);ctx.lineTo(x,.36);}ctx.stroke();
+    ctx.fillStyle='#1a1a24';for(let x=.52;x<1.6;x+=.1){ctx.beginPath();ctx.moveTo(x-.03,.36);ctx.lineTo(x,.3);ctx.lineTo(x+.03,.36);ctx.fill();}
+    rock(.62,.14,.2,.26);rock(.92,.1,.22,.3);rock(1.22,.14,.2,.26);
+    ctx.fillStyle='#6b5a46';ctx.fillRect(1.5,.1,.04,.32);ctx.fillRect(1.43,.18,.18,.04);                 // a cross
+    // mausoleum
+    ctx.fillStyle='rgba(0,0,0,.25)';rr(.14,.18,.34,.32,.04);ctx.fill();
+    ctx.fillStyle='#8d939c';rr(.12,.16,.34,.3,.03);ctx.fill();
+    halves(p,p2,.08,.42,()=>{ctx.beginPath();ctx.moveTo(.08,.2);ctx.lineTo(.29,.04);ctx.lineTo(.5,.2);ctx.closePath();ctx.fill();});
+    ctx.fillStyle='#14141a';ctx.beginPath();ctx.moveTo(.23,.46);ctx.lineTo(.23,.34);ctx.arc(.29,.34,.06,Math.PI,0);ctx.lineTo(.35,.46);ctx.closePath();ctx.fill();
+    // a skull on a sign instead of the P
+    ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.arc(1.83,.31,.17,0,7);ctx.fill();
+    halves(p,p2,1.66,.34,()=>{ctx.beginPath();ctx.arc(1.81,.28,.17,0,7);ctx.fill();});
+    ctx.strokeStyle='#fff';ctx.lineWidth=.03;ctx.beginPath();ctx.arc(1.81,.28,.17,0,7);ctx.stroke();
+    ctx.fillStyle='#f3efe0';ctx.beginPath();ctx.arc(1.81,.25,.09,0,7);ctx.fill();ctx.fillRect(1.76,.28,.1,.08);
+    ctx.fillStyle='#14141a';ctx.beginPath();ctx.arc(1.775,.25,.022,0,7);ctx.arc(1.845,.25,.022,0,7);ctx.fill();ctx.fillRect(1.805,.3,.012,.04);
+  } else {
+    ctx.fillStyle='rgba(0,0,0,.22)';rr(.32,.2,1.3,.76,.08);ctx.fill();
+    ctx.fillStyle='#3b2f45';rr(.28,.2,1.3,.68,.06);ctx.fill();
+    halves(p,p2,.2,1.46,()=>{ctx.beginPath();ctx.moveTo(.18,.3);ctx.lineTo(.5,.04);ctx.lineTo(.93,.16);ctx.lineTo(1.3,.02);ctx.lineTo(1.68,.3);ctx.closePath();ctx.fill();});   // a crooked roof
+    ctx.strokeStyle='rgba(0,0,0,.35)';ctx.lineWidth=.025;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(.18,.3);ctx.lineTo(.5,.04);ctx.lineTo(.93,.16);ctx.lineTo(1.3,.02);ctx.lineTo(1.68,.3);ctx.closePath();ctx.stroke();
+    for(const wx of [.4,1.06]){ctx.fillStyle='#ffd27a';rr(wx,.4,.38,.22,.05);ctx.fill();ctx.fillStyle='#3b2f45';ctx.fillRect(wx+.18,.4,.02,.22);ctx.fillRect(wx,.5,.38,.02);}
+    ctx.fillStyle='#14101c';ctx.beginPath();ctx.moveTo(.88,.7);ctx.lineTo(.88,.52);ctx.arc(.97,.52,.09,Math.PI,0);ctx.lineTo(1.06,.7);ctx.closePath();ctx.fill();
+    for(let i=0;i<6;i++){ctx.fillStyle=i%2?'#efe9d6':(p2&&i>=3?p2.c:p.c);ctx.fillRect(.28+i*.2167,.7,.2167,.15);}
+    ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(.28,.85,1.3,.03);
+    ctx.fillStyle='#1a1a22';ctx.beginPath();ctx.arc(1.74,.62,.13,0,Math.PI);ctx.fill();ctx.fillStyle='#7cff5a';ctx.beginPath();ctx.ellipse(1.74,.62,.13,.04,0,0,7);ctx.fill();   // a bubbling cauldron
+    ctx.fillStyle='rgba(124,255,90,.7)';ctx.beginPath();ctx.arc(1.71,.55,.025,0,7);ctx.arc(1.78,.52,.018,0,7);ctx.fill();
+  }
+}
 function paintDest(p,kind,p2){   // drawn facing south: building at the back (top), bays and the way in at the front (bottom)
   lotBase(p,LOTS[kind||0].rows,p2);const q=p2||p;
+  if(!Settings.v.noHw)return paintDestHw(p,kind||0,p2);
   if(kind===1){   // gas station: canopy over two pumps, kiosk beside them
     ctx.fillStyle='rgba(0,0,0,.18)';rr(.3,.26,1.4,.5,.08);ctx.fill();
     ctx.fillStyle='#e9e2d2';rr(1.34,.2,.46,.44,.07);ctx.fill();ctx.fillStyle=q.c;rr(1.34,.2,.46,.12,.05);ctx.fill();

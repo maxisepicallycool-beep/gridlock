@@ -1,5 +1,11 @@
 # Gridlock changelog
 
+## 1.6.4 — Haunted destinations
+- Stores are witch's potion shops: crooked roof, glowing windows, a bubbling cauldron
+- Gas stations are potion pumps: glowing green vials under a scalloped canopy, with a little crypt for a kiosk
+- Parking lots are graveyards: iron fence, gravestones, a cross, a mausoleum and a skull sign instead of the P
+- Lots get a purple cobblestone floor with bone-white bays. Dual destinations split the roofs, canopies and kerb between their two colours. The No Halloween theme setting brings back the old designs
+
 ## 1.6.3 — Every destination needs a road
 - On Standard, Rush Hour and Gridlock, a house now picks where its next trip is going (nearer destinations more often) whether or not a road reaches it. If there is no road, the house just waits, so you have to connect every destination of its colour. New destinations get 30 seconds before houses start picking them
 - Houses stuck waiting count towards the cut-off countdown, and the menu AI now connects houses to every destination of their colour
