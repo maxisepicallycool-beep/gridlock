@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.3';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -652,8 +652,22 @@ function assignedDest(h){   // Relaxed: every house has one fixed destination (n
   }
   return h.asg=best;
 }
-function routeOut(src,color,home){   // outbound trip: prefer quieter destinations of the colour
+const needAll=()=>D.id==='standard'||D.id==='rush'||D.id==='gridlock';   // standard and up: a trip's destination is picked first, so every destination needs road access
+function tripDest(h){   // the destination this house's next trip is going to (picked at random, nearer ones more often), whether or not a road reaches it
+  if(h.want&&blds.includes(h.want)&&acc(h.want,h.color))return h.want;
+  let pool=blds.filter(d=>acc(d,h.color)&&time-d.born>30);   // a brand new destination gets half a minute to be connected
+  if(!pool.length)pool=blds.filter(d=>acc(d,h.color));
+  if(!pool.length)return null;
+  const w=pool.map(d=>1/(1+.07*Math.hypot(d.x-h.x,d.y-h.y))),tot=w.reduce((a,b)=>a+b,0);
+  let r=Math.random()*tot,i=0;for(;i<pool.length-1;i++){r-=w[i];if(r<=0)break;}
+  return h.want=pool[i];
+}
+function routeOut(src,color,home){   // outbound trip
   if(!D.anyDest&&home){const a=assignedDest(home);if(a)return routeTo(src,a.an*2);}
+  if(needAll()&&home){const a=tripDest(home);if(!a)return null;return routeTo(src,a.an*2);}   // no road to it: the house waits
+  return routeAny(src,color);
+}
+function routeAny(src,color){   // any destination of the colour: prefer quieter ones
   for(const d of blds)if(acc(d,color))goalPen[d.an*2]=d.load*3+(d.over>0?12:0);
   const p=route(src,goals[color]);
   for(const d of blds)if(acc(d,color))goalPen[d.an*2]=0;
@@ -831,6 +845,7 @@ function dispatch(h){
   if(!blds.some(b=>acc(b,h.color)))return false;
   const p=routeOut(h.an*2,h.color,h);
   if(!p||p.length<2)return false;
+  h.want=null;
   cars.push({id:++carId,color:h.color,home:h,leg:0,path:p,i:0,u:0,ph:'drive',dwell:0,res:false,resDin:-1,din:-1,stopWait:-1,stopped:-1,blocked:0,wait:0,rrDone:false,qn:-1,force:false,by:null,dest:destOf(p),dead:false,t0:time,eta:etaOf(p)});
   h.out++;h.demand--;if(D.fleet)h.gar--;h.lastProg=time;return true;
 }
@@ -838,7 +853,7 @@ function reroute(c){
   if(c.res){holdRelease(c.path[c.i+1],c);c.res=false;}
   leaveQueue(c);
   const n=c.path[c.i];
-  const p=c.leg===0?routeOut(n,c.color,c.home):routeTo(n,c.home.an*2,true);
+  const p=c.leg===0?(needAll()&&c.dest&&blds.includes(c.dest)?(routeTo(n,c.dest.an*2)||routeAny(n,c.color)):routeOut(n,c.color,c.home)):routeTo(n,c.home.an*2,true);
   if(p&&p.length>=1){c.path=p;c.i=0;c.stopped=-1;c.stopWait=-1;c.lost=0;if(c.leg===0){c.dest=destOf(p);if(c.t0!==undefined)c.eta=(time-c.t0)+etaOf(p);}return true;}
   c.blocked=-1.5;return false;
 }
@@ -1405,6 +1420,7 @@ function reachOf(d){   // which nodes can drive to this one destination (cached 
   const r=REACHC.get(d.id),now=performance.now();if(r&&r.ver===gfxVer&&now-r.t<2000)return r.arr;
   const gs=new Uint8Array(N);gs[d.an*2]=1;const arr=reachTo(d.color,gs);REACHC.set(d.id,{ver:gfxVer,t:now,arr});return arr;
 }
+const missingDest=b=>blds.find(d=>acc(d,b.color)&&d.linked&&d.port>=0&&!reachOf(d)[b.an*2]);
 const connectedToAll=b=>{const ds=blds.filter(d=>acc(d,b.color));return ds.length>0&&ds.every(d=>d.linked&&reachOf(d)[b.an*2]);};
 function alertLevel(b){
   if(b.fire)return 2;
@@ -1463,8 +1479,8 @@ function updateStall(dt){
     for(const b of blds){
       if(b.dest)continue;
       const g=by[b.color]||(by[b.color]={n:0,bad:0});g.n++;
-      let R;if(D.anyDest){R=reach[b.color]||(reach[b.color]=reachTo(b.color));}
-      else{const a=assignedDest(b);if(!a){b.stalled=true;g.bad++;continue;}const key='a'+a.id;if(!reach[key]){const gs=new Uint8Array(N);gs[a.an*2]=1;reach[key]=reachTo(b.color,gs);}R=reach[key];}
+      let R;if(D.anyDest&&!needAll()){R=reach[b.color]||(reach[b.color]=reachTo(b.color));}
+      else{const a=needAll()?tripDest(b):assignedDest(b);if(!a){b.stalled=true;g.bad++;continue;}const key='a'+a.id;if(!reach[key]){const gs=new Uint8Array(N);gs[a.an*2]=1;reach[key]=reachTo(b.color,gs);}R=reach[key];}
       b.stalled=!b.linked||!R[b.an*2]||(b.demand>0&&time-b.lastProg>STALL_IDLE&&!(b.rt&&b.rt.length));   // a car resting at home is not a stall
       if(b.stalled)g.bad++;
     }
@@ -3698,7 +3714,7 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
   },
   decide(){
     buildRev();this.grow();const reach={},R=c=>reach[c]||(reach[c]=reachTo(c));
-    const needy=blds.filter(b=>b.dest?!b.linked:(!b.linked||!R(b.color)[b.an*2]));
+    const needy=blds.filter(b=>b.dest?!b.linked:(!b.linked||!R(b.color)[b.an*2]||(needAll()&&missingDest(b))));
     if(needy.length&&inv.road<14&&time-this.lastPrune>10&&this.prune())return;   // starved of roads: reclaim the unused ones first
     if(needy.length){this.planStart(needy);return;}
     if(time-this.lastPrune>30&&this.prune())return;
@@ -3709,8 +3725,8 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
   planStart(needy){   // the path searches run a little each tick (never a frame-long hitch)
     const order=needy.slice(this.rr%needy.length).concat(needy).slice(0,4);this.rr++;
     this.job={ii:0,items:order.map(b=>{
-      const dest=b.dest;
-      return {b,R:dest?aiForward(b.color):aiReach(b.color),ports:(()=>{const pt=new Uint8Array(W*H);for(const x of blds)if(dest?(!x.dest&&(x.color===b.color||x.color===b.color2)):acc(x,b.color))if(x.port>=0)pt[x.port]=1;return pt;})(),
+      const dest=b.dest,m=!dest&&needAll()&&b.linked&&aiReach(b.color)[b.an*2]?missingDest(b):null;   // a house that reaches some destination but not all of them
+      return {b,R:dest?aiForward(b.color):(m?reachOf(m):aiReach(b.color)),ports:(()=>{const pt=new Uint8Array(W*H);if(m){pt[m.port]=1;return pt;}for(const x of blds)if(dest?(!x.dest&&(x.color===b.color||x.color===b.color2)):acc(x,b.color))if(x.port>=0)pt[x.port]=1;return pt;})(),
         dirs:dest?[b.dir]:[0,1,2,3,4,5,6,7].filter(d=>dirValid(b,d)),di:0,best:null};
     })};
   },

@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.6.3 — Every destination needs a road
+- On Standard, Rush Hour and Gridlock, a house now picks where its next trip is going (nearer destinations more often) whether or not a road reaches it. If there is no road, the house just waits, so you have to connect every destination of its colour. New destinations get 30 seconds before houses start picking them
+- Houses stuck waiting count towards the cut-off countdown, and the menu AI now connects houses to every destination of their colour
+- Relaxed and Sandbox work as before
+
 ## 1.6.2 — Losing is about the roads, not the crowd
 - A destination no longer ends the game just because lots of cars are heading to it. Now it only counts cars that are running far too late (more than twice the road's clear time, plus a margin): jammed, tangled or badly connected roads
 - The dots over a destination turn amber, then red, as cars run late; the warning is now "getting backed up" and the crisis is "cut off by traffic". The limit is the same number of late cars for the same time as before, per difficulty
