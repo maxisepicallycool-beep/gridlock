@@ -57,6 +57,27 @@ body.app #hud{padding-left:92px;padding-top:10px}
 /* ---- dock ---- */
 #sbBar{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);display:none;gap:6px;padding:8px 10px;border-radius:20px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:94vw;z-index:7}
 body.inmenu #sbBar{display:none!important}
+#coordBar{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);display:none;gap:6px;padding:8px 10px;border-radius:20px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:94vw;z-index:7}
+body.inmenu #coordBar,body.inmenu #tlEd{display:none!important}
+#coordBar .sbl{font-size:10px;letter-spacing:.8px;text-transform:uppercase;font-weight:850;color:var(--muted);padding:0 4px}
+#coordBar .btn.on{background:var(--accent);color:#fff}
+#tlEd{position:fixed;right:14px;top:84px;width:348px;max-height:calc(100vh - 300px);overflow:auto;display:none;border-radius:22px;padding:14px 16px;z-index:9}
+#tlEd h3{margin:0 0 2px;font-size:16px}#tlEd .tsub{font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:8px}
+#tlEd .tx{position:absolute;right:12px;top:10px;border:0;background:var(--soft);color:var(--ink);width:26px;height:26px;border-radius:50%;cursor:pointer;font-weight:800}
+#tlEd .tstats{display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:6px;align-items:center;margin:6px 0 10px;font-size:11px;color:var(--muted);font-weight:700}
+#tlEd .los{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;color:#fff;background:#2fb67c}
+#tlEd .tstats b{display:block;font-size:15px;color:var(--ink)}
+#tlEd .trow{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12.5px;font-weight:700}
+#tlEd .trow input[type=range]{flex:1}#tlEd .trow span.v{min-width:38px;text-align:right;font-variant-numeric:tabular-nums}
+#tlEd .tph{border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin:8px 0;background:var(--card2)}
+#tlEd .tph h4{margin:0 0 4px;font-size:12.5px;display:flex;justify-content:space-between;align-items:center}
+#tlEd .tmv{display:flex;align-items:center;gap:5px;margin:3px 0;font-size:11.5px;font-weight:700;color:var(--ink2)}
+#tlEd .tmv b{min-width:72px}#tlEd .chip2{border:1px solid var(--line);background:var(--soft);color:var(--muted);border-radius:8px;padding:2px 9px;font-weight:800;cursor:pointer;font:inherit;font-size:12px}
+#tlEd .chip2.on{background:#2fb67c;border-color:#2fb67c;color:#fff}#tlEd .chip2.dis{opacity:.3;cursor:default}
+#tlEd .tbar{height:12px;border-radius:7px;display:flex;overflow:hidden;position:relative;margin:4px 0 8px;background:var(--soft)}
+#tlEd .tbar i{display:block;height:100%}#tlEd .tbar u{position:absolute;top:-2px;bottom:-2px;width:3px;background:#fff;box-shadow:0 0 0 1px #232733;border-radius:2px}
+#tlEd .tbtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+#tlEd .warn{color:#e5484d;font-size:11.5px;font-weight:700;margin:4px 0}
 #sbBar .sbl{font-size:10px;letter-spacing:.8px;text-transform:uppercase;font-weight:850;color:var(--muted);padding:0 4px}
 #sbBar .btn.on{background:var(--accent);color:#fff}
 #sbBar .sw{width:24px;height:24px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px rgba(35,39,51,.25);cursor:pointer;padding:0}
@@ -254,6 +275,7 @@ body.inmenu #coach{display:none!important}
     <div class="pill glass" style="gap:16px">
       <div class="stat"><small>Trips</small><b id="sc">0</b></div>
       <div class="stat"><small>Cars</small><b id="cr">0</b></div>
+      <div class="stat" id="clockStat" style="display:none"><small id="clkn">Time</small><b id="clk">06:00</b></div>
       <div class="stat" id="crashStat" style="display:none"><small>Crashes</small><b id="crsh" style="color:var(--danger)">0</b></div>
     </div>
     <div class="pill glass" style="gap:6px;padding:8px">
@@ -268,6 +290,8 @@ body.inmenu #coach{display:none!important}
 </div>
 <div id="layerMenu" class="glass"></div>
 <div id="sbBar" class="glass"></div>
+<div id="coordBar" class="glass"></div>
+<div id="tlEd" class="glass"></div>
 <div id="coach" class="glass"></div>
 <div id="dock" class="glass"></div>
 <div id="toast" class="glass"></div>
@@ -278,7 +302,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.8.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.9.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -339,7 +363,9 @@ const DIFFS=[
   {id:'relaxed', name:'Relaxed',  tag:'Take your time',          col:'#2fb67c',demandBase:14,  demandMin:7,  stall:35,dlimit:22,dcap:7,weekLen:50,firstWeek:60,cardMul:1.3, startMul:1.5, growth:.75,maxOut:2,fleet:0,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:20,anyDest:false,crash:0,notify:true},
   {id:'standard',name:'Standard', tag:'The intended ride',       col:'#4c9be8',demandBase:11,  demandMin:4.5,stall:22.5,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.10,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true},
   {id:'rush',    name:'Rush Hour',tag:'Busy, busy, busy',        col:'#ff8b3d',demandBase:8.5, demandMin:3.5,stall:18,dlimit:10,dcap:5,weekLen:38,firstWeek:44,cardMul:.85, startMul:.8,  growth:1.4,maxOut:2,fleet:2,fireChance:.125,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:0,notify:true},
-  {id:'gridlock',name:'Gridlock', tag:'Good luck',               col:'#e5484d',demandBase:6.5, demandMin:2.8,stall:15,dlimit:7, dcap:4,weekLen:34,firstWeek:40,cardMul:.7,  startMul:.65, growth:1.8,maxOut:1,fleet:1,fireChance:.15,fireBurn:45,fireOW:false,fireBuild:70,anyDest:true,crash:15,notify:false},
+  {id:'gridlock',name:'Gridlock', tag:'Good luck',               col:'#e5484d',demandBase:6.5, demandMin:2.8,stall:15,dlimit:7, dcap:4,weekLen:34,firstWeek:40,cardMul:.7,  startMul:.65, growth:1.8,maxOut:1,fleet:1,fireChance:.15,fireBurn:45,fireOW:false,fireBuild:70,anyDest:true,crash:15,notify:false,coord:true,stopMul:6},
+  {id:'realism_easy',name:'Realism \u00b7 Easy',real:'Easy',tag:'Be a civil engineer',col:'#17a2b8',demandBase:11,demandMin:4.5,stall:30,dlimit:18,dcap:6,weekLen:48,firstWeek:55,cardMul:1.15,startMul:1.2,growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true,coord:true,clock:true,dayLen:360,waves:.6,stopMul:3},
+  {id:'realism_hard',name:'Realism \u00b7 Hard',real:'Hard',tag:'Be a civil engineer',col:'#0f7f93',demandBase:9.5,demandMin:3.8,stall:20,dlimit:12,dcap:5,weekLen:40,firstWeek:46,cardMul:.95,startMul:1,growth:1.3,maxOut:2,fleet:2,fireChance:.1,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:12,notify:true,coord:true,clock:true,dayLen:360,waves:1,stopMul:4.5},
   {id:'sandbox', name:'Sandbox',  tag:'No fail, all the pieces', col:'#a468e6',demandBase:11,  demandMin:4.5,stall:30,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:10,anyDest:true,crash:0,notify:true,noFail:true,infinite:true}
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
@@ -495,7 +521,9 @@ const IC={
   erase:`<circle cx="24" cy="24" r="17" fill="#f6dcdc" stroke="#d9534f" stroke-width="3"/><path d="M17 17l14 14M31 17L17 31" stroke="#d9534f" stroke-width="3.6" stroke-linecap="round"/>`,
   undo:`<circle cx="24" cy="24" r="17" fill="#e4ebf5" stroke="#5b7aa6" stroke-width="3"/><path d="M17 22h11a6 6 0 010 12h-5" stroke="#5b7aa6" stroke-width="3.4" fill="none" stroke-linecap="round"/><path d="M21 16l-5 6 5 6" stroke="#5b7aa6" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
 };
-const icon=(k,s)=>`<svg viewBox="0 0 48 48"${s?` style="width:${s}px;height:${s}px"`:''}>${IC[k]}</svg>`;
+IC.coord=`<rect x="17" y="3" width="14" height="33" rx="5" fill="#1b1f2a"/><circle cx="24" cy="11" r="4.3" fill="#ef4444"/><circle cx="24" cy="20" r="4.3" fill="#fbbf24"/><circle cx="24" cy="29" r="4.3" fill="#34d399"/><rect x="22.5" y="36" width="3" height="9" fill="#555b68"/><rect x="15" y="44" width="18" height="3" rx="1.5" fill="#555b68"/>`;
+const icon=(k,s)=>`<svg viewBox="0 0 48 48"${s?` style="width:${s}px;height:${s}px"`:''}>${IC[k==='stop'&&D&&D.coord?'coord':k]}</svg>`;
+const pieceLabel=p=>p.k==='stop'&&D.coord?'Traffic coordinator':p.label;
 
 /* ---------- state ---------- */
 const cv=document.getElementById('cv'),mainCtx=cv.getContext('2d');
@@ -521,9 +549,72 @@ const inW=(x,y)=>x>=0&&y>=0&&x<W&&y<H;             // inside the world
 const isBld=n=>!(n&1)&&!!cells[n>>1].bld;
 const validNode=n=>isBld(n)||mask[n]!==0;
 // stop signs are per approach: sg[s] = sign on the side of the node that faces neighbour s (cars arriving from there must stop)
-const stopAt=(nx,d)=>!(nx&1)&&!!cells[nx>>1].sg&&!!cells[nx>>1].sg[opp(d)];
+// what stands at an approach (cells[c].sg[side]): 1 stop sign, 2 yield sign, 16+bits traffic-light heads (1 straight, 2 left, 4 right)
+const SG_STOP=1,SG_YIELD=2,SG_LIGHT=16,MVBIT={S:1,L:2,R:4};
+const sgCode=v=>v===true?1:(+v||0);
+const sgAt=(nx,d)=>{if(nx&1)return 0;const g=cells[nx>>1].sg;return g?sgCode(g[opp(d)]):0;};
+const stopAt=(nx,d)=>sgAt(nx,d)===1;
+const yieldAt=(nx,d)=>sgAt(nx,d)===2;
+const headsOf=v=>{v=sgCode(v);return v>=16?((v&1)+((v>>1)&1)+((v>>2)&1)):v?1:0;};
+const mvOf=(din,dout)=>{if(dout<0)return 'S';const k=(dout-din)&7;return k===0?'S':(k>=1&&k<=3)?'R':'L';};   // 1-3 clockwise on the map = a right turn (the map is drawn y-down)
 function signPos(idx,s){const C=ctr(idx),u=UNIT[s],din=opp(s),pv=[-UNIT[din][1],UNIT[din][0]];return {x:C[0]+u[0]*.36+pv[0]*.3,y:C[1]+u[1]*.36+pv[1]*.3,C,u,pv};}
-function setSign(ci,s,on){GC.dirty=true;const c=cells[ci];if(!c.sg)c.sg=new Array(8).fill(false);c.sg[s]=on;if(!c.sg.some(Boolean))c.sg=null;}
+function setSign(ci,s,on){GC.dirty=true;const c=cells[ci];if(!c.sg)c.sg=new Array(8).fill(false);c.sg[s]=on===true?1:(on||0);if(!c.sg.some(Boolean))c.sg=null;tlSync(ci);}
+
+/* ---------- traffic lights: each intersection has its own signal plan (phases with green times, an all-red gap and a start offset) ---------- */
+const TL_AMBER=1.5;
+function tlSig(ci){const c=cells[ci];let r='';if(c.sg)for(let sd=0;sd<8;sd++){const v=sgCode(c.sg[sd]);if(v>=16)r+=sd+':'+(v&7)+';';}return r;}
+function tlExits(ci,side,mv){   // the roads a movement from this approach can leave by
+  const c=cells[ci],din=opp(side),r=[];if(!c.e)return r;
+  for(let x=0;x<8;x++){if(!c.e[x]||x===side)continue;if(mvOf(din,x)===mv)r.push(x);}
+  return r;
+}
+function tlAuto(ci){   // a sensible plan: movements that never cross share a phase (straight and right first, left arrows in their own phases)
+  const c=cells[ci],mv=[];
+  for(const m of ['S','R','L'])for(let sd=0;sd<8;sd++){const v=sgCode(c.sg&&c.sg[sd]);if(v>=16&&(v&MVBIT[m]))mv.push({sd,m,key:sd+m,ex:tlExits(ci,sd,m)});}
+  const chords=a=>a.ex.map(x=>chord(ci*2,opp(a.sd),x));
+  const clash=(a,b)=>{
+    if(a.sd===b.sd)return a.m!==b.m&&(a.m==='L'||b.m==='L');   // one lane: a left arrow and the straight green are different phases
+    for(const x of chords(a))for(const y of chords(b))if(chordDist(x,y)<.26)return true;
+    return false;
+  };
+  const ph=[];
+  for(const a of mv){let put=false;for(const p of ph){if(p.items.every(b=>!clash(a,b))){p.items.push(a);put=true;break;}}if(!put)ph.push({items:[a]});}
+  return {ph:ph.map(p=>({g:p.items.every(x=>x.m==='L')?6:12,mv:p.items.map(x=>x.key)})),clr:2,off:0,sig:tlSig(ci),man:false};
+}
+function tlSync(ci){
+  const c=cells[ci];if(!c)return;
+  if(!tlSig(ci)){c.tl=null;return;}
+  if(c.tl&&c.tl.sig===tlSig(ci))return;
+  const old=c.tl;c.tl=tlAuto(ci);
+  if(old){c.tl.off=old.off;c.tl.clr=old.clr;for(let i=0;i<Math.min(old.ph.length,c.tl.ph.length);i++)c.tl.ph[i].g=old.ph[i].g;}
+}
+function tlCycle(tl){return tl.ph.reduce((a,p)=>a+p.g+TL_AMBER+tl.clr,0);}
+function tlPhaseAt(tl,t){
+  const L=tlCycle(tl);if(L<=0)return null;let x=(((t-tl.off)%L)+L)%L;
+  for(let i=0;i<tl.ph.length;i++){const p=tl.ph[i],span=p.g+TL_AMBER+tl.clr;if(x<span)return {i,x,p};x-=span;}
+  return null;
+}
+function tlState(ci,side,mv){   // 2 green, 1 amber, 0 red
+  const tl=cells[ci].tl;if(!tl)return 2;const a=tlPhaseAt(tl,time);if(!a)return 0;
+  if(a.p.mv.indexOf(side+mv)<0)return 0;
+  return a.x<a.p.g?2:(a.x<a.p.g+TL_AMBER?1:0);
+}
+function lightGate(nx,d,after){   // null when the approach has no light; otherwise whether this move may go
+  if(nx&1)return null;const ci=nx>>1,c=cells[ci];if(!c.sg||!c.tl)return null;
+  const side=opp(d),v=sgCode(c.sg[side]);if(v<16)return null;
+  const mv=mvOf(d,after!==undefined?dirOf(nx,after):-1),mask=v&7;
+  if(mask&MVBIT[mv])return {st:tlState(ci,side,mv),perm:false};
+  if((mv==='R'||mv==='L')&&(mask&1))return {st:tlState(ci,side,'S'),perm:mv==='L'};   // no arrow of its own: turns with the straight light (a left turn gives way)
+  return {st:2,perm:true};
+}
+// how a junction is doing: delay per car over the last minute, as a level of service (A best to F)
+function junctionStat(ci){
+  const c=cells[ci],A=(c.stat||[]).filter(e=>time-e[0]<=60);let q=0;
+  for(const o of cars)if(!o.dead&&o.ph==='drive'&&o.path[o.i+1]===ci*2&&o.u>.5&&(o.dly||0)>.8)q++;
+  const n=A.length,avg=n?A.reduce((a,e)=>a+e[1],0)/n:0;
+  const los=avg<=10?'A':avg<=20?'B':avg<=35?'C':avg<=55?'D':avg<=80?'E':'F';
+  return {n,avg,los,queue:q};
+}
 function signSides(c){const r=[];if(c.e)for(let s=0;s<8;s++)if(c.e[s]&&!c.e[s].ghost)r.push(s);return r;}
 const ctr=i=>[i%W+.5,((i/W)|0)+.5];
 const mid=(i,d)=>{const p=ctr(i);return [p[0]+DIR[d][0]*.5,p[1]+DIR[d][1]*.5];};
@@ -584,7 +675,7 @@ function rebuild(){
     if(c.e)for(let d=0;d<8;d++){const e=c.e[d];if(!e||e.ow<0)continue;link(i*2,d,nbIdx(i,d)*2,1,0);if(e.ghost){egh[i*16+d]=1;hasGhost=true;}}
     if(c.f)for(let d=0;d<8;d++){const e=c.f[d];if(!e||e.ow<0)continue;const bi=nbIdx(i,d),a=bnode[i];link(a,d,bnode[bi],e.k===1?1+(hgt[i]+hgt[bi])/2:1,1);if(e.ghost){egh[a*8+d]=1;hasGhost=true;}}
   }
-  for(let i=0;i<W*H;i++){const c=cells[i];if(!c.sg)continue;for(let sd=0;sd<8;sd++)if(c.sg&&c.sg[sd]&&!(c.e&&c.e[sd])){setSign(i,sd,false);inv.stop++;}}
+  for(let i=0;i<W*H;i++){const c=cells[i];if(!c.sg)continue;for(let sd=0;sd<8;sd++)if(c.sg&&c.sg[sd]&&!(c.e&&c.e[sd])){inv.stop+=headsOf(c.sg[sd]);setSign(i,sd,false);}}
   for(const b of blds.concat(depts)){
     b.retry=0;   // any road change: houses re-check for a route right away
     b.linked=false;
@@ -657,7 +748,7 @@ function assignedDest(h){   // Relaxed: every house has one fixed destination (n
   }
   return h.asg=best;
 }
-const needAll=()=>D.id==='standard'||D.id==='rush'||D.id==='gridlock';   // standard and up: a trip's destination is picked first, so every destination needs road access
+const needAll=()=>D.id==='standard'||D.id==='rush'||D.id==='gridlock'||D.id==='realism_easy'||D.id==='realism_hard';   // standard and up: a trip's destination is picked first, so every destination needs road access
 function tripDest(h){   // the destination this house's next trip is going to (picked at random, nearer ones more often), whether or not a road reaches it
   if(h.want&&blds.includes(h.want)&&acc(h.want,h.color))return h.want;
   let pool=blds.filter(d=>acc(d,h.color)&&time-d.born>30);   // a brand new destination gets half a minute to be connected
@@ -754,7 +845,7 @@ function drawGrowth(){   // new land fades in, rippling out from the old edge
 /* ---------- game flow ---------- */
 function startInv(){
   const base={road:60,road1:10,hwy:4,bridge:6,stop:3,fire:1,hwy1:1},o={};
-  for(const k in base)o[k]=D.infinite?9999:Math.round(base[k]*D.startMul);
+  for(const k in base)o[k]=D.infinite?9999:Math.round(base[k]*D.startMul*(k==='stop'?(D.stopMul||1):1));
   return o;
 }
 function newGame(diffId,seed){
@@ -769,6 +860,13 @@ function newGame(diffId,seed){
   Notes.clear();rebuild();rebuildGoals();startWeek(1);buildDock();hud(true);
 }
 function addColor(){const c=colorOrder[S.colors++];S.colorBorn[c]=time;spawnBld(c,true);spawnBld(c,false);spawnBld(c,false);}
+// Realism has a 24-hour clock (a day lasts D.dayLen seconds, starting at 06:00). Trips come in rush hours: busiest 07:30-09:00 and 16:30-18:30, quiet at night.
+const RUSH_CURVE=[[0,.25],[5,.3],[6.5,.8],[7.5,1.7],[8.5,1.9],[9.5,1.2],[11,.9],[13,1],[15,1.1],[16.5,1.8],[17.5,2],[19,1.3],[20.5,.7],[22,.45],[24,.25]];
+const hourNow=()=>D.clock?((6+time/D.dayLen*24)%24):12;
+function demandCurve(h){for(let i=1;i<RUSH_CURVE.length;i++){const a=RUSH_CURVE[i-1],b=RUSH_CURVE[i];if(h<=b[0])return a[1]+(b[1]-a[1])*((h-a[0])/(b[0]-a[0]));}return RUSH_CURVE[RUSH_CURVE.length-1][1];}
+const waveF=()=>D.clock?Math.max(.15,1+(demandCurve(hourNow())-1)*(D.waves||1)):1;
+const rushName=()=>{const h=hourNow();return !D.clock?'':h>=6.5&&h<10?'Morning rush hour':h>=16&&h<19.5?'Evening rush hour':'';};
+const clockText=()=>{const h=hourNow(),hh=Math.floor(h),mm=Math.floor((h-hh)*60);return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');};
 function startWeek(w){
   S.week=w;S.weekLen=w===1?D.firstWeek:D.weekLen;S.weekT=0;S.mid=false;
   if(w>1&&crowded())expandRegion();
@@ -791,18 +889,18 @@ function startWeek(w){
 function roadBoost(k){return (k==='road'||k==='road1')?(1+Math.min(1.5,Math.max(0,S.week-3)*.12))*(S.week<5?1:1-Math.min(.3,.1+Math.max(0,S.week-5)*.02)):(k==='bridge')?1+Math.min(.6,Math.max(0,S.week-3)*.05):1;}
 function weekEnd(){
   S.modal='cards';stroke=null;
-  const pool=CARDS.slice(),offer=[];
+  const pool=CARDS.map(c=>c[0]==='stop'&&D.stopMul>1?[c[0],c[1],c[2]*2]:c),offer=[];   // where signs matter, the sign card comes up twice as often
   for(let i=0;i<3;i++){
     const tot=pool.reduce((s,c)=>s+c[2],0);let r=Math.random()*tot,j=0;
     for(;j<pool.length;j++){r-=pool[j][2];if(r<=0)break;}
     j=Math.min(j,pool.length-1);
-    const [k,[a,b]]=pool.splice(j,1)[0]; offer.push({k,n:Math.max(1,Math.round(ri(a,b)*D.cardMul*roadBoost(k)))});
+    const [k,[a,b]]=pool.splice(j,1)[0]; offer.push({k,n:Math.max(1,Math.round(ri(a,b)*D.cardMul*roadBoost(k)*(k==='stop'?(D.stopMul||1):1)))});
   }
   if(S.demo){chooseCard(aiPickCard(offer));return;}
   const m=document.getElementById('modal');m.className='';
   m.innerHTML=`<div class="sheet glass"><h2>Week ${S.week} complete</h2><p>Pick a delivery for next week.</p>
     <div class="cards">${offer.map((o,i)=>`<div class="card" data-i="${i}"><span class="key">${i+1}</span>${icon(o.k)}
-      <div class="amt">+${o.n}</div><div class="nm">${PK[o.k].label}${o.n>1?'s':''}</div></div>`).join('')}</div></div>`;
+      <div class="amt">+${o.n}</div><div class="nm">${pieceLabel(PK[o.k])}${o.n>1?'s':''}</div></div>`).join('')}</div></div>`;
   m.querySelectorAll('.card').forEach(el=>el.onclick=()=>chooseCard(offer[+el.dataset.i]));
   S.offer=offer;
 }
@@ -886,11 +984,13 @@ function crash(nx,a,b){   // hardest difficulty: crossing paths in an unsigned j
   if(D.crash&&S.crashes>=D.crash&&!S.over)gameOver(D.crash+' crashes — the roads are a wreck.');
 }
 function tryEnter(c,nx,d){
-  c.by=null;
+  c.by=null;c.redHold=false;
   if(isBld(nx))return 1;
   if(crashUntil[nx]>time)return 0;   // wreck still blocking the junction
-  const sg=stopAt(nx,d),force=c.force||c.wait>(sg?12:5);
-  const after=c.path[c.i+2],mine=chord(nx,d,after!==undefined?dirOf(nx,after):-1);
+  const after=c.path[c.i+2],sc=sgAt(nx,d),sg=sc===1,yl=sc===2,lg=lightGate(nx,d,after),fromBld=isBld(c.path[c.i]),ctl=!!sc||fromBld;   // a car pulling out of a driveway or lot always gives way (those cannot be signed)
+  if(lg&&lg.st!==2){c.redHold=true;return 0;}   // red or amber: wait at the line (never forced through, and it does not feed the deadlock timer)
+  const give=yl||fromBld||(lg&&lg.perm),force=c.force||c.wait>(sg?12:5);
+  const mine=chord(nx,d,after!==undefined?dirOf(nx,after):-1);
   const crosses=(din,dout)=>chordDist(mine,chord(nx,din,dout))<.26;
   let q=null;
   if(sg){   // join the queue of stopped cars in the order they finished stopping
@@ -905,18 +1005,21 @@ function tryEnter(c,nx,d){
       if(o.din===d){c.by=o.c;return 0;}
       const oc=o.c,k=oc.path[oc.i]===nx?oc.i:oc.i+1,on=oc.path[k+1];
       if(crosses(o.din,(oc.path[k]===nx&&on!==undefined)?dirOf(nx,on):-1)){
-        if(D.crash&&!sg&&!o.c.dead){crash(nx,c,o.c);return 2;}   // nobody yields on the hardest difficulty
+        if(D.crash&&!ctl&&!o.c.dead&&signSides(cells[nx>>1]).length>=3){crash(nx,c,o.c);return 2;}   // nobody yields on the hardest difficulties, unless something controls this approach. (Only real junctions of 3+ roads: a driveway merge cannot be signed, so it is never a wreck, cars just take turns)
         c.by=o.c;return 0;
       }
     }
-    if(sg){
-      // 2) stop sign: give way to traffic on unsigned approaches that is about to arrive
+    if(sg||give){
+      // 2) stop / yield / a permissive turn: give way to traffic that is about to arrive and has the right of way
       for(const o of cars){
         if(o===c||o.dead||o.truck||o.ph!=='drive'||o.res||o.path[o.i+1]!==nx||o.u<.3)continue;
-        const d2=dirOf(o.path[o.i],nx);if(stopAt(nx,d2))continue;
-        const a2=o.path[o.i+2];
+        const d2=dirOf(o.path[o.i],nx),c2=sgAt(nx,d2),a2=o.path[o.i+2];
+        if(c2===1||c2===2)continue;   // they have to give way too
+        const l2=lightGate(nx,d2,a2);if(l2&&l2.st!==2)continue;   // their light is red: they are not coming
         if(crosses(d2,a2!==undefined?dirOf(nx,a2):-1)){c.by=o;return 0;}
       }
+    }
+    if(sg){
       // 3) first come, first served among cars at stop signs (non-crossing moves can go together)
       for(const o of q){
         if(o===c)break;if(o.dead||o.path[o.i+1]!==nx)continue;
@@ -1375,7 +1478,11 @@ function updateCar(c,dt){
     c.u+=dt*sp*1.5;if(c.u>=1)killCar(c);               // arriving home
     return;
   }
-  if(!s.last){const nn=c.path[c.i+1];if(c.u>.45&&c.stopped!==nn&&stopAt(nn,s.dout))sp*=Math.max(.25,1-(c.u-.45)*1.7);}   // brake for a stop sign
+  if(!s.last){
+    const nn=c.path[c.i+1],lg=lightGate(nn,s.dout,c.path[c.i+2]);
+    if(c.u>.45&&c.stopped!==nn&&(stopAt(nn,s.dout)||(lg&&lg.st!==2)))sp*=Math.max(.25,1-(c.u-.45)*1.7);   // brake for a stop sign or a red light
+    else if(c.u>.6&&yieldAt(nn,s.dout))sp*=.65;   // ease off at a yield sign
+  }
   c.u+=dt*sp;
   if(c.u<.9)c.by=null;
   const nx=c.path[c.i+1];
@@ -1390,8 +1497,8 @@ function updateCar(c,dt){
     }
     const r=tryEnter(c,nx,d);
     if(c.dead)return;
-    if(r===1){c.res=true;c.resDin=d;c.blocked=0;}
-    else{ c.wait+=dt;if(c.wait>3&&!c.rrDone){c.rrDone=true;reroute(c);} return; }
+    if(r===1){c.res=true;c.resDin=d;c.blocked=0;if(!(nx&1)&&signSides(cells[nx>>1]).length>=3){const cc=cells[nx>>1];(cc.stat||(cc.stat=[])).push([time,c.dly||0]);if(cc.stat.length>200)cc.stat.shift();}c.dly=0;}
+    else{ c.dly=(c.dly||0)+dt;if(!c.redHold){c.wait+=dt;if(c.wait>3&&!c.rrDone){c.rrDone=true;reroute(c);}} return; }
   }
   if(c.res&&c.u>=1){
     holdRelease(n,c);c.by=null;c.i++;c.u-=1;c.res=false;c.stopped=-1;c.din=c.resDin;c.blocked=0;c.wait=0;c.rrDone=false;c.lost=0;
@@ -1657,7 +1764,7 @@ function step(dt){
   for(const b of blds){
     if(b.pulse>0)b.pulse=Math.max(0,b.pulse-dt*2);
     if(b.dest)continue;
-    b.timer-=dt;
+    b.timer-=dt*waveF();
     if(b.timer<=0){
       b.demand=Math.min(MAXD,b.demand+1);b.timer=Math.max(D.demandMin,D.demandBase-.45*(S.week-1))*rnd(.8,1.2);   // houses wait patiently: the pile just caps out
     }
@@ -1690,6 +1797,7 @@ function step(dt){
     else b.over=Math.max(0,b.over-dt*2);
   }
   updateStall(dt);Snd.tick(dt);
+  if(D.clock&&!S.demo&&!S.tut){const nm=rushName();if(nm!==S.rushNm){S.rushNm=nm;if(time>3)toast(nm?nm+': traffic is building':'Rush hour is over: traffic is easing off');}}
   S.fireClock+=dt;if(S.fireClock>=60){S.fireClock-=60;if(D.fireChance&&Math.random()<D.fireChance)igniteRandom();}   // a chance of a house fire every minute
   for(const b of blds.slice())if(b.fire)tickFire(b,dt);
   for(const d of depts)if(!d.told&&time>=d.readyAt){d.told=true;Notes.push('ready'+d.id,'good','✓','Fire station ready','Trucks can now respond'+(d.linked?'':' — link its driveway to a road'),d);}
@@ -1727,7 +1835,7 @@ function placeEdge(p,ai,d){
   return {res:'ok',rec};
 }
 function undoRec(r){
-  if(r.sign){setSign(r.ai,r.s,r.was);inv.stop+=r.was?-1:1;if(inv.stop<0)inv.stop=0;}
+  if(r.sign){if(r.old!==undefined){setSign(r.ai,r.s,r.old);inv.stop+=headsOf(r.neu)-headsOf(r.old);}else{setSign(r.ai,r.s,r.was);inv.stop+=r.was?-1:1;}if(inv.stop<0)inv.stop=0;}
   else{
     if(r.old)setEdge(r.layer,r.ai,r.d,r.old.k,r.old.ow);else setEdge(r.layer,r.ai,r.d,-1,0);
     inv[r.key]++;if(r.refund)inv[r.refund]=Math.max(0,inv[r.refund]-1);
@@ -1766,7 +1874,7 @@ function advance(fx,fy){
     const bi=nbIdx(last,d);if(bi<0)break;
     const r=placeEdge(p,last,d);
     if(r.res==='blocked')break;
-    if(r.res==='empty'){if(!stroke.warned){stroke.warned=true;toast('Out of '+p.label.toLowerCase()+'s — more come with weekly cards');}break;}
+    if(r.res==='empty'){if(!stroke.warned){stroke.warned=true;toast('Out of '+pieceLabel(p).toLowerCase()+'s — more come with weekly cards');}break;}
     stroke.steps.push(r.rec||null);n.push(bi);
     if(r.rec)refreshDock();
   }
@@ -1813,23 +1921,93 @@ function nearestSide(ci,sides,fx,fy){
   for(const sd of sides){const dot=UNIT[sd][0]*vx+UNIT[sd][1]*vy;if(dot>bd){bd=dot;best=sd;}}
   return best;
 }
+let coordType='stop';   // what the traffic coordinator tool places: yield, stop, ls, ll, lr, or timing (opens the signal editor)
+const COORD=[['yield','Yield sign'],['stop','Stop sign'],['ls','Straight light'],['ll','Left-turn light'],['lr','Right-turn light'],['timing','Signal timing']];
+const coordCode=t=>t==='yield'?2:t==='stop'?1:t==='ls'?17:t==='ll'?18:t==='lr'?20:0;
+function buildCoordBar(){
+  const el=$('coordBar');if(!el)return;
+  const on=mode==='play'&&D.coord&&tool==='stop';el.style.display=on?'flex':'none';if(!on)return;
+  el.innerHTML='<span class="sbl">Traffic coordinator</span>'+COORD.map(t=>`<button class="btn${coordType===t[0]?' on':''}" data-t="${t[0]}">${t[1]}</button>`).join('');
+}
+$('coordBar').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!b.dataset.t)return;coordType=b.dataset.t;if(coordType!=='timing')closeTlEditor();buildCoordBar();});
 function placeStop(ci,fx,fy,all){
-  const c=cells[ci],sides=signSides(c);
-  if(sides.length<3){toast('Stop signs go at intersections (3+ roads meeting)');return;}
+  const c=cells[ci],sides=signSides(c),what=D.coord?'Traffic coordinators':'Stop signs';
+  if(sides.length<3){toast(what+' go at intersections (3+ roads meeting)');return;}
+  const typ=D.coord?coordType:'stop';
+  if(typ==='timing'){openTlEditor(ci);return;}
   const recs=[];
-  if(all){   // shift-click: all-way stop (or clear them all)
-    const missing=sides.filter(sd=>!(c.sg&&c.sg[sd]));
-    if(!missing.length){for(const sd of sides){setSign(ci,sd,false);inv.stop++;recs.push({sign:true,ai:ci,s:sd,was:true});}}
-    else for(const sd of missing){if(inv.stop<=0){toast('Out of stop signs');break;}setSign(ci,sd,true);inv.stop--;recs.push({sign:true,ai:ci,s:sd,was:false});}
+  const apply=(side,neu)=>{
+    const o=sgCode(c.sg&&c.sg[side]),need=headsOf(neu)-headsOf(o);
+    if(need>0&&inv.stop<need){toast('Out of '+what.toLowerCase());return false;}
+    setSign(ci,side,neu);inv.stop-=need;recs.push({sign:true,ai:ci,s:side,old:o,neu});return true;
+  };
+  if(all&&typ==='stop'){   // shift-click: all-way stop (or clear them all)
+    const missing=sides.filter(sd=>sgCode(c.sg&&c.sg[sd])!==1);
+    if(!missing.length){for(const sd of sides)apply(sd,0);}
+    else for(const sd of missing){if(!apply(sd,1))break;}
   } else {
-    const sd=nearestSide(ci,sides,fx,fy);
-    if(c.sg&&c.sg[sd]){setSign(ci,sd,false);inv.stop++;recs.push({sign:true,ai:ci,s:sd,was:true});}
-    else if(inv.stop<=0){toast('Out of stop signs');return;}
-    else{setSign(ci,sd,true);inv.stop--;recs.push({sign:true,ai:ci,s:sd,was:false});}
+    const sd=nearestSide(ci,sides,fx,fy),old=sgCode(c.sg&&c.sg[sd]);
+    if(typ==='yield'||typ==='stop'){const code=typ==='yield'?2:1;apply(sd,old===code?0:code);}
+    else{
+      const bit=typ==='ls'?1:typ==='ll'?2:4;let mask=old>=16?old&7:0;
+      if(mask&bit){mask&=~bit;apply(sd,mask?16|mask:0);}else{mask|=bit;apply(sd,16|mask);}
+    }
   }
   if(recs.length)undoStack.push(recs);
-  refreshDock();
+  refreshDock();if(TLED)openTlEditor(TLED.ci,true);
 }
+/* ---------- the signal timing editor (per intersection) ---------- */
+let TLED=null;
+const SIDEN=['E','SE','S','SW','W','NW','N','NE'],PHC=['#2fb67c','#4c9be8','#f4c430','#a468e6','#ff8b3d','#17a2b8'];
+function closeTlEditor(){TLED=null;const el=$('tlEd');if(el)el.style.display='none';}
+function openTlEditor(ci,refreshOnly){
+  const c=cells[ci];
+  if(!c||!c.tl){if(refreshOnly)closeTlEditor();else toast('No traffic lights here yet: place a light first');return;}
+  TLED={ci};renderTlEditor();
+}
+function renderTlEditor(){
+  const el=$('tlEd'),ci=TLED.ci,c=cells[ci],tl=c.tl;if(!tl){closeTlEditor();return;}
+  const heads=[];for(let sd=0;sd<8;sd++){const v=sgCode(c.sg&&c.sg[sd]);if(v>=16)heads.push({sd,mask:v&7});}
+  const all=[];for(const h of heads)for(const m of ['S','L','R'])if(h.mask&MVBIT[m])all.push(h.sd+m);
+  const covered=new Set();tl.ph.forEach(p=>p.mv.forEach(k=>covered.add(k)));
+  const missing=all.filter(k=>!covered.has(k));
+  const phs=tl.ph.map((p,i)=>`<div class="tph"><h4><span style="color:${PHC[i%PHC.length]}">\u25CF Phase ${i+1}</span>${tl.ph.length>1?`<button class="chip2" data-a="del" data-ph="${i}">remove</button>`:''}</h4>
+    <div class="trow">Green<input type="range" min="2" max="60" step="1" value="${p.g}" data-ph="${i}"><span class="v" id="v-g${i}">${p.g} s</span></div>
+    ${heads.map(h=>`<div class="tmv"><b>from ${SIDEN[h.sd]}</b>${['S','L','R'].map(m=>{const k=h.sd+m,has=h.mask&MVBIT[m];return has?`<button class="chip2${p.mv.indexOf(k)>=0?' on':''}" data-a="mv" data-ph="${i}" data-key="${k}">${m==='S'?'\u2191 straight':m==='L'?'\u2190 left':'\u2192 right'}</button>`:'';}).join('')}</div>`).join('')}</div>`).join('');
+  el.innerHTML=`<button class="tx" data-a="close">\u00d7</button><h3>Signal timing</h3><div class="tsub">Junction ${ci%W},${(ci/W)|0} \u00b7 ${tl.ph.length} phase${tl.ph.length>1?'s':''} \u00b7 cycle <span id="tlcyc"></span></div>
+    <div class="tstats"><div class="los" id="tllos">A</div><div><b id="tldel">0 s</b>average delay</div><div><b id="tlthr">0</b>cars / min</div><div><b id="tlq">0</b>queued</div></div>
+    <div class="tbar" id="tlbar"></div>
+    <div class="trow">Start delay<input type="range" min="0" max="60" step="1" value="${tl.off}" data-k="off"><span class="v" id="v-off">${tl.off} s</span></div>
+    <div class="trow">All-red gap<input type="range" min="0" max="8" step="0.5" value="${tl.clr}" data-k="clr"><span class="v" id="v-clr">${tl.clr} s</span></div>
+    ${phs}${missing.length?`<div class="warn">No green in any phase for: ${missing.map(k=>'from '+SIDEN[+k[0]]+' '+(k[1]==='S'?'straight':k[1]==='L'?'left':'right')).join(', ')}. Cars wanting that move will wait forever.</div>`:''}
+    <div class="tbtns"><button class="btn" data-a="add">Add phase</button><button class="btn" data-a="auto">Auto plan</button></div>`;
+  el.style.display='block';updateTlLive();
+}
+function updateTlLive(){
+  if(!TLED)return;const ci=TLED.ci,tl=cells[ci].tl;if(!tl){closeTlEditor();return;}
+  const st=junctionStat(ci),set=(id,t)=>{const e=$(id);if(e)e.textContent=t;};
+  set('tldel',st.avg.toFixed(1)+' s');set('tlthr',String(st.n));set('tlq',String(st.queue));set('tlcyc',Math.round(tlCycle(tl))+' s');
+  const lo=$('tllos');if(lo){lo.textContent=st.n?st.los:'-';lo.style.background={A:'#2fb67c',B:'#6cc24a',C:'#c9c43a',D:'#f4a62a',E:'#ee7a2a',F:'#e5484d'}[st.los]||'#80869a';if(!st.n)lo.style.background='#80869a';}
+  const bar=$('tlbar');if(bar){const L=tlCycle(tl)||1;
+    bar.innerHTML=tl.ph.map((p,i)=>`<i style="width:${p.g/L*100}%;background:${PHC[i%PHC.length]}"></i><i style="width:${(TL_AMBER+tl.clr)/L*100}%;background:rgba(120,120,130,.5)"></i>`).join('')+`<u style="left:${((((time-tl.off)%L)+L)%L)/L*100}%"></u>`;}
+}
+setInterval(()=>{if(TLED&&mode==='play')updateTlLive();},300);
+$('tlEd').addEventListener('input',e=>{
+  if(!TLED)return;const tl=cells[TLED.ci].tl;if(!tl)return;const t=e.target;
+  if(t.dataset.k){tl[t.dataset.k]=+t.value;tl.man=true;const v=$('v-'+t.dataset.k);if(v)v.textContent=t.value+' s';}
+  else if(t.dataset.ph!==undefined){const i=+t.dataset.ph;tl.ph[i].g=+t.value;tl.man=true;const v=$('v-g'+i);if(v)v.textContent=t.value+' s';}
+  updateTlLive();
+});
+$('tlEd').addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b||!TLED)return;const ci=TLED.ci,c=cells[ci],tl=c.tl;if(!tl)return;
+  const a=b.dataset.a;
+  if(a==='close'){closeTlEditor();return;}
+  if(a==='mv'){const p=tl.ph[+b.dataset.ph],k=b.dataset.key,i=p.mv.indexOf(k);if(i>=0)p.mv.splice(i,1);else p.mv.push(k);tl.man=true;}
+  else if(a==='add')tl.ph.push({g:10,mv:[]});
+  else if(a==='del'&&tl.ph.length>1)tl.ph.splice(+b.dataset.ph,1);
+  else if(a==='auto'){c.tl=tlAuto(ci);}
+  tl.man=a!=='auto';renderTlEditor();
+});
 function segDist(px,py,ax,ay,bx,by){
   const vx=bx-ax,vy=by-ay,t=Math.max(0,Math.min(1,((px-ax)*vx+(py-ay)*vy)/(vx*vx+vy*vy)));
   return Math.hypot(px-(ax+vx*t),py-(ay+vy*t));
@@ -1888,7 +2066,7 @@ function sweepGhosts(){
 function eraseAtPointer(fx,fy){
   for(const d of depts)if(fx>=d.x&&fx<d.x+2&&fy>=d.y&&fy<d.y+2){removeDept(d);return;}
   const t=findEraseTarget(fx,fy);if(!t)return;
-  if(t.sign){setSign(t.sign.ci,t.sign.s,false);inv.stop++;}
+  if(t.sign){inv.stop+=headsOf(cells[t.sign.ci].sg&&cells[t.sign.ci].sg[t.sign.s]);setSign(t.sign.ci,t.sign.s,false);}
   else if(edgeInUse(t.layer,t.ci,t.d)){   // cars are still driving across it: fade it out, remove once they're done
     const A=arrOf(cells[t.ci],t.layer)[t.d],B=arrOf(cells[t.bi],t.layer)[opp(t.d)];A.ghost=B.ghost=true;A.refunded=B.refunded=true;inv[keyOfEntry(t.layer,t.e)]++;   // refund now, road lingers until cars are done
   } else removeEdge(t.layer,t.ci,t.d,t.e);
@@ -2022,7 +2200,7 @@ function tutPlace(color,dest,kind,x,y,pref){
   blds.push(b);return b;
 }
 function tutWipe(){   // a clean, flat map with one straight river (x 38-40), so every scene can rely on the terrain
-  for(const c of cells){c.e=null;c.f=null;c.sg=null;c.bld=null;c.water=false;}
+  for(const c of cells){c.e=null;c.f=null;c.sg=null;c.tl=null;c.stat=null;c.bld=null;c.water=false;}
   for(let y=0;y<H;y++)for(let x=38;x<=40;x++)cells[y*W+x].water=true;
   trees=trees.filter(t=>!cells[cellIdx(Math.floor(t.x),Math.floor(t.y))].water);
   ripples=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(cells[y*W+x].water&&((x*7+y*13)%4===0))ripples.push([x,y]);
@@ -2326,9 +2504,9 @@ function buildDock(){
   const d=document.getElementById('dock');
   const btn=(k,label,i,cnt)=>`<button class="tool${tool===k?' sel':''}" data-k="${k}">
     <span class="k">${i}</span>${cnt?`<span class="n" data-n="${k}">0</span>`:''}${icon(k)}<span class="lb">${label}</span></button>`;
-  d.innerHTML=PIECES.map((p,i)=>btn(p.k,p.label,i+1,true)).join('')+`<div class="sep"></div>`+btn('erase','Erase',9,false)+btn('undo','Undo',"Z",false);
+  d.innerHTML=PIECES.map((p,i)=>btn(p.k,pieceLabel(p),i+1,true)).join('')+`<div class="sep"></div>`+btn('erase','Erase',9,false)+btn('undo','Undo',"Z",false);
   d.querySelectorAll('.tool').forEach(b=>b.onclick=()=>{b.dataset.k==='undo'?undoLast():selectTool(b.dataset.k);});
-  refreshDock();
+  refreshDock();buildCoordBar();
 }
 function refreshDock(){
   document.querySelectorAll('#dock .tool').forEach(b=>{
@@ -2337,11 +2515,16 @@ function refreshDock(){
     b.classList.toggle('sel',tool===k);
   });
 }
-function selectTool(k){tool=k;refreshDock();buildSbBar();}
+function selectTool(k){
+  if(k==='stop'&&tool==='stop'&&D.coord&&mode==='play'){const i=COORD.findIndex(t=>t[0]===coordType);coordType=COORD[(i+1)%COORD.length][0];}   // pressing the key again cycles through the coordinator types
+  tool=k;if(tool!=='stop')closeTlEditor();refreshDock();buildSbBar();buildCoordBar();
+}
 let hudCache={};
 function hud(force){
   if(force){const dc=$('dchip');dc.textContent=D.name;dc.style.setProperty('--chipc',D.col);}
   const set=(id,v)=>{if(force||hudCache[id]!==v){hudCache[id]=v;$(id).textContent=v;}};
+  $('clockStat').style.display=D.clock?'flex':'none';
+  if(D.clock){const rn=rushName(),h=hourNow();set('clk',clockText());set('clkn',rn||(h<5.5||h>=20.5?'Night':h<7?'Dawn':h>=19.5?'Dusk':'Daytime'));$('clk').style.color=rn?'var(--danger)':'';}
   $('crashStat').style.display=D.crash?'flex':'none';if(D.crash)set('crsh',(S.crashes||0)+'/'+D.crash);
   set('wk','Week '+S.week);set('sc',S.score);set('cr',cars.length);
   set('wt',Math.max(0,Math.ceil(S.weekLen-S.weekT))+'s');
@@ -2465,6 +2648,34 @@ function drawSign(sp,alpha){
   ctx.fillStyle='#fff';ctx.fillRect(-.075,-.02,.15,.04);
   ctx.restore();
 }
+const LAMP=['#ef4444','#fbbf24','#34d399'];
+function drawYield(sp,alpha){
+  ctx.save();ctx.globalAlpha=alpha;ctx.translate(sp.x,sp.y);
+  ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.moveTo(-.15,-.1);ctx.lineTo(.17,-.08);ctx.lineTo(.01,.18);ctx.closePath();ctx.fill();
+  ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(-.16,-.12);ctx.lineTo(.16,-.12);ctx.lineTo(0,.15);ctx.closePath();ctx.fillStyle='#e5484d';ctx.fill();
+  ctx.beginPath();ctx.moveTo(-.09,-.075);ctx.lineTo(.09,-.075);ctx.lineTo(0,.085);ctx.closePath();ctx.fillStyle='#fff';ctx.fill();
+  ctx.restore();
+}
+function drawLightHead(ci,sd,code,sp,alpha){
+  const mask=code&7,mv=['S','L','R'].filter(m=>mask&MVBIT[m]),T=[-UNIT[sd][0],-UNIT[sd][1]],pv=sp.pv,n=mv.length;
+  ctx.save();ctx.globalAlpha=alpha;
+  ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.arc(sp.x+.02,sp.y+.04,.05,0,7);ctx.fill();
+  const hx=sp.x,hy=sp.y;
+  ctx.strokeStyle='#1b1f2a';ctx.lineWidth=.17;ctx.lineCap='round';ctx.beginPath();   // the housing
+  ctx.moveTo(hx-pv[0]*.08*(n-1),hy-pv[1]*.08*(n-1));ctx.lineTo(hx+pv[0]*.08*(n-1),hy+pv[1]*.08*(n-1));ctx.stroke();
+  mv.forEach((m,i)=>{
+    const off=(i-(n-1)/2)*.16,x=hx+pv[0]*off,y=hy+pv[1]*off,st=cells[ci].tl?tlState(ci,sd,m):0;
+    ctx.fillStyle=LAMP[st];ctx.beginPath();ctx.arc(x,y,.062,0,7);ctx.fill();
+    if(st===2){ctx.fillStyle='rgba(52,211,153,.25)';ctx.beginPath();ctx.arc(x,y,.11,0,7);ctx.fill();}
+    const dir=m==='S'?T:m==='L'?[T[1],-T[0]]:[-T[1],T[0]];   // an arrow for the move this lamp is for
+    ctx.fillStyle='rgba(20,24,34,.9)';ctx.beginPath();ctx.moveTo(x+dir[0]*.045,y+dir[1]*.045);ctx.lineTo(x-dir[0]*.02+dir[1]*.035,y-dir[1]*.02-dir[0]*.035);ctx.lineTo(x-dir[0]*.02-dir[1]*.035,y-dir[1]*.02+dir[0]*.035);ctx.closePath();ctx.fill();
+  });
+  ctx.restore();
+}
+function drawSignAt(idx,sd,code,alpha){
+  code=sgCode(code);if(!code)return;const sp=signPos(idx,sd);
+  if(code===2)drawYield(sp,alpha);else if(code>=16)drawLightHead(idx,sd,code,sp,alpha);else drawSign(sp,alpha);
+}
 function drawStops(){
   for(let idx=0;idx<W*H;idx++){
     if(!vis(idx))continue;const sg=cells[idx].sg;if(!sg)continue;
@@ -2472,7 +2683,7 @@ function drawStops(){
       const sp=signPos(idx,sd);
       ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=.06;ctx.lineCap='butt';ctx.beginPath();   // stop line across the incoming lane
       ctx.moveTo(sp.C[0]+sp.u[0]*.3+sp.pv[0]*.03,sp.C[1]+sp.u[1]*.3+sp.pv[1]*.03);ctx.lineTo(sp.C[0]+sp.u[0]*.3+sp.pv[0]*.25,sp.C[1]+sp.u[1]*.3+sp.pv[1]*.25);ctx.stroke();
-      drawSign(sp,1);
+      drawSignAt(idx,sd,sg[sd],1);
     }
   }
 }
@@ -2899,11 +3110,14 @@ function drawGhost(){
   if(tool==='stop'){
     if(hover&&hoverF){const ci=cellIdx(hover[0],hover[1]),sides=signSides(cells[ci]);
       if(sides.length>=3){
-        const C=ctr(ci);ctx.save();ctx.strokeStyle='rgba(76,155,232,.85)';ctx.lineWidth=.05;ctx.beginPath();ctx.arc(C[0],C[1],.42,0,7);ctx.stroke();ctx.restore();
-        for(const sd of sides){const on=cells[ci].sg&&cells[ci].sg[sd];if(!on)drawSign(signPos(ci,sd),.22);}
-        const best=nearestSide(ci,sides,hoverF[0],hoverF[1]),sp=signPos(ci,best);
-        ctx.save();ctx.strokeStyle='rgba(76,155,232,.95)';ctx.lineWidth=.05;ctx.beginPath();ctx.arc(sp.x,sp.y,.2,0,7);ctx.stroke();ctx.restore();
-        if(!(cells[ci].sg&&cells[ci].sg[best]))drawSign(sp,.85);
+        const C=ctr(ci),typ=D.coord?coordType:'stop',pc=typ==='timing'?0:coordCode(typ);
+        ctx.save();ctx.strokeStyle='rgba(76,155,232,.85)';ctx.lineWidth=.05;ctx.beginPath();ctx.arc(C[0],C[1],.42,0,7);ctx.stroke();ctx.restore();
+        if(pc){
+          for(const sd of sides){const on=cells[ci].sg&&cells[ci].sg[sd];if(!on)drawSignAt(ci,sd,pc,.22);}
+          const best=nearestSide(ci,sides,hoverF[0],hoverF[1]),sp=signPos(ci,best);
+          ctx.save();ctx.strokeStyle='rgba(76,155,232,.95)';ctx.lineWidth=.05;ctx.beginPath();ctx.arc(sp.x,sp.y,.2,0,7);ctx.stroke();ctx.restore();
+          if(!(cells[ci].sg&&cells[ci].sg[best]))drawSignAt(ci,best,pc,.85);
+        }
       }}
     return;
   }
@@ -3049,7 +3263,8 @@ function stampLayer(img){   // copy just the on-screen part of a cached layer
 function ambient(){   // how dark it is (n: 0 day .. 1 night) and how orange the dusk is
   const v=Settings.v;if(themeName()==='contrast'&&!v.mapNatural)return {n:0,warm:0};   // (a natural map still gets its night)
   let n;
-  if(v.cycle){const ph=(.12+time/v.cycleLen)%1,a=Math.sin(ph*Math.PI*2);n=1-Math.max(0,Math.min(1,(a+.35)/.5));}
+  if(D.clock){const h=hourNow();n=h<5?1:h<7?1-(h-5)/2:h<18?0:h<20?(h-18)/2:1;}   // Realism: the light follows the clock
+  else if(v.cycle){const ph=(.12+time/v.cycleLen)%1,a=Math.sin(ph*Math.PI*2);n=1-Math.max(0,Math.min(1,(a+.35)/.5));}
   else n=v.tod==='night'?1:v.tod==='dusk'?.5:0;
   return {n,warm:4*n*(1-n)};
 }
@@ -3324,11 +3539,11 @@ function serialize(){
     const arr=arrOf(cells[i],layer);if(!arr)continue;
     for(let d=0;d<8;d++){const e=arr[d];if(!e||e.ghost)continue;const bi=nbIdx(i,d);if(bi<i)continue;edges.push([i,d,layer==='f'?1:0,e.k,e.ow]);}
   }
-  const signs=[];for(let i=0;i<W*H;i++){const sg=cells[i].sg;if(sg)for(let s=0;s<8;s++)if(sg[s])signs.push([i,s]);}
+  const signs=[],tls=[];for(let i=0;i<W*H;i++){const sg=cells[i].sg;if(sg)for(let s=0;s<8;s++)if(sg[s])signs.push([i,s,sgCode(sg[s])]);if(cells[i].tl)tls.push([i,cells[i].tl]);}
   const bl=blds.map(b=>[b.x,b.y,b.w,b.color,b.dest?1:0,b.dir,Math.min(MAXD,b.demand+b.out),+b.timer.toFixed(2),b.kind||0,b.color2>=0?b.color2:-1]);
   const dp=depts.map(d=>[d.x,d.y,d.dir,Math.max(0,+(d.readyAt-time).toFixed(1))]);
   return {v:2,rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
-    colorBorn:S.colorBorn,stallT:S.stallT.map(v=>+v.toFixed(2)),inv,time:+time.toFixed(2),mid:!!S.mid,edges,signs,bl,dp,tr:Object.keys(sbTerr).map(k=>[+k,sbTerr[k]?1:0]),ns:sbNoSpawn?1:0};
+    colorBorn:S.colorBorn,stallT:S.stallT.map(v=>+v.toFixed(2)),inv,time:+time.toFixed(2),mid:!!S.mid,edges,signs,tl:tls,bl,dp,tr:Object.keys(sbTerr).map(k=>[+k,sbTerr[k]?1:0]),ns:sbNoSpawn?1:0};
 }
 function restore(sv){
   const st=sv.state;
@@ -3344,7 +3559,8 @@ function restore(sv){
   S={seed:st.seed,runId:sv.runId||Date.now().toString(36),name:sv.name||'City',stallT:st.stallT.slice(),colorBorn:Object.assign({},st.colorBorn),stall:null,stallClock:0,
      grow:null,expansions:0,sirens:[],fireClock:0,crashes:st.crashes||0,wrecks:[],week:st.week,weekT:st.weekT,weekLen:st.weekLen,score:st.score,colors:st.colors,modal:null,paused:false,speed:1,over:false,mid:!!st.mid,saveClock:0,demo:false};
   for(const [i,d,ly,k,ow] of st.edges)setEdge(ly?'f':'g',i,d,k,ow);
-  for(const [i,s] of st.signs)setSign(i,s,true);
+  for(const [i,s,code] of st.signs)setSign(i,s,code||1);
+  for(const [i,tl] of (st.tl||[]))if(cells[i]&&cells[i].tl&&tl&&Array.isArray(tl.ph)&&tl.sig===cells[i].tl.sig)cells[i].tl=tl;   // a saved signal plan, if the lights still match it
   for(const [x,y,w,color,dest,dir,demand,timer,kind,color2] of st.bl){
     const b={id:++bldId,color,dest:!!dest,x,y,w,cells:[],demand,out:0,gar:D.fleet,pend:[],timer,retry:0,pulse:0,born:time-5,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?(typeof kind==='number'?kind:(x+y)%3):0,color2:dest&&color2>=0?color2:-1};
     setDir(b,dir);for(let j=0;j<w;j++)for(let i=0;i<w;i++){const ci=cellIdx(x+i,y+j);cells[ci].bld=b;b.cells.push(ci);}
@@ -3388,7 +3604,7 @@ const statLines=d=>{
   const fire=d.fireChance?`House fires ${+(d.fireChance*100).toFixed(1)}%/min`:'No house fires';
   const rules=d.fleet?`${d.fleet} car${d.fleet>1?'s':''} per house, must return · any destination`:'Cars spawn freely · fixed destination';
   if(d.noFail)return ['No fail states','Unlimited pieces',rules,fire];
-  return [`Cut-off timer ${d.stall}s`,`Late cars: ${d.dcap} for ${d.dlimit}s ends it`,`Weeks ${d.weekLen}s · pieces ×${d.startMul}`,rules,fire].concat(d.crash?[`Cars crash · ${d.crash} crashes ends it`,'No alerts']:[]);
+  return [`Cut-off timer ${d.stall}s`,`Late cars: ${d.dcap} for ${d.dlimit}s ends it`,`Weeks ${d.weekLen}s · pieces ×${d.startMul}`,rules,fire].concat(d.crash?[`Cars crash · ${d.crash} crashes ends it`,d.notify?'Alerts on':'No alerts']:[]).concat(d.coord?['Traffic lights, yield and stop signs']:[]).concat(d.clock?['A 24-hour clock with rush hours']:[]);
 };
 const bldSvg=c=>`<svg class="ti" viewBox="0 0 40 40"><rect x="5" y="8" width="30" height="27" rx="8" fill="${PAL[c].d}"/><rect x="5" y="5" width="30" height="25" rx="8" fill="${PAL[c].c}"/><rect x="11" y="17" width="18" height="2.4" fill="#fff" opacity=".6"/><rect x="17" y="24" width="6" height="8" rx="2" fill="#fff6e0"/></svg>`;
 const miscSvg=(p,c)=>`<svg class="ti" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="${c}" opacity=".16"/>${p}</svg>`;
@@ -3419,13 +3635,23 @@ const SCREENS={
       </div></div>`;
   },
   new(){
-    const cards=DIFFS.filter(d=>d.id!=='tutorial').map(d=>`<button class="dcard ${MS.diff===d.id?'sel':''}" style="--dc:${d.col}" data-act="diff" data-id="${d.id}">
-        <h4>${d.name}</h4><div class="dt">${d.tag}</div><ul>${statLines(d).map(l=>`<li>${l}</li>`).join('')}</ul></button>`).join('');
+    const real=MS.diff.startsWith('realism'),card=d=>`<button class="dcard ${MS.diff===d.id?'sel':''}" style="--dc:${d.col}" data-act="diff" data-id="${d.id}">
+        <h4>${d.name}</h4><div class="dt">${d.tag}</div><ul>${statLines(d).map(l=>`<li>${l}</li>`).join('')}</ul></button>`;
+    const realCard=`<button class="dcard ${real?'sel':''}" style="--dc:#17a2b8" data-act="realism"><h4>Realism</h4><div class="dt">Be a civil engineer${real?' \u00b7 '+diffById(MS.diff).real:''}</div>
+        <ul><li>Traffic lights, yield and stop signs</li><li>Time every signal, junction by junction</li><li>Level-of-service reports</li><li>A 24-hour clock with rush hours</li><li>Pick Easy or Hard (opens a menu)</li></ul></button>`;
+    const cards=DIFFS.filter(d=>d.id!=='tutorial'&&!d.real).map(d=>d.id==='sandbox'?realCard+card(d):card(d)).join('');
     return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">←</button><h2>New Game</h2></div>
       <div class="pbody"><div class="dgrid">${cards}</div>
       <div class="fields"><div><label>City name</label><input id="cityname" maxlength="24" placeholder="${esc(MS.placeholder||'Riverton')}" value="${esc(MS.name)}"></div>
       <div><label>Map seed (optional)</label><input id="seedin" maxlength="20" placeholder="random" value="${esc(MS.seed)}"></div></div></div>
       <div class="row" style="margin-top:14px"><button class="go" data-act="start">Start ${diffById(MS.diff).name}</button></div></div>`;
+  },
+  realism(){
+    const cards=DIFFS.filter(d=>d.real).map(d=>`<button class="dcard ${MS.diff===d.id?'sel':''}" style="--dc:${d.col}" data-act="diff" data-id="${d.id}">
+        <h4>${d.real}</h4><div class="dt">${d.real==='Easy'?'Learn the craft without wrecks':'Wrecks are real: signal everything'}</div><ul>${statLines(d).map(l=>`<li>${l}</li>`).join('')}</ul></button>`).join('');
+    return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Realism</h2></div>
+      <div class="pbody"><p class="tiny" style="margin:0 0 12px;font-size:13px;line-height:1.5">For people who want the civil engineering experience. Junctions are signalised with traffic coordinators (yield and stop signs, straight, left-turn and right-turn lights), every intersection has its own signal plan with phases, green times, all-red gaps and a start offset, each junction reports its level of service from A to F, and there is a 24-hour clock: the day and night follow it, and traffic swells in the morning and evening rush hours and drops away at night. Pick how forgiving it is.</p>
+      <div class="dgrid">${cards}</div></div></div>`;
   },
   load(){
     if(!Cities.ready)return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Your cities</h2></div><div class="pbody"><div class="tiny" style="padding:20px">Loading\u2026</div></div></div>`;
@@ -3445,6 +3671,7 @@ const SCREENS={
       [bldSvg(1),'Link the colours','Every building has a driveway. <b>Click a house to rotate it</b>, then join it to a road. Houses go to the destination of their own colour.'],
       [icon('stop',40),'Junctions','Cars drive on the right and wait for a clear junction. <b>Stop signs</b> go on one approach (<b>Shift-click</b> for all-way): those cars stop and yield.'],
       [icon('hwy',40),'Highways & bridges','Bridges cross water. <b>Highways</b> are elevated and twice as fast: they fly over roads but must <b>start and end on the side of a road</b>, on a <b>loose road end</b>, or on <b>another highway</b>.'],
+      [icon('coord',40),'Traffic coordinators (Gridlock and Realism)','On Gridlock and the Realism difficulties the stop sign piece becomes a <b>traffic coordinator</b> (key '+kn('stop')+'): click a junction to place a <b>yield sign</b>, a <b>stop sign</b>, or a <b>straight</b>, <b>left-turn</b> or <b>right-turn light</b> on the road you click next to (press the key again to cycle). Lights run on a signal plan per intersection: pick <b>Signal timing</b> and click the junction to set each phase, its green time, the all-red gap and the start delay, and to read its level of service. <b>Realism</b> also has a 24-hour clock with morning and evening rush hours.'],
       [icon('fire',40),'Fires','Houses can catch fire. Place a <b>fire station</b> (key '+kn('fire')+'), link its driveway to a road, and a truck races out with sirens: cars pull over, and it puts the fire out.'],
       [icon('bridge',40),'Weekly cards','Every week ends with <b>3 cards</b> of random pieces. Pick one. One-way roads follow your drag direction.'],
       [miscSvg('<path d="M20 9l12 21H8z" fill="#ff8a3d"/><rect x="18.8" y="15" width="2.4" height="8" rx="1" fill="#fff"/><circle cx="20" cy="26" r="1.5" fill="#fff"/>','#ff8a3d'),'Ways to lose','Keep a destination <b>full too long</b>, or let <b>75% of a colour’s houses</b> get cut off or stuck, and a countdown ends the run.'],
@@ -3513,7 +3740,7 @@ const SCREENS={
         +row('Version','<span id="aboutv">Checking\u2026</span>',''))}
       ${sec('Main menu AI',
         row('AI speed','How fast the city plays itself behind the menu',seg('aiSpeed',[[1,'Slow'],[2,'Normal'],[4,'Fast'],[8,'Turbo']]))
-        +row('AI difficulty','What the AI plays on (it starts a new city when you change it)',seg('aiDiff',[['relaxed','Relaxed'],['standard','Standard'],['rush','Rush Hour'],['gridlock','Gridlock']])))}
+        +row('AI difficulty','What the AI plays on (it starts a new city when you change it)',seg('aiDiff',[['relaxed','Relaxed'],['standard','Standard'],['rush','Rush Hour'],['gridlock','Gridlock'],['realism_easy','Realism Easy'],['realism_hard','Realism Hard']])))}
       <div class="row" style="margin:6px 0 4px;gap:10px"><button class="sbtn" data-act="bug">Report a bug</button><button class="sbtn ghost" data-act="resetset">Reset all settings</button></div>
     </div></div>`;
   },
@@ -3578,7 +3805,7 @@ menuEl.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');if(a)act(a.dataset.act,a.dataset);
 });
 
-function setPlay(){mode='play';document.body.classList.remove('inmenu');fitView();if(tool.startsWith('sb:')&&D.id!=='sandbox')tool='road';buildSbBar();}
+function setPlay(){mode='play';document.body.classList.remove('inmenu');fitView();if(tool.startsWith('sb:')&&D.id!=='sandbox')tool='road';buildSbBar();buildCoordBar();}
 function enterMenu(){mode='menu';document.body.classList.add('inmenu');startDemo();MS.confirm=null;Menu.show('main');}
 function startGameWith(diffId,seed,name){newGame(diffId,seed);S.name=name||pick(NAMES);Menu.hide();document.getElementById('modal').className='hidden';setPlay();autosave();}
 function startNew(){
@@ -3610,7 +3837,8 @@ function act(a,d){
     case 'nextsong':Music.skip();setTimeout(()=>{if(MS.screen==='settings')refreshSettings();},500);break;
     case 'resetset':Settings.reset();buildKeymap();refreshSettings();break;
     case 'resetkeys':Settings.set('keys','');buildKeymap();refreshSettings();break;
-    case 'back':MS.confirm=null;Menu.show(mode==='play'?'pause':'main');break;
+    case 'back':MS.confirm=null;Menu.show(MS.screen==='realism'?'new':mode==='play'?'pause':'main');break;
+    case 'realism':Menu.show('realism');break;
     case 'diff':MS.diff=d.id;Menu.show('new');break;
     case 'start':startNew();break;
     case 'city-load':loadCity(d.id);break;
@@ -3648,6 +3876,7 @@ function aiDiagBlocked(u,d,layer){
 const aiD=new Float64Array(W*H*9),aiPv=new Int32Array(W*H*9),aiMk=new Int32Array(W*H*9),aiHk=[],aiHv=[];let aiStamp=0,aiPopK=0;
 function aiPush(k,v){let i=aiHk.length;aiHk.push(k);aiHv.push(v);while(i>0){const p=(i-1)>>1;if(aiHk[p]<=k)break;aiHk[i]=aiHk[p];aiHv[i]=aiHv[p];i=p;}aiHk[i]=k;aiHv[i]=v;}
 function aiPop(){const rk=aiHk[0],rv=aiHv[0],lk=aiHk.pop(),lv=aiHv.pop(),n=aiHk.length;if(n>0){let i=0;for(;;){let c=2*i+1;if(c>=n)break;if(c+1<n&&aiHk[c+1]<aiHk[c])c++;if(aiHk[c]>=lk)break;aiHk[i]=aiHk[c];aiHv[i]=aiHv[c];i=c;}aiHk[i]=lk;aiHv[i]=lv;}aiPopK=rk;return rv;}
+let aiPortBlock=null;   // where cars wreck: roads must not run through (or join at) another building's driveway cell, because those merges cannot be signed
 function aiSearch(start,targets,ports){   // Dijkstra over (cell, incoming direction) so it can prefer straight, tidy roads
   const T=++aiStamp;aiHk.length=0;aiHv.length=0;
   const s0=start*9+8;aiMk[s0]=T;aiD[s0]=0;aiPv[s0]=-1;aiPush(0,s0);
@@ -3662,6 +3891,7 @@ function aiSearch(start,targets,ports){   // Dijkstra over (cell, incoming direc
     const cu=cells[u];if(cu.bld)continue;
     for(let d=0;d<8;d++){
       const v=nbIdx(u,d);if(v<0)continue;const cv=cells[v];if(cv.bld)continue;
+      if(aiPortBlock&&aiPortBlock[v]&&!targets[v]&&!ports[v])continue;
       const layer=(cu.water||cv.water)?'f':'g';
       if(aiDiagBlocked(u,d,layer))continue;
       const ex=getEdge(u,d,layer),want=layer==='g'?0:2;
@@ -3680,6 +3910,12 @@ function aiForward(color){   // ground cells reachable from this colour's houses
   for(let h=0;h<q.length;h++){const u=q[h];for(let d=0;d<8;d++){const v=edgeTo[u*8+d];if(v<0||seen[v]||egh[u*8+d])continue;seen[v]=1;if(!isBld(v))q.push(v);}}
   const out=new Uint8Array(W*H);for(let n=0;n<N;n+=2)if(seen[n]&&!isBld(n))out[n>>1]=1;
   return out;
+}
+function aiDirs(b){   // which way a house's driveway may point; where cars wreck, never straight onto a road or onto another driveway (those merges cannot be signed): the road comes in through a short stub instead
+  const all=[0,1,2,3,4,5,6,7].filter(d=>dirValid(b,d));
+  if(!D.crash)return all;
+  const ok=all.filter(d=>{const pt=bldGeom(b,d).port,c=cells[pt];if(c.e&&signSides(c).length>=2)return false;for(const o of blds.concat(depts))if(o!==b&&o.port===pt)return false;return true;});
+  return ok.length?ok:all;
 }
 function aiPlanDest(d){   // a destination nobody has reached yet: join it to the network its colour's houses already use
   const F=aiForward(d.color),ports=new Uint8Array(W*H);
@@ -3712,8 +3948,8 @@ function aiPickCard(offer){   // roads are the currency; everything else is only
   for(const o of offer){const sc=o.n*(w[o.k]||.1)/(1+inv[o.k]/30);if(sc>bs){bs=sc;best=o;}}
   return best;
 }
-const AI={crashAt:{},opt:{prune2:true,fast:true,round:true,short2:true},pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,lastHwy:-99,needBridge:false,restartAt:0,runs:0,rr:0,
-  reset(){this.crashAt={};this.doing=null;this.rounds=[];this.lastRound=-99;this.job=null;this.pen=null;this.recent=[];this.q=[];this.acc=0;this.think=.3;this.flow={};this.flowClock=0;this.signClock=0;this.lastHwy=-99;this.needBridge=false;this.rr=0;},
+const AI={jam:{},crashAt:{},opt:{prune2:true,fast:true,round:true,short2:true,fix:true,lights:true},pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,lastHwy:-99,needBridge:false,restartAt:0,runs:0,rr:0,
+  reset(){this.jam={};this.lastFix=-99;this.fixed=0;this.crashAt={};this.doing=null;this.rounds=[];this.lastRound=-99;this.job=null;this.pen=null;this.recent=[];this.q=[];this.acc=0;this.think=.3;this.flow={};this.flowClock=0;this.signClock=0;this.lastHwy=-99;this.needBridge=false;this.rr=0;},
   exec(it){
     if(it.t==='dir'){if(blds.includes(it.b)&&dirValid(it.b,it.dir)){setDir(it.b,it.dir);rebuild();this.pen={x:it.b.x+it.b.w/2,y:it.b.y+it.b.w/2,t:time};}}
     else if(it.t==='edge'){
@@ -3737,9 +3973,11 @@ const AI={crashAt:{},opt:{prune2:true,fast:true,round:true,short2:true},pen:null
       if(inv.fire>0&&freeFor(it.x,it.y,2,0)&&deptFits(it.x,it.y,it.dir)){
         makeDept(it.x,it.y,it.dir,time+Math.min(D.fireBuild,12));inv.fire--;rebuild();refreshDock();this.pen={x:it.x+1,y:it.y+1,t:time};
       }
-    } else if(it.t==='sign'){if(inv.stop>0&&cells[it.ci].e&&cells[it.ci].e[it.s]){setSign(it.ci,it.s,true);inv.stop--;rebuild();const c=ctr(it.ci);this.pen={x:c[0],y:c[1],t:time};}}
+    } else if(it.t==='sign'){const code=it.code||1,cost=headsOf(code);if(inv.stop>=cost&&cells[it.ci].e&&cells[it.ci].e[it.s]){setSign(it.ci,it.s,code);inv.stop-=cost;rebuild();const c=ctr(it.ci);this.pen={x:c[0],y:c[1],t:time};}}
   },
-  sample(){   // rough traffic flow per junction approach
+  sample(){   // rough traffic flow per junction approach, and where cars sit waiting
+    for(const k in this.jam){this.jam[k]*=.93;if(this.jam[k]<.4)delete this.jam[k];}
+    for(const c of cars){if(c.dead||c.truck||c.ph!=='drive'||c.res||(c.dly||0)<2.5)continue;const nx=c.path[c.i+1];if(nx===undefined||(nx&1)||isBld(nx))continue;this.jam[nx>>1]=(this.jam[nx>>1]||0)+1;}
     for(const c of cars){
       if(c.dead||c.truck||c.ph==='dwell'||isPark(c.ph)||c.res)continue;
       const nx=c.path[c.i+1];if(nx===undefined||(nx&1)||isBld(nx)||!inter[nx])continue;
@@ -3751,6 +3989,10 @@ const AI={crashAt:{},opt:{prune2:true,fast:true,round:true,short2:true},pen:null
     for(const n in by){
       const arr=by[n],tot=arr.reduce((a,x)=>a+x[1],0);if(tot<(D.crash?3:10)||arr.length<2)continue;
       const ci=n>>1,c=cells[ci];if(!c.e)continue;
+      if(this.opt.lights&&D.id.startsWith('realism')&&tot>=12&&!c.tl){   // a busy junction in a Realism city gets traffic lights on every approach
+        const sides=signSides(c);
+        if(sides.length>=3&&inv.stop>=sides.length){for(const sd of sides)this.q.push({t:'sign',ci,s:sd,code:17});this.note('installing traffic lights');return;}
+      }
       const main=Math.max(...arr.map(x=>x[1])),signed=c.sg?c.sg.filter(Boolean).length:0;
       for(const [sd,f] of arr){
         if(f>main*(D.crash?.75:.45)||f<(D.crash?1:2)||!c.e[sd]||(c.sg&&c.sg[sd])||signed>=arr.length-1)continue;
@@ -3762,13 +4004,13 @@ const AI={crashAt:{},opt:{prune2:true,fast:true,round:true,short2:true},pen:null
   crashSigns(){   // where cars wreck, every junction needs give-way signs: all approaches but the busiest one, worst crash sites first
     const J=[];
     for(let i=0;i<W*H;i++){const c=cells[i];if(!c.e)continue;const sides=signSides(c);if(sides.length<3)continue;
-      const signed=sides.filter(sd=>c.sg&&c.sg[sd]).length;if(signed>=sides.length-1)continue;
+      const signed=sides.filter(sd=>c.sg&&c.sg[sd]).length;if(signed>=sides.length)continue;   // every approach: a car on the one unsigned road is the one that gets hit
       let busiest=-1,bf=-1;for(const sd of sides){const f=this.flow[(i*2)*8+sd]||0;if(f>bf){bf=f;busiest=sd;}}
       J.push({i,sides,busiest,score:(this.crashAt[i]||0)*10+sides.length});}
     if(!J.length)return false;
     J.sort((a,b)=>b.score-a.score);
     const j=J[0],c=cells[j.i];let n=0;
-    for(const sd of j.sides){if(sd===j.busiest||(c.sg&&c.sg[sd])||inv.stop-n<=0)continue;this.q.push({t:'sign',ci:j.i,s:sd});n++;}
+    for(const sd of j.sides){if((c.sg&&c.sg[sd])||inv.stop-n<=0)continue;this.q.push({t:'sign',ci:j.i,s:sd});n++;}
     if(n)this.note('adding give-way signs');
     return n>0;
   },
@@ -3847,6 +4089,60 @@ const AI={crashAt:{},opt:{prune2:true,fast:true,round:true,short2:true},pen:null
     this.lastPrune=time;
     if(!out.length)return false;
     this.q.push(...out);this.note('tidying up roads nobody needs');return true;
+  },
+  lastFix:-99,fixed:0,
+  fixJam(){   // a place where cars keep sitting in queues: try tearing the roads round it out and rebuilding them, keep the new layout only if it is clearly better
+    if(!this.opt.fix||time-this.lastFix<50||inv.road<20)return false;
+    let hc=-1,hs=0;for(const k in this.jam)if(this.jam[k]>hs){hs=this.jam[k];hc=+k;}
+    if(hc<0||hs<18)return false;
+    this.lastFix=time-35;   // (a failed try is retried after 15 s, a successful one after 50)
+    const hx=hc%W,hy=(hc/W)|0,R=2,inCore=ci=>Math.abs(ci%W-hx)<=R&&Math.abs(((ci/W)|0)-hy)<=R;
+    const rm=[],term=new Set();
+    for(let y=hy-R-1;y<=hy+R+1;y++)for(let x=hx-R-1;x<=hx+R+1;x++){
+      if(!inB(x,y))continue;const i=cellIdx(x,y),c=cells[i];if(!c.e)continue;
+      for(let d=0;d<8;d++){const e=c.e[d];if(!e)continue;const bi=nbIdx(i,d);if(bi<i)continue;
+        const a=inCore(i),b=inCore(bi);if(!a&&!b)continue;
+        if(e.k!==0||e.ow!==0||e.ghost)return false;   // only plain two-way roads (no roundabouts, one-ways or ghosts)
+        rm.push([i,d]);if(!a)term.add(i);if(!b)term.add(bi);
+      }
+    }
+    for(const b of blds.concat(depts))if(b.port>=0&&inCore(b.port)&&roadish(b.port))term.add(b.port);
+    for(const t of [...term])if(inCore(t))term.delete(t),term.add(-t-1);   // (a port inside the core stays put and is a terminal itself)
+    const T=[...term].map(t=>t<0?-t-1:t);
+    if(T.length<3||rm.length<4||rm.length>70)return false;
+    // snapshot the area so the trial can be undone
+    const snap=[];for(let y=hy-R-3;y<=hy+R+3;y++)for(let x=hx-R-3;x<=hx+R+3;x++){if(!inB(x,y))continue;const i=cellIdx(x,y),c=cells[i];snap.push([i,c.e?c.e.map(e=>e?Object.assign({},e):null):null,c.sg?c.sg.slice():null,c.tl?JSON.parse(JSON.stringify(c.tl)):null]);}
+    const restore=()=>{for(const [i,e,sg,tl] of snap){const c=cells[i];c.e=e?e.map(v=>v?Object.assign({},v):null):null;c.sg=sg?sg.slice():null;c.tl=tl?JSON.parse(JSON.stringify(tl)):null;}GC.dirty=true;rebuild();};
+    const near=blds.filter(b=>!b.dest&&b.linked&&Math.abs(b.x-hx)<=16&&Math.abs(b.y-hy)<=16).slice(0,10),pairs=[];
+    for(const h of near)for(const d of blds)if(acc(d,h.color)&&d.linked)pairs.push([h,d]);
+    if(!pairs.length)return false;pairs.length=Math.min(pairs.length,40);
+    const metric=()=>{let sum=0,bad=0;for(const [h,d] of pairs){const p=routeTo(h.an*2,d.an*2,false,false,true);if(!p)bad++;else sum+=etaOf(p);}return {sum,bad};};
+    const junctions=()=>{let n=0;for(let y=hy-R-3;y<=hy+R+3;y++)for(let x=hx-R-3;x<=hx+R+3;x++)if(inB(x,y)&&cells[cellIdx(x,y)].e&&signSides(cells[cellIdx(x,y)]).length>=3)n++;return n;};
+    const before=metric(),jb=junctions();
+    let placed=[],ok=true,after=null,ja=jb;
+    try{
+      for(const [i,d] of rm)setEdge('g',i,d,-1,0);
+      for(let y=hy-R;y<=hy+R;y++)for(let x=hx-R;x<=hx+R;x++){if(inB(x,y)){const c=cells[cellIdx(x,y)];c.sg=null;c.tl=null;}}
+      rebuild();
+      const comp=start=>{const seen=new Set([start]),q=[start];for(let h=0;h<q.length;h++){const c=cells[q[h]];if(!c.e)continue;for(let d=0;d<8;d++)if(c.e[d]){const v=nbIdx(q[h],d);if(v>=0&&!seen.has(v)){seen.add(v);q.push(v);}}}return seen;};
+      let main=comp(T[0]);
+      for(const t of T.slice(1)){
+        if(main.has(t))continue;
+        const tgt=new Uint8Array(W*H);for(const m of main)tgt[m]=1;
+        const pl=aiSearch(t,tgt,new Uint8Array(W*H));
+        if(!pl||pl.edges.length>18){ok=false;break;}
+        for(const e of pl.edges){if(e.layer!=='g'||!inB(nbIdx(e.a,e.d)%W,(nbIdx(e.a,e.d)/W)|0)){ok=false;break;}if(!getEdge(e.a,e.d,'g')){setEdge('g',e.a,e.d,0,0);placed.push([e.a,e.d]);}}
+        if(!ok)break;main=comp(T[0]);
+      }
+      if(ok){rebuild();after=metric();ja=junctions();}
+    }finally{restore();}
+    if(!ok||!after||after.bad>0||placed.length>inv.road+rm.length)return false;
+    const better=after.sum<=before.sum*.97||(ja<jb&&after.sum<=before.sum*1.05);
+    if(!better){this.jam[hc]*=.3;return false;}
+    const keep=new Set(placed.map(([a,d])=>a+':'+d));
+    for(const [a,d] of placed)this.q.push({t:'edge',a,d,layer:'g'});
+    for(const [i,d] of rm){const bi=nbIdx(i,d);if(keep.has(i+':'+d)||keep.has(bi+':'+opp(d)))continue;this.q.push({t:'spoke',a:i,d});}
+    this.lastFix=time;this.fixed++;this.jam={};this.note('rebuilding a jammed area');return true;
   },
   lastRound:-99,rounds:[],
   roundabout(){   // a busy junction becomes a one-way ring (a 3x3 square round the old crossing): cars flow round it instead of crossing each other
@@ -3930,6 +4226,7 @@ const AI={crashAt:{},opt:{prune2:true,fast:true,round:true,short2:true},pen:null
     if(needy.length){this.planStart(needy);return;}
     if(time-this.lastPrune>(inv.road<60?12:25)&&this.prune())return;
     if(this.dept()){this.note('placing a fire station');return;}
+    if(this.fixJam())return;
     if(this.roundabout())return;
     if(this.shortcut()){this.note('adding a shortcut');return;}
     if(!this.highway()&&this.signClock>6){this.signClock=0;this.signs();}
@@ -3938,8 +4235,10 @@ const AI={crashAt:{},opt:{prune2:true,fast:true,round:true,short2:true},pen:null
     const order=needy.slice(this.rr%needy.length).concat(needy).slice(0,4);this.rr++;const rc={};
     this.job={ii:0,items:order.map(b=>{
       const dest=b.dest,m=!dest&&needAll()&&b.linked&&(rc[b.color]||(rc[b.color]=reachTo(b.color)))[b.an*2]?missingDest(b):null;   // a house that reaches some destination but not all of them
-      return {b,R:dest?aiForward(b.color):(m?aiCells(reachOf(m)):aiReach(b.color)),ports:(()=>{const pt=new Uint8Array(W*H);if(m){pt[m.port]=1;return pt;}for(const x of blds)if(dest?(!x.dest&&(x.color===b.color||x.color===b.color2)):acc(x,b.color))if(x.port>=0)pt[x.port]=1;return pt;})(),
-        dirs:dest?[b.dir]:[0,1,2,3,4,5,6,7].filter(d=>dirValid(b,d)),di:0,best:null};
+      const R0=dest?aiForward(b.color):(m?aiCells(reachOf(m)):aiReach(b.color));
+      if(D.crash)for(const o of blds.concat(depts))if(o!==b&&o.port>=0)R0[o.port]=0;
+      return {b,R:R0,ports:(()=>{const pt=new Uint8Array(W*H);if(m){pt[m.port]=1;return pt;}for(const x of blds)if(dest?(!x.dest&&(x.color===b.color||x.color===b.color2)):acc(x,b.color))if(x.port>=0)pt[x.port]=1;return pt;})(),
+        dirs:dest?[b.dir]:aiDirs(b),di:0,best:null};
     })};
   },
   planStep(ms){
@@ -3947,8 +4246,10 @@ const AI={crashAt:{},opt:{prune2:true,fast:true,round:true,short2:true},pen:null
     while(job.ii<job.items.length&&performance.now()-t0<ms){
       const it=job.items[job.ii];
       if(it.di>=it.dirs.length){job.ii++;continue;}
+      if(D.crash&&!it.pb){it.pb=new Uint8Array(W*H);for(const o of blds.concat(depts))if(o!==it.b&&o.port>=0)it.pb[o.port]=1;}
+      aiPortBlock=D.crash?it.pb:null;
       const d=it.dirs[it.di++],port=it.b.dest?it.b.port:bldGeom(it.b,d).port;if(port<0)continue;
-      const pl=aiSearch(port,it.R,it.ports);
+      const pl=aiSearch(port,it.R,it.ports);aiPortBlock=null;
       if(pl){pl.dir=d;if(!it.best||pl.cost<it.best.cost-1e-6||(pl.cost<it.best.cost+1e-6&&d===it.b.dir))it.best=pl;}
     }
     if(job.ii<job.items.length)return;

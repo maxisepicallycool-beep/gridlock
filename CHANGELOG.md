@@ -1,5 +1,13 @@
 # Gridlock changelog
 
+## 1.9.0 — Traffic coordinators, Realism, and an AI that rebuilds jams
+- On Gridlock and the new Realism difficulties the stop sign piece is now a Traffic coordinator (key 5). Click the junction next to the road you want: Yield sign, Stop sign, Straight light, Left-turn light or Right-turn light (press the key again, or use the bar above the dock, to switch). Every other difficulty keeps plain stop signs
+- Traffic lights run on a signal plan for each intersection: movements that never cross share a phase and left arrows get their own. Pick Signal timing and click the junction to edit it: the green time of each phase, which moves are green in it, the all-red gap, a start delay (so you can time lights along a road), and Auto plan to start over. It also shows the junction's level of service from A to F (average delay, cars a minute, queue)
+- Yield signs only make you give way. Cars pulling out of a driveway or a lot now always give way, and on the crash difficulties cars only wreck at real junctions of 3 or more roads (a driveway merge cannot be signed, so it was an unavoidable crash)
+- Gridlock now hands out far more signs: about 6 times as many in the starting kit and on cards, and the card comes up twice as often
+- New difficulty: Realism. The card opens a menu with Easy and Hard. Both have a 24-hour clock (it starts at dawn), day and night that follow it, and morning and evening rush hours when trips swell and quiet nights when they drop away. Easy has no wrecks. Hard has wrecks (12 end it), so signal your junctions
+- The menu AI places traffic lights on busy junctions in Realism, puts all-way stops at junctions where cars wreck, can pick Realism as its difficulty, and when a place keeps jamming it now tears out the roads around it and rebuilds them if the new layout is clearly better (and keeps the old one if not)
+
 ## 1.8.0 — A much smarter menu AI, and one-way highways are back
 - One-way highways return as a rare piece: a new One-way highway card (a small amount, shown less often than the others), a starter piece, and hotkey 7. One-way bridges stay gone
 - The menu AI was rebuilt around how a city engineer works:
