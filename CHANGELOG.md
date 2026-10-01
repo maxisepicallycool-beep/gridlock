@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.5.5 — Green grass
+- The map's grass is now green instead of beige, at every theme brightness (greener in the dark settings too, and a pale green in High contrast)
+- Trees are a deeper green so they stand out from the grass
+
 ## 1.5.4 — Theme brightness from black to white
 - The brightness slider is now a real theme brightness: it slides the colours of the menus and the map from black, through dark, all the way to white (it used to just dim the screen)
 - Themes are now Standard (follows the slider) and High contrast. Old Midnight/Light/Match-system settings become the matching slider position

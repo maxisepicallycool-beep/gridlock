@@ -373,19 +373,19 @@ addEventListener('keydown',e=>{   // while a key is being chosen, nothing else s
 },true);
 /* canvas palettes for each theme (the page itself is themed with CSS variables) */
 const THEMES={
-  light:{shadow:'rgba(60,50,30,.28)',rim:'#f4eedd',ground:'#f3edda',patch:['rgba(176,206,126,','rgba(222,200,146,'],grass:['rgba(140,170,92,','rgba(176,190,118,','rgba(120,150,84,'],grid:'rgba(120,105,70,.07)',
-    water:'#a7d3e7',deep:'rgba(38,110,165,.13)',shore:[[.3,'rgba(214,236,246,.55)'],[.1,'#fbf7ec']],trees:[['#8fbf6a','#abd886'],['#7fb35f','#9ecf7a'],['#9ac773','#b9df96']],treeSh:'rgba(50,70,30,.2)',
+  light:{shadow:'rgba(60,50,30,.28)',rim:'#d3e8b8',ground:'#c5e0a0',patch:['rgba(120,180,90,','rgba(205,228,130,'],grass:['rgba(80,140,60,','rgba(110,165,70,','rgba(60,120,55,'],grid:'rgba(60,100,40,.08)',
+    water:'#a7d3e7',deep:'rgba(38,110,165,.13)',shore:[[.3,'rgba(214,236,246,.55)'],[.1,'#fbf7ec']],trees:[['#5a9d4e','#74b865'],['#4f9246','#6bb05c'],['#62a655','#80c270']],treeSh:'rgba(30,70,20,.25)',
     walk:'#ece5d1',gshadow:'rgba(80,65,40,.22)',bshadow:'rgba(20,40,60,.24)',edge0:'#383d48',edge1:'rgba(255,255,255,.8)',edge2:'#f1e9d5',
     casing:['#ddd6c2','#16181d','#6e644f'],fill:['#4d535f','#343843','#d3c8ac'],dash:['rgba(255,255,255,.55)','#f5c542','rgba(110,98,74,.75)'],night:1},
-  dark:{shadow:'rgba(0,0,0,.55)',rim:'#2f384b',ground:'#252c3b',patch:['rgba(70,110,80,','rgba(110,100,70,'],grass:['rgba(80,120,80,','rgba(100,115,80,','rgba(70,100,75,'],grid:'rgba(255,255,255,.035)',
-    water:'#1c3a58',deep:'rgba(10,25,50,.28)',shore:[[.3,'rgba(90,150,200,.22)'],[.1,'#6f93ad']],trees:[['#3f6f48','#52855a'],['#386542','#4b7a52'],['#47794f','#5a9062']],treeSh:'rgba(0,0,0,.3)',
+  dark:{shadow:'rgba(0,0,0,.55)',rim:'#2f4d38',ground:'#25402e',patch:['rgba(60,110,70,','rgba(90,120,60,'],grass:['rgba(70,130,80,','rgba(90,135,75,','rgba(55,115,70,'],grid:'rgba(255,255,255,.035)',
+    water:'#1c3a58',deep:'rgba(10,25,50,.28)',shore:[[.3,'rgba(90,150,200,.22)'],[.1,'#6f93ad']],trees:[['#2f6a3c','#42824f'],['#2a5f36','#3a7646'],['#357645','#4a9059']],treeSh:'rgba(0,0,0,.3)',
     walk:'#3a4254',gshadow:'rgba(0,0,0,.35)',bshadow:'rgba(0,0,0,.35)',edge0:'#2c3141',edge1:'rgba(255,255,255,.5)',edge2:'#aab2c4',
     casing:['#3a4254','#0a0c10','#4a4f5e'],fill:['#5b6276','#3b4152','#8c93a6'],dash:['rgba(255,255,255,.6)','#f5c542','rgba(210,215,230,.6)'],night:.65},
-  midnight:{shadow:'rgba(0,0,0,.8)',rim:'#10141c',ground:'#07090d',patch:['rgba(40,70,50,','rgba(70,64,44,'],grass:['rgba(46,76,52,','rgba(60,72,50,','rgba(40,64,46,'],grid:'rgba(255,255,255,.03)',
-    water:'#0a1c30',deep:'rgba(0,10,30,.35)',shore:[[.3,'rgba(60,110,160,.2)'],[.1,'#4d6f88']],trees:[['#23402b','#2f5438'],['#1f3a27','#2a4b33'],['#284731','#345c3d']],treeSh:'rgba(0,0,0,.5)',
+  midnight:{shadow:'rgba(0,0,0,.8)',rim:'#0f1d14',ground:'#08140d',patch:['rgba(30,70,40,','rgba(55,75,35,'],grass:['rgba(40,85,50,','rgba(55,85,45,','rgba(30,70,42,'],grid:'rgba(255,255,255,.03)',
+    water:'#0a1c30',deep:'rgba(0,10,30,.35)',shore:[[.3,'rgba(60,110,160,.2)'],[.1,'#4d6f88']],trees:[['#1b4a2a','#276238'],['#184323','#235833'],['#205433','#2d6c40']],treeSh:'rgba(0,0,0,.5)',
     walk:'#1b202b',gshadow:'rgba(0,0,0,.5)',bshadow:'rgba(0,0,0,.5)',edge0:'#1e222c',edge1:'rgba(255,255,255,.45)',edge2:'#8f97aa',
     casing:['#232835','#000','#3a3f4d'],fill:['#474d5f','#2b2f3b','#7d8497'],dash:['rgba(255,255,255,.6)','#f5c542','rgba(200,205,220,.6)'],night:.5},
-  contrast:{shadow:'rgba(0,0,0,.35)',rim:'#fff',ground:'#fff',patch:['rgba(255,255,255,','rgba(255,255,255,'],grass:['rgba(255,255,255,','rgba(255,255,255,','rgba(255,255,255,'],grid:'rgba(0,0,0,.22)',
+  contrast:{shadow:'rgba(0,0,0,.35)',rim:'#e6f5d3',ground:'#e6f5d3',patch:['rgba(255,255,255,','rgba(255,255,255,'],grass:['rgba(255,255,255,','rgba(255,255,255,','rgba(255,255,255,'],grid:'rgba(0,0,0,.22)',
     water:'#1a56db',deep:'rgba(0,0,0,0)',shore:[[.3,'rgba(255,255,255,0)'],[.1,'#000']],trees:[['#0a6b28','#0f8a34'],['#0a6b28','#0f8a34'],['#0a6b28','#0f8a34']],treeSh:'rgba(0,0,0,.3)',
     walk:'#fff',gshadow:'rgba(0,0,0,.18)',bshadow:'rgba(0,0,0,.3)',edge0:'#000',edge1:'#fff',edge2:'#000',
     casing:['#000','#000','#000'],fill:['#2a2a2a','#000','#fff'],dash:['#fff','#ffd400','#000'],night:0}
