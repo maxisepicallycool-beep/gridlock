@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.6.12 — Ghost roads wait for cars that are on them
+- A ghost road stays while a car is on it, so the car can drive off first. Cars that have not reached it yet switch to another route to the same place the moment one exists, and the ghost is removed as soon as nobody is on it (undoes the 1.6.11 change)
+
 ## 1.6.11 — Ghost roads vanish at once
 - The moment another route exists, a ghost road is removed straight away, even if a car is still on it. That car just finishes the stretch it is on and carries on along the new route
 
