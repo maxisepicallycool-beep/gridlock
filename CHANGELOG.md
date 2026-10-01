@@ -1,0 +1,15 @@
+# Gridlock changelog
+
+## 1.2.0 — Traffic, horns and sandbox
+- Cars rest 5 seconds at home before leaving again, and 5 seconds in a parking bay before backing out
+- Tiny car horns that get louder and more frantic as a swamp or cut-off timer runs out (M mutes them)
+- Speed limits: long straights are fast, junctions, bends and driveways are slower; new Speed limits layer
+- Cars ease between speed limits and slow down for sharp turns
+- Cars reverse out of parking spots and drive forward the way they face; lots face their driveway
+- Cut-off countdown starts sooner: Relaxed 35s, Standard 22.5s, Rush Hour 18s
+- Sandbox editor: place houses, stores, gas stations, parking lots and fire stations, paint water and land, delete buildings, rotate destinations
+
+## 1.1.0 — Fires and parking
+- Fire stations, house fires, shutters and fire trucks
+- Cars park in destination lots; every destination is a store, gas station or parking lot
+- Crashes on Gridlock, growing map, swamp notifications and layer view
