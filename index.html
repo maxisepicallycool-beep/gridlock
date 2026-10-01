@@ -1410,15 +1410,37 @@ const TRACKS={
   day:[{f:'day1.mp3',n:'Daytime 1',a:''},{f:'day2.mp3',n:'Daytime 2',a:''}],
   night:[{f:'satie.mp3',n:'Night 2',a:''},{f:'night1.mp3',n:'Night 1',a:''}]};
 for(const m in TRACKS)for(const t of TRACKS[m])t.mood=m;
-const Music={els:{},active:[],cur:null,last:null,shown:null,unlocked:!!window.__APP,missing:false,
+const MUSIC_REV='1.3.3';   // bump when the songs change so cached copies are replaced
+const MUSIC_BASES=['https://api.github.com/repos/maxisepicallycool-beep/gridlock/contents/music/','https://raw.githubusercontent.com/maxisepicallycool-beep/gridlock/main/music/','https://cdn.jsdelivr.net/gh/maxisepicallycool-beep/gridlock@main/music/'];
+const MCache={db:undefined,
+  open(){if(this.db!==undefined)return Promise.resolve(this.db);return new Promise(res=>{try{const r=indexedDB.open('gridlock-music',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>res(this.db=r.result);r.onerror=()=>res(this.db=null);}catch(e){res(this.db=null);}});},
+  async get(k){const db=await this.open();if(!db)return null;return new Promise(res=>{try{const q=db.transaction('f').objectStore('f').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}});},
+  async put(k,v){const db=await this.open();if(!db)return;try{db.transaction('f','readwrite').objectStore('f').put(v,k);}catch(e){}}
+};
+async function fetchSong(f){   // from the cache, else the update repo (with its backup addresses)
+  const key=MUSIC_REV+':'+f,hit=await MCache.get(key);if(hit)return hit;
+  for(const base of MUSIC_BASES){
+    try{const r=await fetch(base+f,base.includes('api.github.com')?{headers:{Accept:'application/vnd.github.raw'}}:{});
+      if(r.ok){const b=await r.blob();if(b.size>50000){MCache.put(key,b);return b;}}}catch(e){}
+  }
+  return null;
+}
+const Music={loading:0,els:{},active:[],cur:null,last:null,shown:null,unlocked:!!window.__APP,missing:false,
   moodNow(){const m=Settings.v.musicMode;if(m!=='auto')return m;return ambient().n>=.5?'night':'day';},
   el(t){
     let e=this.els[t.f];
     if(!e){e=new Audio((window.__MUSIC_BASE||'music/')+t.f);e.preload='auto';e._g=0;e._goal=0;e._rate=1;e._t=t;
       e.addEventListener('ended',()=>{if(e===this.cur)this.next(2.5);});
-      e.addEventListener('error',()=>{this.missing=true;});
+      e.addEventListener('error',()=>{if(e._remote){this.missing=true;return;}e._remote=true;this.remote(t,e);});   // not inside the app: fetch it from GitHub
       this.els[t.f]=e;}
     return e;
+  },
+  async remote(t,e){
+    this.loading++;const b=await fetchSong(t.f);this.loading--;
+    if(!b){this.missing=true;return;}
+    e.src=URL.createObjectURL(b);e.load();
+    if(e===this.cur&&e._goal>0){const pr=e.play();if(pr&&pr.catch)pr.catch(()=>{});}
+    if(!this.warmed){this.warmed=true;setTimeout(()=>{for(const m in TRACKS)for(const x of TRACKS[m])if(!this.els[x.f])this.el(x);},4000);}   // fetch the rest in the background so the crossfades stay smooth
   },
   pick(mood){const list=TRACKS[mood];let c=list.filter(t=>t!==this.last);if(!c.length)c=list;return c[(Math.random()*c.length)|0];},
   play(t,fade){
@@ -2721,7 +2743,7 @@ const SCREENS={
         +tog('musicToast','Show song titles','A small note when a new song starts')
         +tog('musicPause','Fade out while paused','')
         +tog('musicBg','Keep playing in the background','When the window is hidden or another app is in front')
-        +row('Now playing',Music.missing?'The music files are not in this copy of the game':(Music.nowPlaying()?'\u266A '+Music.nowPlaying().n+(Music.nowPlaying().a?' \u2014 '+Music.nowPlaying().a:''):(v.music?'Starting\u2026':'Music is off')),'<button class="sbtn" data-act="nextsong">Next song</button>')
+        +row('Now playing',Music.missing?'The songs could not be downloaded \u2014 connect to the internet and restart':(Music.loading?'Downloading the songs\u2026 (only the first time)':(Music.nowPlaying()?'\u266A '+Music.nowPlaying().n+(Music.nowPlaying().a?' \u2014 '+Music.nowPlaying().a:''):(v.music?'Starting\u2026':'Music is off'))),'<button class="sbtn" data-act="nextsong">Next song</button>')
         +`<div class="srow" style="display:block"><div class="st"><b>Songs</b><small>Daytime 1 and Daytime 2 play by day. Night 1 and Night 2 play by night.</small></div></div>`)}
       ${sec('Notifications',
         tog('n_crit','Critical alerts','Destinations swamped and trips cut off')

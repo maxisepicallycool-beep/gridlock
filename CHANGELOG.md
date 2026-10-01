@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.3.3 — Songs download themselves
+- The songs are now on GitHub: if your copy of the game has no music files it downloads them the first time (about 11 MB) and keeps them
+- Settings shows "Downloading the songs…" while that happens
+
 ## 1.3.2 — Song names
 - The songs are now simply called Daytime 1, Daytime 2, Night 1 and Night 2
 
