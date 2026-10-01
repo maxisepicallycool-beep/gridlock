@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.6.2 — Losing is about the roads, not the crowd
+- A destination no longer ends the game just because lots of cars are heading to it. Now it only counts cars that are running far too late (more than twice the road's clear time, plus a margin): jammed, tangled or badly connected roads
+- The dots over a destination turn amber, then red, as cars run late; the warning is now "getting backed up" and the crisis is "cut off by traffic". The limit is the same number of late cars for the same time as before, per difficulty
+
 ## 1.6.1 — A spookier world
 - Every colour has its own house: Pumpkin is a jack-o'-lantern, Midnight a haunted mansion, Twilight a witch's hat, Headstone a headstone with a door, Slime a dripping slime blob and Blood a vampire castle
 - Haunted ground: murky purple earth, dead grass and green-black water, with gravestones, crosses and pumpkins scattered about

@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.2';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -798,7 +798,7 @@ function gameOver(why){
   S.over=true;S.modal='over';noteBest();
   Cities.del(S.runId);   // a lost city can't be continued
   const best=Store.meta.best[D.id],m=document.getElementById('modal');m.className='';
-  m.innerHTML=`<div class="sheet glass"><h2>Run over</h2><p>${why||'A destination was swamped with traffic.'}</p>
+  m.innerHTML=`<div class="sheet glass"><h2>Run over</h2><p>${why||'Cars couldn\u2019t get to a destination in time.'}</p>
     <div class="big">${S.score}</div><p class="tiny" style="margin-top:2px">TRIPS COMPLETED</p>
     <div class="stats"><div><b>${S.week}</b><small>Weeks</small></div><div><b>${best?best.score:S.score}</b><small>Best (${D.name})</small></div><div><b>${esc(S.name||'City')}</b><small>City</small></div></div>
     <div class="row"><button class="go" data-a="retry">Try again</button><button class="go alt" data-a="menu">Main menu</button></div></div>`;
@@ -820,13 +820,18 @@ function killCar(c,why){
   if(D.fleet){if(why==='crash')h.pend.push(time+25);else{(h.rt||(h.rt=[])).push(time+HOUSE_REST);h.lastProg=time;}}   // a car that gets home rests before it can head out again
 }
 function leaveQueue(c){if(c.qn>=0&&queue[c.qn]){const i=queue[c.qn].indexOf(c);if(i>=0)queue[c.qn].splice(i,1);}c.qn=-1;}
+function etaOf(p){   // how long this route takes with the road clear
+  let t=0;for(let k=0;k+1<p.length;k++){const u=p[k],v=p[k+1];for(let d=0;d<8;d++)if(edgeTo[u*8+d]===v){t+=LEN[d]/(SPEED*(espd[u*8+d]||1));break;}}
+  return t;
+}
+const lateCar=c=>c.t0!==undefined&&time-c.t0>c.eta*2+10;   // far later than the road allows: jammed, tangled or badly connected
 function destOf(p){const b=cells[p[p.length-1]>>1].bld;return b&&b.dest?b:null;}
 function dispatch(h){
   if(!h.linked)return false;
   if(!blds.some(b=>acc(b,h.color)))return false;
   const p=routeOut(h.an*2,h.color,h);
   if(!p||p.length<2)return false;
-  cars.push({id:++carId,color:h.color,home:h,leg:0,path:p,i:0,u:0,ph:'drive',dwell:0,res:false,resDin:-1,din:-1,stopWait:-1,stopped:-1,blocked:0,wait:0,rrDone:false,qn:-1,force:false,by:null,dest:destOf(p),dead:false});
+  cars.push({id:++carId,color:h.color,home:h,leg:0,path:p,i:0,u:0,ph:'drive',dwell:0,res:false,resDin:-1,din:-1,stopWait:-1,stopped:-1,blocked:0,wait:0,rrDone:false,qn:-1,force:false,by:null,dest:destOf(p),dead:false,t0:time,eta:etaOf(p)});
   h.out++;h.demand--;if(D.fleet)h.gar--;h.lastProg=time;return true;
 }
 function reroute(c){
@@ -834,7 +839,7 @@ function reroute(c){
   leaveQueue(c);
   const n=c.path[c.i];
   const p=c.leg===0?routeOut(n,c.color,c.home):routeTo(n,c.home.an*2,true);
-  if(p&&p.length>=1){c.path=p;c.i=0;c.stopped=-1;c.stopWait=-1;c.lost=0;if(c.leg===0)c.dest=destOf(p);return true;}
+  if(p&&p.length>=1){c.path=p;c.i=0;c.stopped=-1;c.stopWait=-1;c.lost=0;if(c.leg===0){c.dest=destOf(p);if(c.t0!==undefined)c.eta=(time-c.t0)+etaOf(p);}return true;}
   c.blocked=-1.5;return false;
 }
 // --- junction logic: a car enters a node only if its path through it doesn't cross anyone already inside ---
@@ -1403,7 +1408,7 @@ function reachOf(d){   // which nodes can drive to this one destination (cached 
 const connectedToAll=b=>{const ds=blds.filter(d=>acc(d,b.color));return ds.length>0&&ds.every(d=>d.linked&&reachOf(d)[b.an*2]);};
 function alertLevel(b){
   if(b.fire)return 2;
-  if(b.dest){if(b.over>0||b.load>=D.dcap)return 2;if(b.load>=D.dcap-1&&(b.loadT||0)>=Settings.v.n_delayLoad)return 1;return 0;}
+  if(b.dest){if(b.over>0||b.jam>=D.dcap)return 2;if(b.jam>=D.dcap-1&&(b.loadT||0)>=Settings.v.n_delayLoad)return 1;return 0;}
   return b.demand>=MAXD&&(b.pileT||0)>=Settings.v.n_delayHouse&&!b.connAll?1:0;
 }
 function checkAlerts(){
@@ -1412,9 +1417,9 @@ function checkAlerts(){
   for(const b of blds){
     const nm=bname(b);
     if(b.dest){
-      b.loadT=(b.load>=D.dcap-1&&!(b.over>0))?(b.loadT||0)+dt:0;   // how long it has been filling up
-      if(b.over>0)Notes.push('over'+b.id,'crit','!',nm+' destination overloaded','Clear the traffic or it ends in '+Math.max(1,Math.ceil(D.dlimit-b.over))+'s',b);
-      else if(b.load>=D.dcap-1&&b.loadT>=v.n_delayLoad)Notes.push('load'+b.id,'warn','!',nm+' destination getting swamped',b.load+' of '+D.dcap+' cars heading there',b);
+      b.loadT=(b.jam>=D.dcap-1&&!(b.over>0))?(b.loadT||0)+dt:0;   // how long cars have been running late
+      if(b.over>0)Notes.push('over'+b.id,'crit','!',nm+' destination cut off by traffic','Cars aren\u2019t getting there in time \u2014 fix the roads or it ends in '+Math.max(1,Math.ceil(D.dlimit-b.over))+'s',b);
+      else if(b.jam>=D.dcap-1&&b.loadT>=v.n_delayLoad)Notes.push('load'+b.id,'warn','!',nm+' destination getting backed up',b.jam+' cars are running late \u2014 check the roads into it',b);
     } else {
       if(b.demand>=MAXD){
         b.pileT=(b.pileT||0)+dt;   // how long trips have been piling up
@@ -1425,7 +1430,7 @@ function checkAlerts(){
   }
   for(let c=0;c<6;c++)if(S.stallT[c]>=Math.max(.5,v.n_delayCut)){const d=blds.find(x=>acc(x,c));Notes.push('cut'+c,'crit','!',PAL[c].n+' trips cut off','Reconnect them — '+Math.max(1,Math.ceil(D.stall-S.stallT[c]))+'s left',d);}
 }
-function drawAlert(b){   // big bobbing marker that stands out above anything that is getting swamped
+function drawAlert(b){   // big bobbing marker that stands out above anything that is getting backed up
   const lv=alertLevel(b);if(!lv)return;
   const t=performance.now()/1000,rad=Math.max(.55,19/cs),cx=b.x+b.w/2,cy=b.y-(b.dest?.25:.3)-rad*1.55+Math.sin(t*5)*.1*rad/.55;
   const col=lv>1?'#e5484d':'#ffb02e';
@@ -1626,10 +1631,10 @@ function step(dt){
   cars=cars.filter(c=>!c.dead);
   breakDeadlocks();
   S.sweep=(S.sweep||0)-dt;if(S.sweep<=0){S.sweep=.3;sweepGhosts();}
-  for(const b of blds)if(b.dest)b.load=0;
-  for(const c of cars)if(c.leg===0&&c.ph==='drive'&&c.dest&&!c.dead)c.dest.load++;
+  for(const b of blds)if(b.dest){b.load=0;b.jam=0;}
+  for(const c of cars)if(c.leg===0&&c.ph==='drive'&&c.dest&&!c.dead){c.dest.load++;if(lateCar(c))c.dest.jam++;}   // load = cars on their way, jam = those running far too late
   for(const b of blds)if(b.dest){
-    if(b.load>=D.dcap&&!D.noFail){b.over+=dt;if(b.over>=D.dlimit&&!S.over){gameOver('A destination was swamped with traffic.');return;}}
+    if(b.jam>=D.dcap&&!D.noFail){b.over+=dt;if(b.over>=D.dlimit&&!S.over){gameOver('Cars couldn\u2019t get to a destination in time.');return;}}
     else b.over=Math.max(0,b.over-dt*2);
   }
   updateStall(dt);Snd.tick(dt);
@@ -2071,7 +2076,7 @@ function tutSteps(){
       cond:()=>T().all.every(tutOK),target:()=>T().all.filter(b=>!tutOK(b)),ghost:{type:'auto',list:()=>T().all}},
     {ch:'Your city',t:'Layers',x:'Press <b>L</b> (or the <b>Layers</b> button) to see <b>Traffic</b>, <b>Elevation</b>, <b>Routes</b>, <b>Speed limits</b> and <b>Fire cover</b>. Try one now.',cond:()=>layerMode!=='normal'},
     {ch:'Your city',t:'Make it yours',x:'Open <b>Settings</b> any time: themes, a <b>day and night cycle</b>, music, notifications and rebindable keys. At night every house, store and car glows in its own colour.',next:true},
-    {ch:'Your city',t:'The real game',x:'Every week ends with <b>3 cards</b>: pick which pieces to receive. New houses and destinations keep appearing.<br><br>You lose if a destination stays <b>swamped</b> with cars for too long, or most trips of one colour are <b>cut off</b>. Nothing like that happens in this tutorial.',next:true},
+    {ch:'Your city',t:'The real game',x:'Every week ends with <b>3 cards</b>: pick which pieces to receive. New houses and destinations keep appearing.<br><br>You lose if cars heading to a destination keep running <b>far too late</b> (jammed or badly connected roads) for too long, or most trips of one colour are <b>cut off</b>. Nothing like that happens in this tutorial.',next:true},
     {ch:'Your city',t:'You’re ready!',x:'That’s everything. Start a real game, replay a lesson, or keep building here with unlimited pieces.',final:true}
   ];
 }
@@ -2692,11 +2697,11 @@ function drawBld(b){
   ctx.restore();
   if(b.fire)drawFire(b);else if(b.steam)drawSteam(b);
   if(b.dest){
-    const full=b.load>=D.dcap,near=b.load>=D.dcap-1,blink=Math.floor(time*4)%2;
+    const full=b.jam>=D.dcap,near=b.jam>=D.dcap-1,blink=Math.floor(time*4)%2;
     for(let i=0;i<b.load;i++){
       const row=Math.floor(i/D.dcap),n=Math.min(D.dcap,b.load-row*D.dcap);
       const px=x+1+((i%D.dcap)-(n-1)/2)*.2,py=y-.12-row*.19;
-      ctx.lineWidth=.035;ctx.fillStyle=full?(blink?'#e5484d':'#ff8a8a'):near?'#ffb02e':(b.color2>=0&&i%2?PAL[b.color2].c:p.c);ctx.strokeStyle='#fff';
+      ctx.lineWidth=.035;ctx.fillStyle=i<(b.jam||0)?(full?(blink?'#e5484d':'#ff8a8a'):'#ffb02e'):(b.color2>=0&&i%2?PAL[b.color2].c:p.c);   // late cars show amber, then redctx.strokeStyle='#fff';
       ctx.beginPath();ctx.arc(px,py,.075,0,7);ctx.fill();ctx.stroke();
     }
     const st=Math.max(S.stallT[b.color]||0,b.color2>=0?S.stallT[b.color2]||0:0);
@@ -3220,7 +3225,7 @@ const statLines=d=>{
   const fire=d.fireChance?`House fires ${Math.round(d.fireChance*100)}%/min`:'No house fires';
   const rules=d.fleet?`${d.fleet} car${d.fleet>1?'s':''} per house, must return · any destination`:'Cars spawn freely · fixed destination';
   if(d.noFail)return ['No fail states','Unlimited pieces',rules,fire];
-  return [`Cut-off timer ${d.stall}s`,`Swamp limit ${d.dlimit}s · ${d.dcap} cars`,`Weeks ${d.weekLen}s · pieces ×${d.startMul}`,rules,fire].concat(d.crash?[`Cars crash · ${d.crash} crashes ends it`,'No alerts']:[]);
+  return [`Cut-off timer ${d.stall}s`,`Late cars: ${d.dcap} for ${d.dlimit}s ends it`,`Weeks ${d.weekLen}s · pieces ×${d.startMul}`,rules,fire].concat(d.crash?[`Cars crash · ${d.crash} crashes ends it`,'No alerts']:[]);
 };
 const bldSvg=c=>`<svg class="ti" viewBox="0 0 40 40"><rect x="5" y="8" width="30" height="27" rx="8" fill="${PAL[c].d}"/><rect x="5" y="5" width="30" height="25" rx="8" fill="${PAL[c].c}"/><rect x="11" y="17" width="18" height="2.4" fill="#fff" opacity=".6"/><rect x="17" y="24" width="6" height="8" rx="2" fill="#fff6e0"/></svg>`;
 const miscSvg=(p,c)=>`<svg class="ti" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="${c}" opacity=".16"/>${p}</svg>`;
@@ -3321,7 +3326,7 @@ const SCREENS={
         +row('Now playing',Music.missing?'The songs could not be downloaded \u2014 connect to the internet and restart':(Music.loading?'Downloading the songs\u2026 (only the first time)':(Music.nowPlaying()?'\u266A '+Music.nowPlaying().n+(Music.nowPlaying().a?' \u2014 '+Music.nowPlaying().a:''):(v.music?'Starting\u2026':'Music is off'))),'<button class="sbtn" data-act="nextsong">Next song</button>')
         +`<div class="srow" style="display:block"><div class="st"><b>Songs</b><small>Daytime 1 and Daytime 2 play by day. Night 1 and Night 2 play by night.</small></div></div>`)}
       ${sec('Notifications',
-        tog('n_crit','Critical alerts','Destinations swamped and trips cut off')
+        tog('n_crit','Critical alerts','Destinations backed up by late cars and trips cut off')
         +tog('n_fire','Fire alerts','Houses on fire and fire station news')
         +tog('n_good','Good news','City growth and stations ready')
         +tog('n_warn','Warnings','Things that are starting to back up')
@@ -3330,7 +3335,7 @@ const SCREENS={
         +row('Trips cut off','How long a colour stays cut off before it alerts you',seg('n_delayCut',[[0,'Instant'],[3,'3 s'],[6,'6 s'],[10,'10 s']]))
         +row('Alerts stay on screen','How long each alert is shown',seg('n_show',[[4,'4 s'],[8,'8 s'],[12,'12 s'],[20,'20 s']]))
         +row('Repeat an alert after','How long before the same alert can appear again',seg('n_repeat',[[15,'15 s'],[30,'30 s'],[60,'1 min'],[0,'Never']]))
-        +tog('n_mark','Markers above buildings','The big bobbing icons over swamped houses and destinations')
+        +tog('n_mark','Markers above buildings','The big bobbing icons over backed-up houses and destinations')
         +tog('n_toast','Hints and messages','Small pop-ups like "No room for that here"'))}
       ${sec('Controls',
         sld('zoomSens','Zoom speed','Scroll wheel and pinch',.5,2,.1,'x')
@@ -3655,7 +3660,7 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
   },
   lastShort:-99,
   shortcut(){   // a straight road across a long detour on a busy route (what a good player adds once the basics are connected)
-    const hot=blds.find(b=>b.dest&&(b.load>=D.dcap-2||b.over>0));   // a destination filling up: shorter trips are the cure
+    const hot=blds.find(b=>b.dest&&(b.jam>=D.dcap-2||b.over>0));   // a destination filling up: shorter trips are the cure
     if(time-this.lastShort<(hot?6:20)||inv.road<(hot?24:100))return false;   // otherwise keep a reserve of roads for linking new houses
     const hs=blds.filter(x=>!x.dest&&x.linked&&(!hot||x.color===hot.color));if(!hs.length)return false;
     let best=null;
