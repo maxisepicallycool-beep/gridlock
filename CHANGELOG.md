@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.2.1 — Test update
+- This is a test update to check the update prompt
+- Nothing in the game has changed
+- Choose Download to try the download, or Ignore to skip it
+
 ## 1.2.0 — Traffic, horns and sandbox
 - Cars rest 5 seconds at home before leaving again, and 5 seconds in a parking bay before backing out
 - Tiny car horns that get louder and more frantic as a swamp or cut-off timer runs out (M mutes them)
