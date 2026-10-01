@@ -1,5 +1,11 @@
 # Gridlock changelog
 
+## 1.5.4 — Theme brightness from black to white
+- The brightness slider is now a real theme brightness: it slides the colours of the menus and the map from black, through dark, all the way to white (it used to just dim the screen)
+- Themes are now Standard (follows the slider) and High contrast. Old Midnight/Light/Match-system settings become the matching slider position
+- Text flips between light and dark at the right point so it stays readable at every brightness
+- The count badges on the pieces (including the infinity sign) now always contrast with the menu, light or dark
+
 ## 1.5.3 — Highways can join highways
 - A highway can now start or end on another highway, not just on a side of a road, so you can build highway networks. Cars switch between highways at the join
 - A highway still can't end in the open or on the end of a road

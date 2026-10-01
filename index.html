@@ -71,7 +71,7 @@ body.inmenu #sbBar{display:none!important}
 .tool.empty{opacity:.36}
 .tool svg{width:44px;height:44px;display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.10))}
 .tool span.lb{text-align:center;height:24px;display:flex;align-items:center}
-.tool .n{position:absolute;top:2px;right:3px;min-width:22px;height:20px;padding:0 6px;border-radius:10px;background:var(--ink);color:#fff;font:800 11px/20px inherit;text-align:center;font-variant-numeric:tabular-nums;box-shadow:0 2px 4px rgba(0,0,0,.25)}
+.tool .n{position:absolute;top:2px;right:3px;min-width:22px;height:20px;padding:0 6px;border-radius:10px;background:var(--badge-bg,var(--ink));color:var(--badge-fg,#fff);font:800 11px/20px inherit;text-align:center;font-variant-numeric:tabular-nums;box-shadow:0 2px 4px rgba(0,0,0,.25)}
 .tool .k{position:absolute;top:4px;left:8px;font-size:9.5px;color:var(--muted);font-weight:800}
 .sep{width:1px;background:var(--line);margin:6px 3px}
 @media (max-width:860px){
@@ -230,7 +230,6 @@ body.inmenu #coach{display:none!important}
 #coach .cbar{height:5px;border-radius:99px;background:var(--soft);margin:7px 0 10px;overflow:hidden}#coach .cbar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
 #coach h3{margin:0 0 5px;font-size:17px}#coach p{margin:0 0 11px;font-size:13px;line-height:1.45;color:var(--ink2)}
 #coach .cbtns{display:flex;gap:8px;flex-wrap:wrap}#coach.ok{border-color:var(--good)}#coach.ok .cbar i{background:var(--good)}
-body.bri{filter:brightness(var(--bri,1))}
 </style>
 </head>
 <body>
@@ -319,7 +318,7 @@ let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
 const SET_DEF={theme:'dark',mapNatural:false,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
-  tutDone:false,bri:100,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
+  tutDone:false,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
 const Settings={v:Object.assign({},SET_DEF),
   load(){
@@ -327,7 +326,10 @@ const Settings={v:Object.assign({},SET_DEF),
     try{if(window.__SETTINGS&&typeof window.__SETTINGS==='object')j=window.__SETTINGS;}catch(e){}
     if(!j){try{j=JSON.parse(localStorage.getItem('gridlock-settings')||'{}');}catch(e){j={};}}
     for(const k in SET_DEF)if(j[k]!==undefined&&typeof j[k]===typeof SET_DEF[k])this.v[k]=j[k];
-    if(!['dark','midnight','contrast'].includes(this.v.theme))this.v.theme='dark';   // the old Light and Match-system themes are gone: brightness covers them
+    const old=this.v.theme,hadLum=j.lum!==undefined;   // the old Light / Midnight / Match-system themes became the brightness slider
+    if(old==='midnight'){this.v.theme='dark';if(!hadLum)this.v.lum=0;}
+    else if(old==='light'||old==='system'){this.v.theme='dark';if(!hadLum)this.v.lum=old==='light'?100:25;}
+    else if(old!=='dark'&&old!=='contrast')this.v.theme='dark';
   },
   save(){
     const t=JSON.stringify(this.v);
@@ -336,10 +338,9 @@ const Settings={v:Object.assign({},SET_DEF),
   },
   vol(){return this.v.sfx/100*.85},
   set(k,val){this.v[k]=val;this.save();this.react(k);},
-  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','mapNatural','bri','sfx','horns','aiDiff'])this.react(k);},
+  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','mapNatural','lum','sfx','horns','aiDiff'])this.react(k);},
   react(k){
-    if(k==='theme'||k==='mapNatural')applyTheme();
-    else if(k==='bri'){const v=this.v.bri;document.documentElement.style.setProperty('--bri',v/100);document.body.classList.toggle('bri',v!==100);}
+    if(k==='theme'||k==='mapNatural'||k==='lum')applyTheme();
     else if(k==='sfx'){if(typeof Snd!=='undefined')Snd.setVol();}
     else if(k==='horns'){const b=document.getElementById('bsnd');if(b)b.textContent=this.v.horns?'Sound':'Muted';}
     else if(k==='aiDiff'){if(mode==='menu'&&typeof startDemo==='function')startDemo();}
@@ -390,8 +391,46 @@ const THEMES={
     casing:['#000','#000','#000'],fill:['#2a2a2a','#000','#fff'],dash:['#fff','#ffd400','#000'],night:0}
 };
 let TH=THEMES.light;
-function themeName(){const t=Settings.v.theme;return t==='midnight'||t==='contrast'?t:'dark';}
-function applyTheme(){const n=themeName();TH=Settings.v.mapNatural?THEMES.light:THEMES[n];document.body.dataset.theme=n;GC.dirty=true;gfxVer++;}   // with 'natural map' on, only the menus use the theme
+function themeName(){return Settings.v.theme==='contrast'?'contrast':'dark';}
+/* theme brightness: every colour slides between black (0), the dark theme (30) and white (100) */
+function parseCol(c){
+  let m=/^#([0-9a-f]{6})$/i.exec(c);if(m){const n=parseInt(m[1],16);return {k:'hex',v:[n>>16&255,n>>8&255,n&255,1]};}
+  m=/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/.exec(c);if(m)return {k:'rgba',v:[+m[1],+m[2],+m[3],m[4]===undefined?1:+m[4]]};
+  m=/^rgba\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*$/.exec(c);if(m)return {k:'pre',v:[+m[1],+m[2],+m[3],1]};
+  return null;
+}
+function lerpCol(a,b,t){
+  const A=parseCol(a),B=parseCol(b);if(!A||!B)return t<.5?a:b;
+  const v=A.v.map((x,i)=>x+(B.v[i]-x)*t),r=[0,1,2].map(i=>Math.round(v[i]));
+  if(A.k==='pre')return 'rgba('+r.join(',')+',';
+  if(A.k==='hex'&&B.k==='hex')return '#'+r.map(x=>x.toString(16).padStart(2,'0')).join('');
+  return 'rgba('+r.join(',')+','+(+v[3].toFixed(3))+')';
+}
+function mixAny(a,b,t){if(typeof a==='number')return a+(b-a)*t;if(typeof a==='string')return lerpCol(a,b,t);if(Array.isArray(a))return a.map((x,i)=>mixAny(x,b[i],t));return a;}
+function mixObj(a,b,t){const o={};for(const k in a)o[k]=mixAny(a[k],b[k],t);return o;}
+const LUM_ANCHOR=.3;
+function lumMix(M,D,L,t){return t<=LUM_ANCHOR?mixObj(M,D,t/LUM_ANCHOR):mixObj(D,L,(t-LUM_ANCHOR)/(1-LUM_ANCHOR));}
+const UI_M={bg:'#000000',panel:'rgba(10,12,18,.94)',card:'#12151d',card2:'rgba(18,21,29,.94)',glassb:'rgba(255,255,255,.10)',glassi:'rgba(255,255,255,.05)',bg2a:'#0b0d13',bg2b:'#000000'};
+const UI_D={bg:'#161a24',panel:'rgba(32,37,50,.92)',card:'#283042',card2:'rgba(40,48,66,.92)',glassb:'rgba(255,255,255,.09)',glassi:'rgba(255,255,255,.07)',bg2a:'#242b3b',bg2b:'#10131b'};
+const UI_L={bg:'#e7e0cd',panel:'rgba(255,255,255,.88)',card:'#ffffff',card2:'rgba(255,255,255,.86)',glassb:'rgba(255,255,255,.85)',glassi:'rgba(255,255,255,.9)',bg2a:'#f1ebdb',bg2b:'#d9d0b9'};
+const UI_VARS=['bg','panel','card','card2','glassb','glassi','bg2a','bg2b','ink','ink2','muted','line','soft','shadow','badge-bg','badge-fg'];
+const relLum=h=>{const c=parseCol(h).v.map(x=>{x/=255;return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4);});return .2126*c[0]+.7152*c[1]+.0722*c[2];};
+function themeVars(t){
+  const v=lumMix(UI_M,UI_D,UI_L,t);
+  const lightUI=relLum(v.card)>.2;   // text flips to dark once the cards it sits on are light enough (the middle of the slider is where contrast is lowest)
+  Object.assign(v,lightUI?{ink:'#232733',ink2:'#4b5163',muted:'#6b7288',line:'rgba(35,39,51,.12)',soft:'rgba(35,39,51,.08)',shadow:'0 18px 50px rgba(60,50,30,.20), 0 3px 10px rgba(60,50,30,.10)','badge-bg':'#232733','badge-fg':'#ffffff'}
+                      :{ink:'#f2f4f9',ink2:'#bcc2d2',muted:'#8d95ab',line:'rgba(255,255,255,.11)',soft:'rgba(255,255,255,.08)',shadow:'0 18px 50px rgba(0,0,0,.55),0 3px 10px rgba(0,0,0,.35)','badge-bg':'#f2f4f9','badge-fg':'#12151d'});   // count badges always contrast with the menu
+  return v;
+}
+const palCache={};
+function mapPalette(t){const k=Math.round(t*100);return palCache[k]||(palCache[k]=lumMix(THEMES.midnight,THEMES.dark,THEMES.light,k/100));}
+function applyTheme(){
+  const n=themeName(),st=document.body.style,t=Math.max(0,Math.min(100,Settings.v.lum))/100;
+  if(n==='contrast'){for(const k of UI_VARS)st.removeProperty('--'+k);}   // the High contrast sheet in the page CSS takes over
+  else{const v=themeVars(t);for(const k of UI_VARS)st.setProperty('--'+k,v[k]);}
+  TH=Settings.v.mapNatural?THEMES.light:(n==='contrast'?THEMES.contrast:mapPalette(t));   // with 'natural map' on, only the menus use the theme
+  document.body.dataset.theme=n;GC.dirty=true;gfxVer++;
+}
 
 const diffById=id=>DIFFS.find(d=>d.id===id)||DIFFS[2];
 
@@ -2974,9 +3013,9 @@ const SCREENS={
       const ks=keysOf(a);return `<div class="bd"><span>${label}</span><button class="kb${rebinding===a?' wait':''}" data-bind="${a}">${rebinding===a?'Press a key\u2026':(ks.length?ks.map(keyLabel).join(' / '):'Unbound')}</button></div>`;}).join('');
     return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Settings</h2></div><div class="pbody">
       ${sec('Display',
-        row('Theme','Colours for the menus and the map',seg('theme',[['dark','Dark'],['midnight','Midnight'],['contrast','High contrast']]))
+        row('Theme','Standard follows the brightness slider below; High contrast ignores it',seg('theme',[['dark','Standard'],['contrast','High contrast']]))
         +tog('mapNatural','Don\u2019t apply the theme to the map','The map keeps its natural colours; only the menus and buttons use the theme')
-        +sld('bri','Brightness','Dim or brighten everything, the map and the menus',60,140,5,'pct')
+        +sld('lum','Theme brightness','Slide from black to white: the colours of the menus and the map',0,100,1,'pct')
         +tog('cycle','Day and night cycle','The light fades to night and back as the game runs. Not used in High contrast.')
         +row('Cycle length','How long one full day takes',seg('cycleLen',[[120,'2 min'],[240,'4 min'],[480,'8 min']]))
         +row('Time of day','Used while the cycle is off',seg('tod',[['day','Day'],['dusk','Dusk'],['night','Night']]))
@@ -3461,7 +3500,7 @@ function frame(now){
   }
   requestAnimationFrame(frame);
 }
-buildKeymap();applyTheme();Settings.react('bri');Settings.react('horns');
+buildKeymap();applyTheme();Settings.react('horns');
 Store.init();resize();enterMenu();
 requestAnimationFrame(frame);
 // test helpers
