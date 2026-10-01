@@ -98,6 +98,8 @@ body.inmenu #sbBar{display:none!important}
 .sheet::before,.sheet::after,.panel::before,.panel::after,.mright::before,.mright::after{content:"";position:absolute;top:9px;width:84px;height:84px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 84 84'%3E%3Cpath d='M0 0L84.0 0.0M0 0L79.9 26.0M0 0L68.0 49.4M0 0L49.4 68.0M0 0L26.0 79.9M0 0L0.0 84.0M25.2 0.0Q20.4 3.2 24.0 7.8M24.0 7.8Q18.4 9.4 20.4 14.8M20.4 14.8Q14.6 14.6 14.8 20.4M14.8 20.4Q9.4 18.4 7.8 24.0M7.8 24.0Q3.2 20.4 0.0 25.2M46.2 0.0Q37.4 5.9 43.9 14.3M43.9 14.3Q33.8 17.2 37.4 27.2M37.4 27.2Q26.8 26.8 27.2 37.4M27.2 37.4Q17.2 33.8 14.3 43.9M14.3 43.9Q5.9 37.4 0.0 46.2M67.2 0.0Q54.4 8.6 63.9 20.8M63.9 20.8Q49.1 25.0 54.4 39.5M54.4 39.5Q39.0 39.0 39.5 54.4M39.5 54.4Q25.0 49.1 20.8 63.9M20.8 63.9Q8.6 54.4 0.0 67.2' fill='none' stroke='%23a9a9b8' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat;background-size:contain;opacity:.55;pointer-events:none;z-index:2}
 .sheet::before,.panel::before,.mright::before{left:9px}
 .sheet::after,.panel::after,.mright::after{right:9px;transform:scaleX(-1)}
+body.nohw .sheet::before,body.nohw .sheet::after,body.nohw .panel::before,body.nohw .panel::after,body.nohw .mright::before,body.nohw .mright::after{display:none}
+body.nohw .logo{background:linear-gradient(115deg,#f0605d 0%,#ff8b3d 28%,#f4c430 48%,#2fb67c 70%,#4c9be8 92%);-webkit-background-clip:text;background-clip:text}
 @media (max-width:520px){.sheet::before,.sheet::after,.panel::before,.panel::after{width:56px;height:56px}}
 @keyframes rise{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
 .sheet{border-radius:30px;padding:30px 36px;max-width:min(92vw,780px);text-align:center;animation:rise .38s cubic-bezier(.2,.9,.3,1.15)}
@@ -276,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -292,13 +294,25 @@ const UNIT=DIR.map((v,i)=>[v[0]/LEN[i],v[1]/LEN[i]]);
 const opp=d=>(d+4)&7;
 const DTAB=[5,6,7,4,-1,0,3,2,1];
 const PAL=[
-  {n:'Pumpkin',c:'#ff8a1f',d:'#b85a00',l:'#ffc27a'},
-  {n:'Midnight',c:'#2e3048',d:'#14151f',l:'#7a7f9e'},
-  {n:'Twilight',c:'#8a4fd6',d:'#5a2e99',l:'#c7a4f0'},
-  {n:'Headstone',c:'#9ba1a9',d:'#656b73',l:'#d3d7dc',tomb:true},
-  {n:'Slime',c:'#86d92a',d:'#4d9412',l:'#c8f59a'},
-  {n:'Blood',c:'#c4182c',d:'#7a0f1b',l:'#f08c96'}
+  {n:'Pumpkin',c:'#ff8a1f',d:'#b85a00',l:'#ffc27a',shape:'pumpkin'},
+  {n:'Midnight',c:'#2e3048',d:'#14151f',l:'#7a7f9e',shape:'mansion'},
+  {n:'Twilight',c:'#8a4fd6',d:'#5a2e99',l:'#c7a4f0',shape:'witch'},
+  {n:'Headstone',c:'#9ba1a9',d:'#656b73',l:'#d3d7dc',shape:'tomb'},
+  {n:'Slime',c:'#86d92a',d:'#4d9412',l:'#c8f59a',shape:'slime'},
+  {n:'Blood',c:'#c4182c',d:'#7a0f1b',l:'#f08c96',shape:'castle'}
 ];
+const PAL_HW=PAL.map(x=>Object.assign({},x));
+const PAL_CLASSIC=[
+  {n:'Red',c:'#f0605d',d:'#b93b3b',l:'#ffb3ae'},{n:'Blue',c:'#4c9be8',d:'#2c6bb5',l:'#b0d5fa'},{n:'Yellow',c:'#f4c430',d:'#c39412',l:'#fbe28a'},
+  {n:'Green',c:'#3cc48b',d:'#22895f',l:'#a3ebcb'},{n:'Purple',c:'#a468e6',d:'#7440b3',l:'#d5b6f7'},{n:'Orange',c:'#ff8b3d',d:'#c25c15',l:'#ffc79c'}];
+let palMode=null;
+function applyPal(){   // Halloween colours and houses, or the original six (the sprites are redrawn)
+  const m=Settings.v.noHw?'classic':'hw';if(m===palMode)return;palMode=m;
+  const src=m==='classic'?PAL_CLASSIC:PAL_HW;PAL.length=0;for(const x of src)PAL.push(x);
+  if(typeof SPR!=='undefined')for(const k in SPR)delete SPR[k];
+  if(typeof CGLOW!=='undefined')for(const k in CGLOW)delete CGLOW[k];
+  document.body.classList.toggle('nohw',!!Settings.v.noHw);
+}
 const acc=(d,c)=>d.dest&&(d.color===c||d.color2===c);   // does this destination take cars of colour c? (dual destinations take two colours)
 const bname=b=>PAL[b.color].n+(b.color2>=0?' / '+PAL[b.color2].n:'');
 // layer g = ground roads (k0); layer f = elevated (k1 highway, k2 bridge)
@@ -329,7 +343,7 @@ const DIFFS=[
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
-const SET_DEF={theme:'dark',mapNatural:false,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,
+const SET_DEF={theme:'dark',mapNatural:false,noHw:false,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
   tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:8,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
@@ -352,13 +366,13 @@ const Settings={v:Object.assign({},SET_DEF),
   },
   vol(){return this.v.sfx/100*.85},
   set(k,val){this.v[k]=val;this.save();this.react(k);},
-  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','mapNatural','lum','sfx','horns','aiDiff','updateQuiet'])this.react(k);},
+  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','mapNatural','noHw','lum','sfx','horns','aiDiff','updateQuiet'])this.react(k);},
   react(k){
     if(k==='updateQuiet'){   // tell the app (Mac or Windows) so it installs updates without asking
       try{const h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.gridlock;if(h)h.postMessage({op:'updatepref',quiet:!!this.v.updateQuiet});}catch(e){}
       try{if(window.__BRIDGE&&window.__BRIDGE.setQuiet)window.__BRIDGE.setQuiet(!!this.v.updateQuiet);}catch(e){}
     }
-    else if(k==='theme'||k==='mapNatural'||k==='lum')applyTheme();
+    else if(k==='theme'||k==='mapNatural'||k==='lum'||k==='noHw')applyTheme();
     else if(k==='sfx'){if(typeof Snd!=='undefined')Snd.setVol();}
     else if(k==='horns'){const b=document.getElementById('bsnd');if(b)b.textContent=this.v.horns?'Sound':'Muted';}
     else if(k==='aiDiff'){if(mode==='menu'&&typeof startDemo==='function')startDemo();}
@@ -444,11 +458,21 @@ function themeVars(t){
 }
 const palCache={};
 function mapPalette(t){const k=Math.round(t*100);return palCache[k]||(palCache[k]=lumMix(THEMES.midnight,THEMES.dark,THEMES.light,k/100));}
+function spookify(T,nat){   // the haunted map: murky purple ground, dead grass, green-black water
+  if(nat)return Object.assign({},T,{rim:'#59644a',ground:'#6c7c47',patch:['rgba(78,56,104,','rgba(130,120,62,'],grass:['rgba(46,66,38,','rgba(96,84,52,','rgba(76,52,88,'],water:'#3d6657',shore:[[.3,'rgba(190,220,200,.35)'],[.1,'#c9c4a6']],grid:'rgba(40,30,60,.1)'});
+  const m=lerpCol;
+  return Object.assign({},T,{rim:m(T.rim,'#4a3566',.5),ground:m(T.ground,'#4b3769',.55),
+    patch:[m(T.patch[0],'rgba(120,56,160,',.7),m(T.patch[1],'rgba(40,30,54,',.7)],
+    grass:[m(T.grass[0],'rgba(150,115,70,',.7),m(T.grass[1],'rgba(130,80,160,',.7),m(T.grass[2],'rgba(80,115,70,',.6)],
+    water:m(T.water,'#2c6a56',.55),shore:T.shore.map(([w,c],i)=>[w,i?m(c,'#9a93b8',.5):c])});
+}
 function applyTheme(){
+  applyPal();
   const n=themeName(),st=document.body.style,t=Math.max(0,Math.min(100,Settings.v.lum))/100;
   if(n==='contrast'){for(const k of UI_VARS)st.removeProperty('--'+k);}   // the High contrast sheet in the page CSS takes over
   else{const v=themeVars(t);for(const k of UI_VARS)st.setProperty('--'+k,v[k]);}
-  TH=Settings.v.mapNatural?THEMES.natural:(n==='contrast'?THEMES.contrast:mapPalette(t));   // with 'natural map' on, only the menus use the theme
+  TH=Settings.v.mapNatural?THEMES.natural:(n==='contrast'?THEMES.contrast:mapPalette(t));
+  if(!Settings.v.noHw&&TH!==THEMES.contrast)TH=spookify(TH,TH===THEMES.natural);   // with 'natural map' on, only the menus use the theme
   document.body.dataset.theme=n;GC.dirty=true;gfxVer++;
 }
 
@@ -472,7 +496,7 @@ const icon=(k,s)=>`<svg viewBox="0 0 48 48"${s?` style="width:${s}px;height:${s}
 const cv=document.getElementById('cv'),mainCtx=cv.getContext('2d');
 let ctx=mainCtx;
 const _el={},$=id=>_el[id]||(_el[id]=document.getElementById(id));
-let cells,blds,depts=[],cars,inv,S,particles,trees,grass,patches,ripples,colorOrder,undoStack=[];
+let props=[],cells,blds,depts=[],cars,inv,S,particles,trees,grass,patches,ripples,colorOrder,undoStack=[];
 let carId=0,time=0,bldId=0;
 const edgeFT=new Int32Array(N*8), edgeTo=new Int32Array(N*8), espd=new Float32Array(N*8), ebr=new Uint8Array(N*8);
 const mask=new Uint8Array(N), inter=new Uint8Array(N), bnode=new Int32Array(W*H);
@@ -533,6 +557,7 @@ function genMapInner(){
   grass=[];for(let i=0;i<1900;i++){const x=rnd(0,W),y=rnd(0,H);if(cells[cellIdx(Math.min(W-1,Math.floor(x)),Math.min(H-1,Math.floor(y)))].water)continue;grass.push({x,y,r:rnd(.02,.05),a:rnd(.12,.3),g:ri(0,2)});}
   ripples=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(cells[cellIdx(x,y)].water&&((x*7+y*13)%4===0))ripples.push([x,y]);
   patches=[];for(let i=0;i<96;i++)patches.push({x:rnd(0,W),y:rnd(0,H),rx:rnd(1.6,4.8),ry:rnd(1,3.2),a:rnd(.05,.12),g:ri(0,1)});
+  props=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(!cells[cellIdx(x,y)].water&&RNG()<.03)props.push({x:x+rnd(.2,.8),y:y+rnd(.2,.8),t:ri(0,5),f:RNG()});   // gravestones, crosses and pumpkins (last so older cities keep their grass)
 }
 
 /* ---------- graph ---------- */
@@ -2018,9 +2043,9 @@ function tutSteps(){
   const anyHwy=()=>cells.some(c=>c.f&&c.f.some(e=>e&&e.k===1&&!e.ghost));
   return [
     {ch:'Roads',scene:'first',t:'Welcome to Gridlock',x:'Every house sends cars to the <b>destination of the same colour</b>. Your job is to join them with roads.<br><br>Zoom with the scroll wheel or pinch, move with two-finger scroll, <b>Alt-drag</b> or <b>W A S D</b>. Nothing can go wrong here, so explore.',next:true},
-    {ch:'Roads',t:'Your first road',x:'Pick <b>Road</b> (key <b>'+kn('road')+'</b>) and <b>drag</b> along the blue ghost road from the pumpkin house to the pumpkin store.<br>Roads snap to 8 directions and bend smoothly.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
+    {ch:'Roads',t:'Your first road',x:'Pick <b>Road</b> (key <b>'+kn('road')+'</b>) and <b>drag</b> along the blue ghost road from the '+PAL[0].n.toLowerCase()+' house to the '+PAL[0].n.toLowerCase()+' store.<br>Roads snap to 8 directions and bend smoothly.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
     {ch:'Roads',t:'Watch the traffic',x:'Cars drive to the store, park in a bay, and come back. Wait for <b>3 trips</b>.',cond:()=>plus()>=3,target:()=>[T().d]},
-    {ch:'Driveways',scene:'turn',t:'Turn a driveway',x:'This midnight house’s driveway points the wrong way. <b>Click the house</b> to turn its driveway (Shift-click turns it the other way) until it faces the gas station.',cond:()=>T().h.dir!==T().dir0,target:()=>[T().h]},
+    {ch:'Driveways',scene:'turn',t:'Turn a driveway',x:'This '+PAL[1].n.toLowerCase()+' house’s driveway points the wrong way. <b>Click the house</b> to turn its driveway (Shift-click turns it the other way) until it faces the gas station.',cond:()=>T().h.dir!==T().dir0,target:()=>[T().h]},
     {ch:'Driveways',t:'Join the pair',x:'Now follow the ghost road from the house to the gas station.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
     {ch:'Sharing roads',scene:'share',t:'Add the neighbours',x:'The road in the middle already exists. Two new houses want to use it. Follow the ghost roads and join them to it. Cars always take the <b>shortest route</b>, so everyone shares the same road.',cond:()=>tutOK(T().h2)&&tutOK(T().h3),target:()=>[T().h2,T().h3],ghost:{type:'auto',list:()=>[T().h2,T().h3]}},
     {ch:'Sharing roads',t:'One road, many cars',x:'Watch all three houses send cars down the same road. Wait for <b>6 trips</b>.',cond:()=>plus()>=6,setup:()=>{for(const h of [T().h1,T().h2,T().h3])h.demand=4;}},
@@ -2514,9 +2539,76 @@ function sprite(key,w,h,k,paint){   // pre-rendered once, then just stamped with
   const keep=ctx;ctx=c2;try{paint();}finally{ctx=keep;}
   return SPR[key]=c;
 }
-function paintTomb(p){   // a headstone with a door: rounded top, cross, a little grave mound
-  ctx.fillStyle=p.c+'59';rr(.03,.05,.94,.92,.22);ctx.fill();ctx.strokeStyle=p.c;ctx.lineWidth=.045;rr(.03,.05,.94,.92,.22);ctx.stroke();
+function plate(p,edge){   // the tinted base every house stands on
+  ctx.fillStyle=(edge||p.c)+'59';rr(.03,.05,.94,.92,.22);ctx.fill();ctx.strokeStyle=edge||p.c;ctx.lineWidth=.045;rr(.03,.05,.94,.92,.22);ctx.stroke();
   ctx.fillStyle='rgba(30,30,20,.24)';ctx.beginPath();ctx.ellipse(.54,.9,.4,.09,0,0,7);ctx.fill();
+}
+const glowWin=(x,y,w,h)=>{ctx.fillStyle='#ffd27a';rr(x,y,w,h,Math.min(w,h)*.4);ctx.fill();ctx.fillStyle='rgba(255,255,255,.45)';ctx.fillRect(x+w/2-.008,y,.016,h);};
+function paintPumpkin(p){   // a pumpkin you live in: ridged shell, stem, glowing carved eyes, the door is its mouth
+  plate(p);
+  ctx.fillStyle=p.d;ctx.beginPath();ctx.ellipse(.5,.6,.42,.33,0,0,7);ctx.fill();
+  for(const [cx,rx] of [[.28,.22],[.72,.22],[.5,.26]]){ctx.fillStyle=p.c;ctx.beginPath();ctx.ellipse(cx,.58,rx,.31,0,0,7);ctx.fill();}
+  ctx.fillStyle='rgba(255,255,255,.2)';ctx.beginPath();ctx.ellipse(.38,.45,.16,.1,-.4,0,7);ctx.fill();
+  ctx.strokeStyle=p.d;ctx.lineWidth=.022;ctx.beginPath();for(const cx of [.3,.5,.7]){ctx.moveTo(cx,.3);ctx.quadraticCurveTo(cx+(cx-.5)*.5,.58,cx,.88);}ctx.stroke();
+  ctx.fillStyle='#4f7a2a';ctx.beginPath();ctx.moveTo(.45,.3);ctx.lineTo(.47,.14);ctx.lineTo(.56,.12);ctx.lineTo(.55,.3);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#3a5c1e';ctx.lineWidth=.02;ctx.beginPath();ctx.moveTo(.56,.2);ctx.quadraticCurveTo(.7,.2,.68,.32);ctx.stroke();
+  ctx.fillStyle='#ffd04a';for(const [x0,d] of [[.3,1],[.58,1]]){ctx.beginPath();ctx.moveTo(x0,.52);ctx.lineTo(x0+.13,.52);ctx.lineTo(x0+.065,.4);ctx.closePath();ctx.fill();}
+  ctx.fillStyle='#2a1400';ctx.beginPath();ctx.moveTo(.4,.88);ctx.lineTo(.4,.7);ctx.arc(.5,.7,.1,Math.PI,0);ctx.lineTo(.6,.88);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#ffd04a';ctx.fillRect(.42,.66,.04,.04);ctx.fillRect(.54,.66,.04,.04);
+}
+function paintMansion(p){   // a haunted mansion: crooked gable, a tower, lit windows, a bat
+  plate(p,p.l);
+  ctx.fillStyle='#262840';rr(.12,.44,.76,.46,.03);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(.5,.46,.38,.44);
+  ctx.fillStyle='#1a1b2c';ctx.fillRect(.66,.2,.16,.34);                                   // tower
+  ctx.fillStyle='#0d0e16';ctx.beginPath();ctx.moveTo(.62,.22);ctx.lineTo(.74,.03);ctx.lineTo(.86,.22);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#0d0e16';ctx.beginPath();ctx.moveTo(.06,.5);ctx.lineTo(.3,.2);ctx.lineTo(.62,.5);ctx.closePath();ctx.fill();   // main roof
+  ctx.strokeStyle=p.l;ctx.lineWidth=.016;ctx.globalAlpha=.45;ctx.beginPath();ctx.moveTo(.06,.5);ctx.lineTo(.3,.2);ctx.lineTo(.62,.5);ctx.moveTo(.62,.22);ctx.lineTo(.74,.03);ctx.lineTo(.86,.22);ctx.stroke();ctx.globalAlpha=1;
+  glowWin(.7,.28,.08,.14);glowWin(.2,.54,.1,.16);glowWin(.62,.54,.1,.16);glowWin(.78,.62,.07,.12);
+  ctx.fillStyle='#0a0a12';ctx.beginPath();ctx.moveTo(.37,.9);ctx.lineTo(.37,.7);ctx.arc(.44,.7,.07,Math.PI,0);ctx.lineTo(.51,.9);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#ffd27a';ctx.beginPath();ctx.arc(.49,.8,.012,0,7);ctx.fill();
+  ctx.fillStyle='#0a0a12';ctx.beginPath();ctx.moveTo(.14,.12);ctx.quadraticCurveTo(.2,.06,.22,.12);ctx.quadraticCurveTo(.24,.06,.3,.12);ctx.quadraticCurveTo(.24,.11,.22,.15);ctx.quadraticCurveTo(.2,.11,.14,.12);ctx.fill();   // bat
+}
+function paintWitch(p){   // a witch's hat to live in: bent tip, buckled band, a wide brim, a little door
+  plate(p);
+  ctx.fillStyle=p.d;ctx.beginPath();ctx.ellipse(.5,.8,.44,.11,0,0,7);ctx.fill();
+  ctx.fillStyle=p.c;ctx.beginPath();ctx.moveTo(.27,.8);ctx.quadraticCurveTo(.4,.54,.43,.34);ctx.quadraticCurveTo(.45,.18,.66,.08);ctx.quadraticCurveTo(.6,.26,.6,.38);ctx.quadraticCurveTo(.64,.6,.74,.8);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.2)';ctx.beginPath();ctx.moveTo(.27,.8);ctx.quadraticCurveTo(.4,.54,.43,.34);ctx.quadraticCurveTo(.46,.5,.46,.8);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#2a1a40';ctx.beginPath();ctx.moveTo(.31,.69);ctx.quadraticCurveTo(.5,.62,.7,.69);ctx.lineTo(.72,.77);ctx.quadraticCurveTo(.5,.7,.29,.77);ctx.closePath();ctx.fill();   // band
+  ctx.fillStyle='#f4c430';rr(.45,.67,.1,.1,.015);ctx.fill();ctx.fillStyle='#2a1a40';rr(.48,.7,.04,.04,.01);ctx.fill();                                  // buckle
+  ctx.fillStyle='#2a1a40';ctx.beginPath();ctx.moveTo(.43,.9);ctx.lineTo(.43,.84);ctx.arc(.5,.84,.07,Math.PI,0);ctx.lineTo(.57,.9);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#ffd27a';ctx.beginPath();ctx.arc(.545,.87,.012,0,7);ctx.fill();
+  ctx.fillStyle='#ffe9a8';ctx.beginPath();ctx.arc(.52,.5,.04,0,7);ctx.fill();ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(.535,.49,.035,0,7);ctx.fill();   // crescent window
+  ctx.fillStyle='#ffe9a8';for(const [x,y] of [[.3,.3],[.76,.52],[.2,.5]]){ctx.fillRect(x-.012,y-.03,.024,.06);ctx.fillRect(x-.03,y-.012,.06,.024);}   // sparkles
+}
+function paintSlime(p){   // a dripping slime blob with two big eyes and an open mouth for a door
+  plate(p);
+  ctx.fillStyle=p.d;ctx.beginPath();ctx.ellipse(.5,.6,.4,.34,0,Math.PI,0);ctx.rect(.1,.6,.8,.24);ctx.fill();
+  ctx.fillStyle=p.c;ctx.beginPath();ctx.ellipse(.5,.58,.38,.34,0,Math.PI,0);ctx.rect(.12,.58,.76,.24);ctx.fill();
+  for(const [x,l,r] of [[.22,.1,.05],[.5,.18,.06],[.76,.08,.045]]){ctx.fillStyle=p.c;ctx.fillRect(x-r,.8,r*2,l);ctx.beginPath();ctx.arc(x,.8+l,r,0,7);ctx.fill();}
+  ctx.fillStyle='rgba(255,255,255,.3)';ctx.beginPath();ctx.ellipse(.34,.38,.1,.06,-.5,0,7);ctx.fill();
+  for(const x of [.36,.64]){ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,.5,.09,0,7);ctx.fill();ctx.fillStyle='#16240a';ctx.beginPath();ctx.arc(x+.015,.52,.045,0,7);ctx.fill();}
+  ctx.fillStyle='#16240a';ctx.beginPath();ctx.ellipse(.5,.7,.1,.07,0,0,Math.PI);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(.44,.7,.03,.03);ctx.fillRect(.53,.7,.03,.03);
+}
+function paintCastle(p){   // a vampire castle: two towers with red cones, battlements, a black gate
+  plate(p);
+  ctx.fillStyle=p.d;rr(.14,.44,.72,.46,.02);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(.5,.46,.36,.44);
+  for(let i=0;i<5;i++){ctx.fillStyle=p.d;ctx.fillRect(.3+i*.09,.38,.055,.08);}
+  for(const x of [.08,.72]){
+    ctx.fillStyle='#8f1425';ctx.fillRect(x,.3,.2,.6);ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(x+.1,.3,.1,.6);
+    ctx.fillStyle=p.c;ctx.beginPath();ctx.moveTo(x-.03,.32);ctx.lineTo(x+.1,.04);ctx.lineTo(x+.23,.32);ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.2)';ctx.beginPath();ctx.moveTo(x-.03,.32);ctx.lineTo(x+.1,.04);ctx.lineTo(x+.1,.32);ctx.closePath();ctx.fill();
+    glowWin(x+.07,.46,.06,.14);
+    ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(x+.05,.34,.012,0,7);ctx.arc(x+.15,.34,.012,0,7);ctx.arc(x+.1,.36,.016,0,7);ctx.fill();   // drips
+  }
+  ctx.fillStyle='#0a0508';ctx.beginPath();ctx.moveTo(.42,.9);ctx.lineTo(.42,.66);ctx.arc(.5,.66,.08,Math.PI,0);ctx.lineTo(.58,.9);ctx.closePath();ctx.fill();
+  ctx.fillStyle=p.c;ctx.fillRect(.47,.7,.06,.2);
+  glowWin(.34,.52,.06,.1);glowWin(.6,.52,.06,.1);
+}
+const HOUSE_SHAPES={pumpkin:paintPumpkin,mansion:paintMansion,witch:paintWitch,slime:paintSlime,castle:paintCastle};
+function paintTomb(p){   // a headstone with a door: rounded top, cross, a little grave mound
+  plate(p);
   ctx.fillStyle='#4a4238';ctx.beginPath();ctx.ellipse(.5,.88,.36,.07,0,0,7);ctx.fill();   // earth
   const st=()=>{ctx.beginPath();ctx.moveTo(.2,.88);ctx.lineTo(.2,.34);ctx.arc(.5,.34,.3,Math.PI,0);ctx.lineTo(.8,.88);ctx.closePath();};
   ctx.fillStyle=p.c;st();ctx.fill();
@@ -2529,7 +2621,8 @@ function paintTomb(p){   // a headstone with a door: rounded top, cross, a littl
   ctx.fillStyle='rgba(60,70,50,.7)';ctx.beginPath();ctx.arc(.24,.86,.04,0,7);ctx.arc(.78,.86,.035,0,7);ctx.fill();   // moss
 }
 function paintHouse(p){   // a little house with a pointed gable roof
-  if(p.tomb)return paintTomb(p);
+  if(p.shape==='tomb')return paintTomb(p);
+  if(p.shape&&HOUSE_SHAPES[p.shape])return HOUSE_SHAPES[p.shape](p);
   ctx.fillStyle=p.c+'59';rr(.03,.05,.94,.92,.22);ctx.fill();ctx.strokeStyle=p.c;ctx.lineWidth=.045;rr(.03,.05,.94,.92,.22);ctx.stroke();   // a base in the house's colour
   ctx.fillStyle='rgba(30,30,20,.20)';ctx.beginPath();ctx.ellipse(.54,.9,.4,.09,0,0,7);ctx.fill();
   ctx.fillStyle='#8a7a6a';ctx.fillRect(.66,.14,.1,.2);ctx.fillStyle='#6f6253';ctx.fillRect(.64,.12,.14,.05);   // chimney (behind the roof)
@@ -2720,7 +2813,16 @@ function drawGround(){
   for(const t of trees){
     if(t.x<vx0-1||t.x>vx1+1||t.y<vy0-1||t.y>vy1+1)continue;
     const c=cells[cellIdx(Math.floor(t.x),Math.floor(t.y))];if(c.e||c.f||c.bld)continue;
-    drawDeadTree(t);
+    if(Settings.v.noHw){const cols=TH.trees[t.s];
+      ctx.fillStyle=TH.treeSh;ctx.beginPath();ctx.ellipse(t.x+.07,t.y+.11,t.r*1.05,t.r*.78,0,0,7);ctx.fill();
+      ctx.fillStyle=cols[0];ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.fill();
+      ctx.fillStyle=cols[1];ctx.beginPath();ctx.arc(t.x-t.r*.25,t.y-t.r*.3,t.r*.58,0,7);ctx.fill();}
+    else drawDeadTree(t);
+  }
+  if(!Settings.v.noHw)for(const q of props){
+    if(q.x<vx0-1||q.x>vx1+1||q.y<vy0-1||q.y>vy1+1)continue;
+    const c=cells[cellIdx(Math.floor(q.x),Math.floor(q.y))];if(c.water||c.e||c.f||c.bld)continue;
+    drawProp(q);
   }
   ctx.restore();
   // ground roads + driveways
@@ -2728,6 +2830,25 @@ function drawGround(){
   drawNet('g',-3);drawStubs(-3);                                                   // sidewalks
   for(const ps of [0,1,2]){drawNet('g',ps);drawStubs(ps);}                          // curb, edge band, asphalt
   drawMarks('g');drawStops();
+}
+function drawProp(q){   // t 0-1 gravestone, 2 cross, 3-4 pumpkin
+  const x=q.x,y=q.y;ctx.save();ctx.translate(x,y);
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(.05,.1,.17,.06,0,0,7);ctx.fill();
+  if(q.t<=1){
+    ctx.fillStyle='#4a4035';ctx.beginPath();ctx.ellipse(0,.1,.15,.045,0,0,7);ctx.fill();
+    ctx.fillStyle=q.f>.5?'#8d939c':'#767c86';ctx.beginPath();ctx.moveTo(-.1,.1);ctx.lineTo(-.1,-.04);ctx.arc(0,-.04,.1,Math.PI,0);ctx.lineTo(.1,.1);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(30,30,40,.5)';ctx.lineWidth=.016;ctx.stroke();
+    ctx.strokeStyle='rgba(30,30,40,.45)';ctx.lineWidth=.02;ctx.beginPath();ctx.moveTo(0,-.1);ctx.lineTo(0,0);ctx.moveTo(-.04,-.06);ctx.lineTo(.04,-.06);ctx.stroke();
+  } else if(q.t===2){
+    ctx.rotate((q.f-.5)*.4);ctx.fillStyle='#6b5a46';ctx.fillRect(-.02,-.17,.04,.3);ctx.fillRect(-.09,-.1,.18,.04);
+  } else {
+    const r=.1+q.f*.04;ctx.fillStyle='#e8761a';ctx.beginPath();ctx.ellipse(0,0,r*1.2,r,0,0,7);ctx.fill();
+    ctx.strokeStyle='#b4540c';ctx.lineWidth=.016;ctx.beginPath();ctx.ellipse(0,0,r*.6,r,0,0,7);ctx.moveTo(0,-r);ctx.lineTo(0,r);ctx.stroke();
+    ctx.fillStyle='#4f7a2a';ctx.fillRect(-.012,-r-.05,.03,.06);
+    ctx.fillStyle='#ffd04a';ctx.beginPath();ctx.moveTo(-.06,-.02);ctx.lineTo(-.02,-.02);ctx.lineTo(-.04,-.06);ctx.moveTo(.02,-.02);ctx.lineTo(.06,-.02);ctx.lineTo(.04,-.06);ctx.fill();
+    ctx.fillRect(-.05,.03,.1,.02);
+  }
+  ctx.restore();
 }
 function drawDeadTree(t){   // a bare black tree seen from above: a star of crooked branches that fork
   const sd=t.x*12.9898+t.y*78.233,rn=i=>{const v=Math.sin(sd*(i+1)*1.713)*43758.5453;return v-Math.floor(v);};
@@ -2903,6 +3024,28 @@ function drawRipples(){   // the only animated scenery: drifting ripples on the 
   }
   ctx.stroke();
 }
+let fogImg=null,batT=0;
+function drawFog(){   // slow drifting mist, a bit thicker after dark
+  if(!fogImg){fogImg=glowImg('rgba(205,210,235,');}
+  const T=performance.now()/1000,am=ambient(),w=vx1-vx0+10,h=vy1-vy0;
+  ctx.save();
+  for(let i=0;i<16;i++){
+    const sp=.12+(i%5)*.05,sx=((i*37.1)%w+T*sp)%w,px=vx0-5+sx,py=vy0+((i*53.7)%h)+Math.sin(T*.2+i)*.8,r=3.5+(i%4)*1.3;
+    ctx.globalAlpha=.16+.12*am.n;ctx.drawImage(fogImg,px-r,py-r*.55,r*2,r*1.1);
+  }
+  ctx.restore();
+}
+function drawBats(){   // a few bats flap across the sky
+  const T=performance.now()/1000,w=vx1-vx0+12;
+  ctx.save();ctx.fillStyle='#0c0b12';
+  for(let i=0;i<4;i++){
+    const sp=1.1+i*.35,ph=(T*sp*.35+i*.27)%1,x=vx0-6+((i%2)?1-ph:ph)*w,y=vy0+((i*29.3)%(vy1-vy0))+Math.sin(T*1.6+i*2)*1.2,dir=(i%2)?-1:1,fl=Math.sin(T*16+i*3);
+    ctx.save();ctx.translate(x,y);ctx.scale(dir*.8,.8);
+    ctx.globalAlpha=.85;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(.22,-.22*fl-.08,.5,-.04*fl);ctx.quadraticCurveTo(.3,.08,.14,.04);ctx.lineTo(0,.14);ctx.lineTo(-.14,.04);ctx.quadraticCurveTo(-.3,.08,-.5,-.04*fl);ctx.quadraticCurveTo(-.22,-.22*fl-.08,0,0);ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+}
 function draw(){
   ctx=mainCtx;
   mainCtx.setTransform(dpr,0,0,dpr,0,0);mainCtx.clearRect(0,0,cw,ch);
@@ -2933,6 +3076,7 @@ function draw(){
   for(const c of cars){if(c.dead||!isPark(c.ph))continue;const q=parkPose(c);if(q.x<vx0-2||q.x>vx1+2||q.y<vy0-2||q.y>vy1+2)continue;drawCar(c,q);}
   drawTutorial();
   drawAmbient(poses);
+  if(!Settings.v.noHw&&Settings.v.fx&&mode!=='tut'){drawFog();drawBats();}
   if(D.notify&&!S.demo&&!S.tut&&mode==='play'&&Settings.v.n_mark)for(const b of blds)drawAlert(b);
   if(Settings.v.fx)for(const p of particles){ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();}
   ctx.globalAlpha=1;
@@ -3155,6 +3299,7 @@ const SCREENS={
       ${sec('Display',
         row('Theme','Standard follows the brightness slider below; High contrast ignores it',seg('theme',[['dark','Standard'],['contrast','High contrast']]))
         +tog('mapNatural','Don\u2019t apply the theme to the map','The map keeps natural, realistic colours with green grass (and still gets dark at night); only the menus and buttons use the theme')
+        +tog('noHw','No Halloween theme','Turns the spooky look off: the original colours and houses, green trees and grass, no cobwebs, fog or bats. Dual destinations stay')
         +sld('lum','Theme brightness','Slide from black to white: the colours of the menus and the map',0,100,1,'pct')
         +tog('cycle','Day and night cycle','The light fades to night and back as the game runs. Not used in High contrast.')
         +row('Cycle length','How long one full day takes',seg('cycleLen',[[120,'2 min'],[240,'4 min'],[480,'8 min']]))

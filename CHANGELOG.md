@@ -1,5 +1,11 @@
 # Gridlock changelog
 
+## 1.6.1 — A spookier world
+- Every colour has its own house: Pumpkin is a jack-o'-lantern, Midnight a haunted mansion, Twilight a witch's hat, Headstone a headstone with a door, Slime a dripping slime blob and Blood a vampire castle
+- Haunted ground: murky purple earth, dead grass and green-black water, with gravestones, crosses and pumpkins scattered about
+- Drifting fog and bats across the map (they follow Visual effects)
+- New setting, No Halloween theme: brings back the original colours and houses, green trees and grass and plain menus, and turns off the fog and bats. Dual destinations stay
+
 ## 1.6.0 — Spooky season
 - New icon: the spooky night city
 - New colours: Pumpkin, Midnight, Twilight, Headstone, Slime and Blood. Headstone houses are little headstones with doors
