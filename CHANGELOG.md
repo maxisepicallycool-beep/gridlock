@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.2.2 — Faster updates
+- Gridlock checks for updates the moment it opens
+- It also checks every 15 minutes while open, and when you switch back to it
+- New updates now show up right away instead of after a few minutes
+
 ## 1.2.1 — Test update
 - This is a test update to check the update prompt
 - Nothing in the game has changed
