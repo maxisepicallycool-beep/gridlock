@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.6.7 — Haunted fire service
+- The fire station is a gothic fire house: jagged gables, a skull plaque, a jack-o'-lantern beacon on its tower, bays with eyes watching from the dark and a cobweb in the corner
+- Fire trucks are black with orange flame decals, a bone ladder, a skull on the roof and a glowing green windscreen. Their sirens flash orange and purple
+- The No Halloween theme setting brings back the red station and truck
+
 ## 1.6.6 — House fire chances
 - Chance of a house fire each minute: Relaxed 5% (it had none), Standard 10% (was 5%), Rush Hour 12.5% (was 10%), Gridlock 15% (unchanged)
 

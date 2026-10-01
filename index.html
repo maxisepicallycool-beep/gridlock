@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.6';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.7';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1075,7 +1075,23 @@ function removeDept(d){
   depts.splice(depts.indexOf(d),1);inv.fire++;
   rebuild();refreshDock();
 }
+function paintTruckHw(){   // a black hearse-style engine: orange flame decals, a bone ladder, glowing green windscreen
+  ctx.translate(.525,.25);
+  ctx.fillStyle='rgba(0,0,0,.3)';rr(-.41,-.12,.84,.3,.06);ctx.fill();
+  ctx.fillStyle='#ff8a1f';rr(-.435,-.175,.87,.35,.08);ctx.fill();
+  ctx.fillStyle='#241c30';rr(-.415,-.155,.83,.31,.065);ctx.fill();
+  ctx.fillStyle='#ff8a1f';for(const sy of [-1,1]){for(let i=0;i<5;i++){const x=-.38+i*.11;ctx.beginPath();ctx.moveTo(x,sy*.15);ctx.quadraticCurveTo(x+.02,sy*.11,x+.045,sy*.06);ctx.quadraticCurveTo(x+.07,sy*.11,x+.09,sy*.15);ctx.closePath();ctx.fill();}}   // flames licking up the sides
+  ctx.fillStyle='#e9e2cf';ctx.fillRect(-.36,-.03,.56,.012);ctx.fillRect(-.36,.018,.56,.012);
+  ctx.strokeStyle='#e9e2cf';ctx.lineWidth=.02;ctx.beginPath();ctx.moveTo(-.34,-.06);ctx.lineTo(.12,-.06);ctx.moveTo(-.34,.06);ctx.lineTo(.12,.06);ctx.stroke();
+  ctx.lineWidth=.012;ctx.beginPath();for(let x=-.3;x<.12;x+=.06){ctx.moveTo(x,-.06);ctx.lineTo(x,.06);}ctx.stroke();   // ladder
+  ctx.fillStyle='#17121f';rr(.2,-.14,.2,.28,.05);ctx.fill();
+  ctx.fillStyle='rgba(124,255,90,.85)';rr(.3,-.11,.08,.22,.03);ctx.fill();
+  ctx.fillStyle='#f3efe0';ctx.beginPath();ctx.arc(.25,0,.035,0,7);ctx.fill();ctx.fillStyle='#17121f';ctx.beginPath();ctx.arc(.24,-.012,.008,0,7);ctx.arc(.24,.012,.008,0,7);ctx.fill();   // a little skull on the roof
+  ctx.fillStyle='#fff3b0';ctx.beginPath();ctx.arc(.41,-.09,.022,0,7);ctx.arc(.41,.09,.022,0,7);ctx.fill();
+  ctx.fillStyle='#ff6b6b';ctx.beginPath();ctx.arc(-.41,-.09,.02,0,7);ctx.arc(-.41,.09,.02,0,7);ctx.fill();
+}
 function paintTruck(){
+  if(!Settings.v.noHw)return paintTruckHw();
   ctx.translate(.525,.25);
   ctx.fillStyle='rgba(0,0,0,.25)';rr(-.41,-.12,.84,.3,.06);ctx.fill();
   ctx.fillStyle='#fff';rr(-.435,-.175,.87,.35,.08);ctx.fill();
@@ -1092,13 +1108,13 @@ function drawTruck(c,q){
   const lights=c.truck&&(c.ph==='go'||c.ph==='spray'||c.ph==='gout'),flash=Math.floor(performance.now()/110)%2;
   ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.a);
   if(lights)for(const [ly,red] of [[-.12,flash],[.12,!flash]]){   // siren light washing over the road
-    const col=red?'255,40,40':'60,110,255',g=ctx.createRadialGradient(.12,ly,0,.12,ly,1.15);
+    const col=Settings.v.noHw?(red?'255,40,40':'60,110,255'):(red?'255,120,20':'150,90,255'),g=ctx.createRadialGradient(.12,ly,0,.12,ly,1.15);
     g.addColorStop(0,'rgba('+col+',.55)');g.addColorStop(1,'rgba('+col+',0)');
     ctx.fillStyle=g;ctx.beginPath();ctx.arc(.12,ly,1.15,0,7);ctx.fill();
   }
   ctx.drawImage(sprite('truck',1.05,.5,300,paintTruck),-.525,-.25,1.05,.5);
   if(lights)for(const [ly,red] of [[-.1,flash],[.1,!flash]]){   // the light bar
-    ctx.fillStyle=red?'#ff3b30':'#3a7bff';ctx.beginPath();ctx.arc(.15,ly,.045,0,7);ctx.fill();
+    ctx.fillStyle=Settings.v.noHw?(red?'#ff3b30':'#3a7bff'):(red?'#ff8a1f':'#a468ff');ctx.beginPath();ctx.arc(.15,ly,.045,0,7);ctx.fill();
     ctx.fillStyle='rgba(255,255,255,.85)';ctx.beginPath();ctx.arc(.15,ly,.018,0,7);ctx.fill();
   }
   ctx.restore();
@@ -1132,7 +1148,27 @@ function drawSteam(b){
   for(let i=0;i<6;i++){const ph=Math.min(1,age/2.4+i*.05),a=(1-ph)*.6;ctx.fillStyle='rgba(235,240,245,'+a+')';ctx.beginPath();ctx.arc(x+.18*Math.sin(i*2.1+age*2),y-.1-ph*.9-i*.03,.1+ph*.25,0,7);ctx.fill();}
   ctx.restore();
 }
+function paintDeptHw(){   // a gothic fire house: crooked gables, a lantern tower, orange-lit bays
+  lotBase(null,[]);
+  ctx.fillStyle='rgba(0,0,0,.28)';rr(.3,.3,1.3,.92,.08);ctx.fill();
+  ctx.fillStyle='#3d2f52';rr(.26,.24,1.3,.9,.07);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(.9,.44,.66,.7);
+  ctx.fillStyle='#241a33';ctx.beginPath();ctx.moveTo(.22,.46);for(let i=0;i<4;i++){const x=.22+i*.34;ctx.lineTo(x+.17,.18+(i%2)*.06);ctx.lineTo(x+.34,.46);}ctx.closePath();ctx.fill();   // jagged gables
+  ctx.strokeStyle='#ff8a1f';ctx.lineWidth=.02;ctx.beginPath();ctx.moveTo(.22,.46);for(let i=0;i<4;i++){const x=.22+i*.34;ctx.lineTo(x+.17,.18+(i%2)*.06);ctx.lineTo(x+.34,.46);}ctx.stroke();
+  ctx.fillStyle='#f3efe0';ctx.beginPath();ctx.arc(.7,.4,.065,0,7);ctx.fill();ctx.fillRect(.67,.43,.06,.05);ctx.fillStyle='#17121f';ctx.beginPath();ctx.arc(.68,.39,.014,0,7);ctx.arc(.72,.39,.014,0,7);ctx.fill();   // skull plaque
+  for(const gx of [.4,.92]){
+    ctx.fillStyle='#7a2d12';rr(gx-.03,.57,.48,.58,.05);ctx.fill();
+    ctx.fillStyle='#17121f';rr(gx,.6,.42,.52,.04);ctx.fill();
+    ctx.fillStyle='rgba(255,138,31,.2)';ctx.fillRect(gx+.02,.92,.38,.18);
+    ctx.fillStyle='#ffd23a';ctx.beginPath();ctx.arc(gx+.12,.7,.016,0,7);ctx.arc(gx+.3,.7,.016,0,7);ctx.fill();   // eyes watching from the dark
+  }
+  ctx.fillStyle='#241a33';rr(1.4,.3,.3,.82,.05);ctx.fill();ctx.fillStyle='#17121f';ctx.beginPath();ctx.moveTo(1.38,.34);ctx.lineTo(1.55,.1);ctx.lineTo(1.72,.34);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#ff8a1f';ctx.beginPath();ctx.arc(1.55,.5,.09,0,7);ctx.fill();ctx.fillStyle='#17121f';ctx.beginPath();ctx.moveTo(1.5,.49);ctx.lineTo(1.53,.49);ctx.lineTo(1.515,.46);ctx.moveTo(1.57,.49);ctx.lineTo(1.6,.49);ctx.lineTo(1.585,.46);ctx.fill();ctx.fillRect(1.51,.53,.08,.015);   // a jack-o'-lantern beacon
+  ctx.strokeStyle='rgba(200,200,215,.45)';ctx.lineWidth=.012;ctx.beginPath();for(let k=0;k<4;k++){ctx.moveTo(.26,.24);ctx.lineTo(.26+.2*Math.cos(k*.4),.24+.2*Math.sin(k*.4+.25));}ctx.stroke();   // cobweb
+  ctx.strokeStyle='rgba(255,138,31,.85)';ctx.lineWidth=.03;ctx.lineCap='butt';ctx.setLineDash([.1,.08]);ctx.beginPath();ctx.moveTo(.3,1.32);ctx.lineTo(1.66,1.32);ctx.stroke();ctx.setLineDash([]);
+}
 function paintDept(){   // drawn facing south; the garage doors themselves are drawn live so they can roll
+  if(!Settings.v.noHw)return paintDeptHw();
   lotBase(null,[]);
   ctx.fillStyle='rgba(0,0,0,.2)';rr(.3,.3,1.3,.92,.08);ctx.fill();
   ctx.fillStyle='#d8382f';rr(.26,.24,1.3,.9,.07);ctx.fill();
@@ -1155,8 +1191,8 @@ function drawDept(d){
     ctx.drawImage(sprite('dept2',2,2,224,paintDept),0,0,2,2);
     const h=.52*(1-d.sh);   // roller shutters: they roll up as a truck leaves or arrives
     if(h>.012)for(const gx of [.4,.92]){
-      ctx.fillStyle='#e8e4da';rr(gx,.6,.42,h,.03);ctx.fill();
-      ctx.strokeStyle='#b8b3a6';ctx.lineWidth=.02;for(let y=.66;y<.6+h-.02;y+=.08){ctx.beginPath();ctx.moveTo(gx+.03,y);ctx.lineTo(gx+.39,y);ctx.stroke();}
+      ctx.fillStyle=Settings.v.noHw?'#e8e4da':'#6a5a80';rr(gx,.6,.42,h,.03);ctx.fill();
+      ctx.strokeStyle=Settings.v.noHw?'#b8b3a6':'#3f3355';ctx.lineWidth=.02;for(let y=.66;y<.6+h-.02;y+=.08){ctx.beginPath();ctx.moveTo(gx+.03,y);ctx.lineTo(gx+.39,y);ctx.stroke();}
     }
   }
   ctx.restore();
