@@ -1,5 +1,12 @@
 # Gridlock changelog
 
+## 1.4.0 — Tutorial, fire truck manners and colours you can see at night
+- New Tutorial level (main menu): a guided town that teaches roads, rotating driveways, traffic, bridges, stop signs, highways, fire stations, layers and the weekly cards, step by step with highlights
+- Fire trucks no longer shove every car off the road: only cars in the truck's way ease over to the right, let it pass, then smoothly pull back out. This also fixes cars getting stuck at the kerb afterwards
+- Houses and destinations now have a base in their own colour, day and night
+- At night every house, destination and car glows in its colour, and destinations get a bright coloured outline, so you can tell the colours apart in the dark
+- Fixed fire stations failing to draw after the colour change
+
 ## 1.3.3 — Songs download themselves
 - The songs are now on GitHub: if your copy of the game has no music files it downloads them the first time (about 11 MB) and keeps them
 - Settings shows "Downloading the songs…" while that happens
