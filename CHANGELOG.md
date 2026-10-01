@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.5.6 — Quiet updates, green grass for the natural map
+- New setting "Install updates quietly" (Settings → Updates): no update pop-ups. New versions are downloaded in the background and installed when the game opens. Experimental updates still ask first
+- Green grass now belongs to the natural map ("Don't apply the theme to the map"). The themed map keeps its own beige / dark colours and follows the theme brightness slider. Both get dark at night
+
 ## 1.5.5 — Green grass
 - The map's grass is now green instead of beige, at every theme brightness (greener in the dark settings too, and a pale green in High contrast)
 - Trees are a deeper green so they stand out from the grass
