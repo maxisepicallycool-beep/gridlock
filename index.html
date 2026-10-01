@@ -230,6 +230,7 @@ body.inmenu #coach{display:none!important}
 #coach .cbar{height:5px;border-radius:99px;background:var(--soft);margin:7px 0 10px;overflow:hidden}#coach .cbar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
 #coach h3{margin:0 0 5px;font-size:17px}#coach p{margin:0 0 11px;font-size:13px;line-height:1.45;color:var(--ink2)}
 #coach .cbtns{display:flex;gap:8px;flex-wrap:wrap}#coach.ok{border-color:var(--good)}#coach.ok .cbar i{background:var(--good)}
+#menu.still .panel,#menu.still .mwrap{animation:none}
 </style>
 </head>
 <body>
@@ -268,7 +269,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.5.13';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.5.14';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -2056,11 +2057,12 @@ function tutShow(){
   const st=TUT.steps[TUT.i],n=TUT.steps.length,done=TUT.doneAt>0;
   const chs=[...new Set(TUT.steps.map(q=>q.ch))],ci=chs.indexOf(st.ch)+1;
   el.style.display='block';el.classList.toggle('ok',done);
-  el.innerHTML=`<div class="cstep">Lesson ${ci} of ${chs.length} · ${st.ch}</div><div class="cbar"><i style="width:${(TUT.i+(done?1:0))/n*100}%"></i></div>
+  const html=`<div class="cstep">Lesson ${ci} of ${chs.length} · ${st.ch}</div><div class="cbar"><i style="width:${(TUT.i+(done?1:0))/n*100}%"></i></div>
     <h3>${done?'✓ ':''}${st.t}</h3><p>${done?'<b>Nice work!</b> '+(st.x2||''):(typeof st.x==='function'?st.x():st.x)}</p>
     <div class="cbtns">${st.final?'<button class="sbtn" data-c="play">Keep playing</button><button class="sbtn" data-c="menu">Main menu</button><button class="sbtn ghost" data-c="again">Replay</button>'
       :(st.next||done)?'<button class="sbtn" data-c="next">Next</button>':'<button class="sbtn ghost" data-c="skip">Skip</button>'}
       ${st.final?'':'<button class="sbtn ghost" data-c="redo" title="Rebuild this lesson’s scene">Restart lesson</button><button class="sbtn ghost" data-c="exit">Exit</button>'}</div>`;
+  if(el._h!==html){el._h=html;el.innerHTML=html;}
 }
 function tutAdvance(){if(TUT)tutEnter(Math.min(TUT.steps.length-1,TUT.i+1));}
 function tutTick(){
@@ -3191,7 +3193,12 @@ function fillAbout(){   // which app and game version this is (the app answers w
   else el.textContent='Running in a browser';
 }
 const Menu={
-  show(screen){MS.screen=screen;menuEl.innerHTML=SCREENS[screen]();menuEl.classList.remove('hidden');
+  show(screen){
+    const same=MS.screen===screen&&!menuEl.classList.contains('hidden');
+    const pb=menuEl.querySelector('.pbody'),st=same&&pb?pb.scrollTop:0,mt=same?menuEl.scrollTop:0;
+    menuEl.classList.toggle('still',same);   // same screen again: no entrance animation, so a click doesn't make it flash
+    MS.screen=screen;menuEl.innerHTML=SCREENS[screen]();menuEl.classList.remove('hidden');
+    if(same){const nb=menuEl.querySelector('.pbody');if(nb)nb.scrollTop=st;menuEl.scrollTop=mt;}
     if(screen==='new'){const ph=pick(NAMES);MS.placeholder=MS.placeholder||ph;}
     if(screen==='settings')fillAbout();},
   hide(){menuEl.classList.add('hidden');menuEl.innerHTML='';}
@@ -3205,11 +3212,12 @@ menuEl.addEventListener('input',e=>{
 });
 menuEl.addEventListener('click',e=>{
   const o=e.target.closest('[data-set]');
-  if(o){const val=o.dataset.val;Settings.set(o.dataset.set,val!==''&&!isNaN(+val)?+val:val);refreshSettings();return;}
+  if(o){const val=o.dataset.val;Settings.set(o.dataset.set,val!==''&&!isNaN(+val)?+val:val);
+    const seg=o.closest('.seg');if(seg){seg.querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o));}else refreshSettings();return;}
   const bn=e.target.closest('[data-bind]');
   if(bn){rebinding=rebinding===bn.dataset.bind?null:bn.dataset.bind;refreshSettings();return;}
   const t=e.target.closest('[data-tog]');
-  if(t){Settings.set(t.dataset.tog,!Settings.v[t.dataset.tog]);refreshSettings();return;}
+  if(t){Settings.set(t.dataset.tog,!Settings.v[t.dataset.tog]);const on=!!Settings.v[t.dataset.tog];t.classList.toggle('on',on);t.setAttribute('aria-pressed',on);return;}
   const a=e.target.closest('[data-act]');if(a)act(a.dataset.act,a.dataset);
 });
 

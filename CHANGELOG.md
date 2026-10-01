@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.5.14 — No more flashing menus
+- Clicking things on a menu screen (difficulty cards, Delete, key bindings, Settings options) no longer replays the screen's entrance animation, so it doesn't reload or flicker
+- Settings switches and option buttons now change in place instead of redrawing the whole screen, and a redraw keeps your scroll position
+- The tutorial card only redraws when its text actually changes
+
 ## 1.5.13 — Delete all cities
 - "Your Cities" has a Delete all cities button. It asks you to press it a second time (or choose Keep them) so you can't wipe your cities by accident
 
