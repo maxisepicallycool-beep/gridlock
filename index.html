@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.13';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.14';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1461,7 +1461,7 @@ const connectedToAll=b=>{const ds=blds.filter(d=>acc(d,b.color));return ds.lengt
 function alertLevel(b){
   if(b.fire)return 2;
   if(b.dest){if(b.over>0||b.jam>=D.dcap)return 2;if(b.jam>=D.dcap-1&&(b.loadT||0)>=Settings.v.n_delayLoad)return 1;return 0;}
-  return b.demand>=MAXD&&(b.pileT||0)>=Settings.v.n_delayHouse&&!b.connAll?1:0;
+  return 0;   // houses no longer raise 'backed up' warnings
 }
 function checkAlerts(){
   if(!D.notify||S.demo||S.tut||mode!=='play')return;
@@ -1472,12 +1472,6 @@ function checkAlerts(){
       b.loadT=(b.jam>=D.dcap-1&&!(b.over>0))?(b.loadT||0)+dt:0;   // how long cars have been running late
       if(b.over>0)Notes.push('over'+b.id,'crit','!',nm+' destination cut off by traffic','Cars aren\u2019t getting there in time \u2014 fix the roads or it ends in '+Math.max(1,Math.ceil(D.dlimit-b.over))+'s',b);
       else if(b.jam>=D.dcap-1&&b.loadT>=v.n_delayLoad)Notes.push('load'+b.id,'warn','!',nm+' destination getting backed up',b.jam+' cars are running late \u2014 check the roads into it',b);
-    } else {
-      if(b.demand>=MAXD){
-        b.pileT=(b.pileT||0)+dt;   // how long trips have been piling up
-        if(b.connT===undefined||now-b.connT>2000){b.connAll=connectedToAll(b);b.connT=now;}
-        if(b.pileT>=v.n_delayHouse&&!b.connAll)Notes.push('pile'+b.id,'warn','!',nm+' house is backed up',b.demand+' trips waiting — is it connected?',b);
-      } else {b.pileT=0;b.connAll=false;b.connT=undefined;}
     }
   }
   for(let c=0;c<6;c++)if(S.stallT[c]>=Math.max(.5,v.n_delayCut)){const d=blds.find(x=>acc(x,c));Notes.push('cut'+c,'crit','!',PAL[c].n+' trips cut off','Reconnect them — '+Math.max(1,Math.ceil(D.stall-S.stallT[c]))+'s left',d);}
@@ -3448,7 +3442,6 @@ const SCREENS={
         +tog('n_fire','Fire alerts','Houses on fire and fire station news')
         +tog('n_good','Good news','City growth and stations ready')
         +tog('n_warn','Warnings','Things that are starting to back up')
-        +row('House backed up','How long trips pile up at a house that can\u2019t get through before it alerts you',seg('n_delayHouse',[[0,'Instant'],[5,'5 s'],[10,'10 s'],[20,'20 s'],[40,'40 s']]))
         +row('Destination filling up','How long a destination stays nearly full before it warns you',seg('n_delayLoad',[[0,'Instant'],[3,'3 s'],[6,'6 s'],[10,'10 s']]))
         +row('Trips cut off','How long a colour stays cut off before it alerts you',seg('n_delayCut',[[0,'Instant'],[3,'3 s'],[6,'6 s'],[10,'10 s']]))
         +row('Alerts stay on screen','How long each alert is shown',seg('n_show',[[4,'4 s'],[8,'8 s'],[12,'12 s'],[20,'20 s']]))
