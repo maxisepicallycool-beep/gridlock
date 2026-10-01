@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.6.13 — Slightly fewer late-game roads
+- Road and one-way road cards are trimmed from week 5: 10% fewer at first, growing to 30% fewer by week 15. The late-game top is now about 1.75 times a normal card instead of 2.5 times. Early weeks and other pieces are unchanged
+
 ## 1.6.12 — Ghost roads wait for cars that are on them
 - A ghost road stays while a car is on it, so the car can drive off first. Cars that have not reached it yet switch to another route to the same place the moment one exists, and the ghost is removed as soon as nobody is on it (undoes the 1.6.11 change)
 
