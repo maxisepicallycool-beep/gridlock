@@ -1,5 +1,17 @@
 # Gridlock changelog
 
+## 1.3.0 — Settings, music, night and a smarter menu AI
+- New Settings screen (main menu, pause menu or the Settings button): themes (Light, Dark, Midnight, High contrast, Match system), sound, notifications, controls, autosave and more
+- Day and night cycle with street lamps, glowing windows, headlights and a grey-bulbed lamp that lights the road from underneath
+- Soundtrack: Fi's Theme and Rito Village by day, Gymnopédie No. 1 and Dance of the Moonlight Jellies by night, crossfading as the light changes, with volume, crossfade, menu and background options
+- Rebindable keyboard controls, plus zoom speed, scroll direction, pan speed and right-click options
+- Notification settings: turn critical, fire, good news and warning alerts, markers and hints on or off
+- Highways must now join the side of a road, never its end
+- Menu AI: places fire stations that put out fires, expands the city, builds shortcuts and highways, recycles unused roads, and you can set its speed and difficulty
+- New app icon, and the Dock icon can now be changed from GitHub
+- Updates labelled EXPERIMENTAL are shown with a warning banner and are never installed automatically
+- Faster update checks with backup addresses, cars rest at home and in parking bays, real horn sound, speed limits and parking improvements from 1.2.x
+
 ## 1.2.7 — Calmer crisis honks
 - Honks near the end of a swamp or cut-off timer are about 1.8x gentler: quieter, less frantic and less frequent
 
