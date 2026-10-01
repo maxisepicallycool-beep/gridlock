@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.3.1 — New songs
+- New soundtrack: two new daytime songs, plus a new nighttime song alongside Gymnopédie No. 1 by Erik Satie
+- The old songs are gone
+- Song titles show only when a song has an artist
+
 ## 1.3.0 — Settings, music, night and a smarter menu AI
 - New Settings screen (main menu, pause menu or the Settings button): themes (Light, Dark, Midnight, High contrast, Match system), sound, notifications, controls, autosave and more
 - Day and night cycle with street lamps, glowing windows, headlights and a grey-bulbed lamp that lights the road from underneath

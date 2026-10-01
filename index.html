@@ -1407,8 +1407,8 @@ const Snd={ac:null,out:null,on:true,t:0,buf:null,
 for(const ev of ['pointerdown','keydown'])window.addEventListener(ev,()=>Snd.init(),{passive:true});
 /* ---------- music: daytime songs and nighttime songs, crossfaded as the light changes ---------- */
 const TRACKS={
-  day:[{f:'fi.mp3',n:'Fi\u2019s Theme',a:'The Legend of Zelda: Skyward Sword'},{f:'rito.mp3',n:'Rito Village',a:'The Legend of Zelda: Breath of the Wild'}],
-  night:[{f:'satie.mp3',n:'Gymnop\u00e9die No. 1',a:'Erik Satie'},{f:'jellies.mp3',n:'Dance of the Moonlight Jellies',a:'Stardew Valley'}]};
+  day:[{f:'day1.mp3',n:'Daytime 1',a:''},{f:'day2.mp3',n:'Daytime 2',a:''}],
+  night:[{f:'satie.mp3',n:'Gymnop\u00e9die No. 1',a:'Erik Satie'},{f:'night1.mp3',n:'Night 1',a:''}]};
 for(const m in TRACKS)for(const t of TRACKS[m])t.mood=m;
 const Music={els:{},active:[],cur:null,last:null,shown:null,unlocked:!!window.__APP,missing:false,
   moodNow(){const m=Settings.v.musicMode;if(m!=='auto')return m;return ambient().n>=.5?'night':'day';},
@@ -1429,7 +1429,7 @@ const Music={els:{},active:[],cur:null,last:null,shown:null,unlocked:!!window.__
     const pr=e.play();if(pr&&pr.catch)pr.catch(()=>{});
     if(!this.active.includes(e))this.active.push(e);
     this.cur=e;this.last=t;
-    if(Settings.v.musicToast&&this.shown!==t&&mode==='play'){this.shown=t;toast('\u266A '+t.n+' \u2014 '+t.a,true);}
+    if(Settings.v.musicToast&&this.shown!==t&&mode==='play'){this.shown=t;toast('\u266A '+t.n+(t.a?' \u2014 '+t.a:''),true);}
   },
   next(fade){this.play(this.pick(this.moodNow()),fade==null?Settings.v.musicFade:fade);},
   skip(){this.next(2);},
@@ -2721,8 +2721,8 @@ const SCREENS={
         +tog('musicToast','Show song titles','A small note when a new song starts')
         +tog('musicPause','Fade out while paused','')
         +tog('musicBg','Keep playing in the background','When the window is hidden or another app is in front')
-        +row('Now playing',Music.missing?'The music files are not in this copy of the game':(Music.nowPlaying()?'\u266A '+Music.nowPlaying().n+' \u2014 '+Music.nowPlaying().a:(v.music?'Starting\u2026':'Music is off')),'<button class="sbtn" data-act="nextsong">Next song</button>')
-        +`<div class="srow" style="display:block"><div class="st"><b>Songs</b><small>Fi\u2019s Theme (Skyward Sword) and Rito Village (Breath of the Wild) play by day. Gymnop\u00e9die No. 1 (Erik Satie) and Dance of the Moonlight Jellies (Stardew Valley) play by night.</small></div></div>`)}
+        +row('Now playing',Music.missing?'The music files are not in this copy of the game':(Music.nowPlaying()?'\u266A '+Music.nowPlaying().n+(Music.nowPlaying().a?' \u2014 '+Music.nowPlaying().a:''):(v.music?'Starting\u2026':'Music is off')),'<button class="sbtn" data-act="nextsong">Next song</button>')
+        +`<div class="srow" style="display:block"><div class="st"><b>Songs</b><small>Daytime 1 and Daytime 2 play by day. Gymnop\u00e9die No. 1 (Erik Satie) and Night 1 play by night.</small></div></div>`)}
       ${sec('Notifications',
         tog('n_crit','Critical alerts','Destinations swamped and trips cut off')
         +tog('n_fire','Fire alerts','Houses on fire and fire station news')
