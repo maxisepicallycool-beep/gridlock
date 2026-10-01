@@ -22,7 +22,7 @@ body[data-theme=contrast] .btn,body[data-theme=contrast] .mbtn,body[data-theme=c
 body[data-theme=contrast] .tool.sel,body[data-theme=contrast] .opt.on,body[data-theme=contrast] .tg.on{outline:3px solid #ffd400}
 
 *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
-input{-webkit-user-select:text;user-select:text}
+input,textarea{-webkit-user-select:text;user-select:text}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
   font:500 14px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Rounded","SF Pro Text",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 body{background:radial-gradient(1200px 800px at 50% 35%,var(--bg2a),var(--bg2b))}
@@ -268,6 +268,10 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
+const GAME_VERSION='1.5.12';   // kept in step with VERSION by publish.sh
+const ERRLOG=[];   // the last few errors, so a bug report can include them
+addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
+addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
 if(window.__APP) document.body.classList.add('app');
 
 /* ---------- constants ---------- */
@@ -752,7 +756,7 @@ function gameOver(why){
   if(D.noFail||S.over)return;
   if(S.demo){S.over=true;AI.restartAt=performance.now()+4500;return;}
   S.over=true;S.modal='over';noteBest();
-  if(Store.slots[0]&&Store.slots[0].runId===S.runId)Store.del(0);
+  Cities.del(S.runId);   // a lost city can't be continued
   const best=Store.meta.best[D.id],m=document.getElementById('modal');m.className='';
   m.innerHTML=`<div class="sheet glass"><h2>Run over</h2><p>${why||'A destination was swamped with traffic.'}</p>
     <div class="big">${S.score}</div><p class="tiny" style="margin-top:2px">TRIPS COMPLETED</p>
@@ -1870,6 +1874,33 @@ function drawSbHover(){
     ctx.fillStyle=ok?(t==='fire'?'rgba(216,56,47,.3)':PAL[sbColor].c+'66'):'rgba(229,72,77,.35)';ctx.strokeStyle=ok?'rgba(35,39,51,.5)':'#e5484d';ctx.lineWidth=.05;rr(x+.04,y+.04,w-.08,w-.08,.15);ctx.fill();ctx.stroke();}
   ctx.restore();
 }
+/* ---------- bug reports: opened as a prefilled GitHub issue, or copied ---------- */
+const REPORT_REPO='maxisepicallycool-beep/gridlock';
+function bugDetails(){
+  const v=Settings.v,ai=window.__appinfo,lines=[];
+  lines.push('- Game: '+GAME_VERSION+(ai?' \u00b7 '+(ai.platform==='mac'?'Mac':'Windows')+' app build '+ai.appBuild:' \u00b7 browser'));
+  lines.push('- Screen: '+innerWidth+'\u00d7'+innerHeight+' \u00b7 '+(navigator.platform||'')+' \u00b7 '+String(navigator.userAgent).replace(/^Mozilla\/5.0 /,'').slice(0,110));
+  if(S&&mode==='play')lines.push('- City: '+D.name+' \u00b7 week '+S.week+' \u00b7 '+blds.filter(b=>!b.dest).length+' houses, '+blds.filter(b=>b.dest).length+' destinations, '+depts.length+' stations \u00b7 '+cars.length+' cars \u00b7 score '+S.score+(S.tut?' \u00b7 tutorial step '+(TUT?TUT.i+1:'?'):''));
+  else lines.push('- In the menu');
+  const off=[];for(const k in SET_DEF)if(JSON.stringify(v[k])!==JSON.stringify(SET_DEF[k])&&k!=='keys')off.push(k+'='+v[k]);
+  lines.push('- Settings changed from default: '+(off.join(', ')||'none'));
+  lines.push('- Recent errors: '+(ERRLOG.length?'\n  - '+ERRLOG.join('\n  - '):'none'));
+  return lines.join('\n');
+}
+function bugBody(text,withDetails){return '**What went wrong**\n'+(text||'(no description)')+(withDetails?'\n\n**Details**\n'+bugDetails():'');}
+function bugSend(){
+  const text=(document.getElementById('bugtext')||{}).value||'',body=bugBody(text,MS.bugDetails!==false);
+  let url=()=>'https://github.com/'+REPORT_REPO+'/issues/new?labels=bug&title='+encodeURIComponent('Bug: '+(text.split('\n')[0]||'report').slice(0,70))+'&body='+encodeURIComponent(body);
+  let u=url(),b=body;while(u.length>7000&&b.length>200){b=b.slice(0,Math.floor(b.length*.8));u='https://github.com/'+REPORT_REPO+'/issues/new?labels=bug&title='+encodeURIComponent('Bug: '+(text.split('\n')[0]||'report').slice(0,70))+'&body='+encodeURIComponent(b+'\n\n(report shortened)');}
+  if(window.AppBridge)AppBridge.call('openurl',{url:u});else window.open(u,'_blank');
+  toast('GitHub is opening. Press \u201cSubmit new issue\u201d there to send it.',true);
+}
+function bugCopy(){
+  const text=(document.getElementById('bugtext')||{}).value||'',body=bugBody(text,MS.bugDetails!==false);
+  const done=ok=>toast(ok?'Report copied. Paste it into a message to Max.':'Couldn\u2019t copy. Select the text and copy it yourself.',true);
+  try{navigator.clipboard.writeText(body).then(()=>done(true),()=>done(false));}catch(e){done(false);}
+}
+if(window.AppBridge)AppBridge.call('info').then(i=>{window.__appinfo=i;}).catch(()=>{});
 /* ---------- tutorial level: a prepared scene for every lesson, with a ghost road showing where to build ---------- */
 let TUT=null;
 function tutPlace(color,dest,kind,x,y,pref){
@@ -2118,8 +2149,9 @@ cv.addEventListener('pointermove',e=>{
 addEventListener('pointerup',()=>{erasing=false;if(sbPaint){sbPaint=false;sbFinish();}finishStroke();});
 cv.addEventListener('pointerleave',()=>{hover=null;hoverF=null;});
 addEventListener('keydown',e=>{
-  if(!(e.target&&e.target.tagName==='INPUT')&&!e.metaKey&&!e.ctrlKey)e.preventDefault();   // the game owns the keyboard: no system beep, Esc never leaves full screen
-  if(e.target&&e.target.tagName==='INPUT'){if(e.key==='Enter'&&MS.screen==='new')act('start');if(e.key!=='Escape')return;}
+  const typing=e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA');
+  if(!typing&&!e.metaKey&&!e.ctrlKey)e.preventDefault();   // the game owns the keyboard: no system beep, Esc never leaves full screen
+  if(typing){if(e.key==='Enter'&&MS.screen==='new'&&e.target.tagName==='INPUT')act('start');if(e.key!=='Escape')return;}
   if(e.key==='Escape'){
     if(mode==='menu'){if(MS.screen!=='main')act('back');return;}
     if(S.modal==='pause'){if(MS.screen==='pause')closePause();else act('back');return;}
@@ -2884,6 +2916,44 @@ const Store={
   latest(){let b=null;for(const k in this.slots){const s=this.slots[k];if(s&&s.state&&(!b||s.ts>b.ts))b=s;}return b;},
   count(){return Object.values(this.slots).filter(s=>s&&s.state).length;}
 };
+/* ---------- your cities: every city is kept on record (no numbered slots) and can be deleted ---------- */
+const Cities={list:[],recs:{},ready:false,backend:'local',
+  meta(id,r){return {id,name:r.name,diff:r.diff,week:r.week,score:r.score,ts:r.ts,thumb:r.thumb||''};},
+  async rd(name){if(this.backend==='files'){try{return await AppBridge.call('readfile',{name});}catch(e){return null;}}try{return localStorage.getItem('gridlock.'+name);}catch(e){return null;}},
+  async wr(name,text){if(this.backend==='files'){try{await AppBridge.call('writefile',{name,text});}catch(e){}return;}try{localStorage.setItem('gridlock.'+name,text);}catch(e){}},
+  writeIndex(){return this.wr('cities.json',JSON.stringify({v:1,list:this.list}));},
+  async init(){
+    this.backend=window.AppBridge?'files':'local';
+    let idx=null;const t=await this.rd('cities.json');if(t){try{idx=JSON.parse(t);}catch(e){}}
+    if(idx&&idx.list)this.list=idx.list;
+    else{   // first time: the old numbered saves become cities
+      for(const k of Object.keys(Store.slots)){const sv=Store.slots[k];if(!sv||!sv.state)continue;
+        const id=sv.runId&&/^[A-Za-z0-9]{3,40}$/.test(sv.runId)?sv.runId:'old'+k;
+        if(this.list.some(c=>c.id===id))continue;
+        const rec=Object.assign({},sv,{runId:id});this.recs[id]=rec;this.list.push(this.meta(id,rec));await this.wr('city-'+id+'.json',JSON.stringify(rec));}
+      await this.writeIndex();
+    }
+    this.ready=true;
+  },
+  put(rec){   // both writes are started together, so quitting right after an autosave still saves
+    const id=rec.runId;this.recs[id]=rec;const m=this.meta(id,rec),i=this.list.findIndex(c=>c.id===id);
+    if(i>=0)this.list[i]=m;else this.list.push(m);
+    return Promise.all([this.wr('city-'+id+'.json',JSON.stringify(rec)),this.writeIndex()]);
+  },
+  async get(id){
+    if(this.recs[id])return this.recs[id];
+    const t=await this.rd('city-'+id+'.json');if(!t)return null;
+    try{return this.recs[id]=JSON.parse(t);}catch(e){return null;}
+  },
+  del(id){
+    this.list=this.list.filter(c=>c.id!==id);delete this.recs[id];
+    if(this.backend==='files')this.wr('city-'+id+'.json','');else try{localStorage.removeItem('gridlock.city-'+id+'.json');}catch(e){}
+    return this.writeIndex();
+  },
+  sorted(){return this.list.slice().sort((a,b)=>b.ts-a.ts);},
+  latest(){return this.sorted()[0]||null;},
+  count(){return this.list.length;}
+};
 const NAMES=['Riverton','Maple Bay','Junction City','Brightwater','Cedar Falls','Oakridge','Port Harmony','Linden Vale','Copperfield','Willow Cross','Stonebridge','Harbor Point'];
 function hashSeed(str){let h=2166136261;for(const ch of str){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
 
@@ -2939,11 +3009,12 @@ function noteBest(){
   const b=Store.meta.best,c=b[D.id];
   if(!c||S.score>c.score){b[D.id]={score:S.score,week:S.week,name:S.name};Store.saveMeta();}
 }
-function saveTo(slot){
-  Store.put(slot,{ts:Date.now(),name:S.name||'City',diff:D.id,week:S.week,score:S.score,runId:S.runId,thumb:thumbURL(),state:serialize()});
-  noteBest();
+function saveCity(){
+  const p=Cities.put({ts:Date.now(),name:S.name||'City',diff:D.id,week:S.week,score:S.score,runId:S.runId,thumb:thumbURL(),state:serialize()});
+  noteBest();return p;
 }
-function autosave(){if(mode!=='play'||S.over||S.demo||S.tut)return;saveTo(0);}
+function autosave(){if(mode!=='play'||S.over||S.demo||S.tut)return;saveCity();}
+async function loadCity(id){const rec=await Cities.get(id);if(rec)loadSave(rec);else toast('That city could not be opened',true);}
 
 /* ---------- menus ---------- */
 const MS={screen:'main',diff:'standard',name:'',seed:'',slotMode:'load',confirm:null};
@@ -2962,7 +3033,7 @@ const miscSvg=(p,c)=>`<svg class="ti" viewBox="0 0 40 40"><circle cx="20" cy="20
 
 const SCREENS={
   main(){
-    const last=Store.latest(),n=Store.count();
+    const last=Cities.latest(),n=Cities.count();
     const bests=DIFFS.filter(d=>!d.noFail).map(d=>{const b=Store.meta.best[d.id];
       return `<div class="best">${chip(d)}<div class="sc">${b?b.score+' trips':'—'}<small>${b?'week '+b.week:'not played'}</small></div></div>`;}).join('');
     return `<div class="mwrap">
@@ -2973,7 +3044,7 @@ const SCREENS={
           ${last?`<button class="mbtn primary" data-act="continue"><b>Continue</b><small>${esc(last.name)} · ${diffById(last.diff).name} · week ${last.week} · ${timeAgo(last.ts)}</small></button>`:''}
           <button class="mbtn ${last?'':'primary'}" data-act="new"><b>New Game</b><small>Pick a difficulty and start a fresh city</small></button>
           <button class="mbtn${Settings.v.tutDone?'':' primary'}" data-act="tutorial"><b>Tutorial${Settings.v.tutDone?'':' \u2014 start here'}</b><small>Learn roads, junctions, bridges, highways and fires, step by step</small></button>
-          <button class="mbtn" data-act="load"><b>Load Game</b><small>${n} saved ${n===1?'city':'cities'}</small></button>
+          <button class="mbtn" data-act="load"><b>Your Cities</b><small>${n} saved ${n===1?'city':'cities'}, every one kept</small></button>
           <button class="mbtn" data-act="settings"><b>Settings</b><small>Theme, sound, day and night, controls, menu AI</small></button>
           <button class="mbtn" data-act="howto"><b>How to Play</b><small>Roads, junctions, highways and weekly cards</small></button>
         </div>
@@ -2995,21 +3066,16 @@ const SCREENS={
       <div class="row" style="margin-top:14px"><button class="go" data-act="start">Start ${diffById(MS.diff).name}</button></div></div>`;
   },
   load(){
-    const saveMode=MS.slotMode==='save';
-    const rows=[0,1,2,3,4,5].map(i=>{
-      const sv=Store.slots[i],auto=i===0,label=auto?'Autosave':'Slot '+i;
-      if(!sv||!sv.state)return `<div class="slot empty"><div class="th">Empty</div><div class="info"><div class="nm">${label}</div><div class="meta">${auto?'Saved automatically while you play':'No save yet'}</div></div>
-        <div class="acts">${saveMode&&!auto?`<button class="sbtn" data-act="slot-save" data-slot="${i}">Save here</button>`:''}</div></div>`;
-      const d=diffById(sv.diff),cf=MS.confirm;
-      const main=saveMode
-        ?(auto?'':`<button class="sbtn ${cf==='s'+i?'warn':''}" data-act="slot-save" data-slot="${i}">${cf==='s'+i?'Overwrite?':'Save here'}</button>`)
-        :`<button class="sbtn" data-act="slot-load" data-slot="${i}">Load</button>`;
-      return `<div class="slot"><div class="th" style="${sv.thumb?`background-image:url(${sv.thumb})`:''}"></div>
-        <div class="info"><div class="nm">${esc(sv.name)} <span class="tiny">· ${label}</span></div>
-          <div class="meta">${chip(d)}<span>Week ${sv.week}</span><span>${sv.score} trips</span><span>${timeAgo(sv.ts)}</span></div></div>
-        <div class="acts">${main}<button class="sbtn ${cf==='d'+i?'warn':'ghost'}" data-act="slot-del" data-slot="${i}">${cf==='d'+i?'Sure?':'Delete'}</button></div></div>`;
+    if(!Cities.ready)return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Your cities</h2></div><div class="pbody"><div class="tiny" style="padding:20px">Loading\u2026</div></div></div>`;
+    const cf=MS.confirm,list=Cities.sorted();
+    const rows=list.map(c=>{
+      const d=diffById(c.diff);
+      return `<div class="slot"><div class="th" style="${c.thumb?`background-image:url(${c.thumb})`:''}"></div>
+        <div class="info"><div class="nm">${esc(c.name)}</div>
+          <div class="meta">${chip(d)}<span>Week ${c.week}</span><span>${c.score} trips</span><span>${timeAgo(c.ts)}</span></div></div>
+        <div class="acts"><button class="sbtn" data-act="city-load" data-id="${c.id}">Load</button><button class="sbtn ${cf==='d'+c.id?'warn':'ghost'}" data-act="city-del" data-id="${c.id}">${cf==='d'+c.id?'Delete it?':'Delete'}</button></div></div>`;
     }).join('');
-    return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">←</button><h2>${saveMode?'Save Game':'Load Game'}</h2></div><div class="pbody">${rows}</div></div>`;
+    return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Your cities</h2></div><div class="pbody">${rows||'<div class="tiny" style="padding:20px">No cities yet. Start a new game and it will be kept here, saved automatically.</div>'}<div class="tiny" style="margin:8px 4px">Every city is saved automatically while you play and kept until you delete it.</div></div></div>`;
   },
   howto(){
     const tips=[
@@ -3085,7 +3151,18 @@ const SCREENS={
       ${sec('Main menu AI',
         row('AI speed','How fast the city plays itself behind the menu',seg('aiSpeed',[[1,'Slow'],[2,'Normal'],[4,'Fast'],[8,'Turbo']]))
         +row('AI difficulty','What the AI plays on (it starts a new city when you change it)',seg('aiDiff',[['relaxed','Relaxed'],['standard','Standard'],['rush','Rush Hour'],['gridlock','Gridlock']])))}
-      <div class="row" style="margin:6px 0 4px"><button class="sbtn ghost" data-act="resetset">Reset all settings</button></div>
+      <div class="row" style="margin:6px 0 4px;gap:10px"><button class="sbtn" data-act="bug">Report a bug</button><button class="sbtn ghost" data-act="resetset">Reset all settings</button></div>
+    </div></div>`;
+  },
+  bug(){
+    const det=MS.bugDetails!==false;
+    return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Report a bug</h2></div><div class="pbody">
+      <div class="srow" style="display:block"><div class="st"><b>What went wrong?</b><small>Say what you were doing and what you expected to happen.</small></div>
+        <textarea id="bugtext" maxlength="1500" placeholder="For example: I built a highway and the cars drove through it\u2026" style="width:100%;height:150px;margin-top:9px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px;font:inherit;resize:vertical">${esc(MS.bugText||'')}</textarea></div>
+      <div class="srow"><div class="st"><b>Include technical details</b><small>Game and app version, your screen, the week and city size, settings you changed, and any recent errors. Nothing personal.</small></div><button class="tg${det?' on':''}" data-act="bugtoggle" aria-pressed="${det}"><i></i></button></div>
+      <details class="srow" style="display:block"><summary style="cursor:pointer;font-weight:700">See exactly what would be sent</summary><pre style="white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;margin:10px 0 0;color:var(--ink2)">${esc(det?bugDetails():'(nothing extra)')}</pre></details>
+      <div class="row" style="margin:12px 0 6px;gap:10px"><button class="go" data-act="bugsend">Send on GitHub</button><button class="sbtn ghost" data-act="bugcopy">Copy report</button></div>
+      <div class="tiny" style="margin:6px 4px">Sending opens GitHub in your browser, where you press \u201cSubmit new issue\u201d. That needs a free GitHub account. No account? Press <b>Copy report</b> and paste it into a message to Max.</div>
     </div></div>`;
   },
   pause(){
@@ -3095,9 +3172,10 @@ const SCREENS={
         <div class="tiny" style="margin-bottom:16px">${esc(S.name)} · week ${S.week} · ${S.score} trips</div>
         <div class="mbtns" style="max-width:none">
           <button class="mbtn primary" data-act="resume"><b>Resume</b><small>Back to your city</small></button>
-          <button class="mbtn" data-act="psave"><b>Save Game</b><small>Write to a save slot</small></button>
-          <button class="mbtn" data-act="pload"><b>Load Game</b><small>Switch to another save</small></button>
+          <button class="mbtn" data-act="psave"><b>Save now</b><small>Your city is also saved automatically</small></button>
+          <button class="mbtn" data-act="pload"><b>Your cities</b><small>Switch to another city</small></button>
           <button class="mbtn" data-act="settings"><b>Settings</b><small>Theme, sound, day and night, controls</small></button>
+          <button class="mbtn" data-act="bug"><b>Report a bug</b><small>Tell Max what went wrong</small></button>
           <button class="mbtn" data-act="howto"><b>How to Play</b></button>
           <button class="mbtn danger" data-act="quit"><b>Quit to Main Menu</b><small>Your progress is autosaved</small></button>
         </div></div></div>`;
@@ -3149,12 +3227,16 @@ function openPause(){
 function closePause(){if(S.modal==='pause')S.modal=null;Menu.hide();}
 function act(a,d){
   switch(a){
-    case 'continue':loadSave(Store.latest());break;
+    case 'continue':{const l=Cities.latest();if(l)loadCity(l.id);break;}
     case 'new':Menu.show('new');break;
-    case 'load':MS.slotMode='load';MS.confirm=null;Menu.show('load');break;
+    case 'load':MS.confirm=null;Menu.show('load');break;
     case 'howto':Menu.show('howto');break;
     case 'tutorial':startTutorial();break;
     case 'settings':Menu.show('settings');break;
+    case 'bug':MS.bugText='';Menu.show('bug');break;
+    case 'bugtoggle':{const t=document.getElementById('bugtext');MS.bugText=t?t.value:'';MS.bugDetails=MS.bugDetails===false;Menu.show('bug');break;}
+    case 'bugsend':bugSend();break;
+    case 'bugcopy':bugCopy();break;
     case 'testhorn':Snd.init();setTimeout(()=>Snd.play(.18,1.5,0),120);break;
     case 'nextsong':Music.skip();setTimeout(()=>{if(MS.screen==='settings')refreshSettings();},500);break;
     case 'resetset':Settings.reset();buildKeymap();refreshSettings();break;
@@ -3162,16 +3244,13 @@ function act(a,d){
     case 'back':MS.confirm=null;Menu.show(mode==='play'?'pause':'main');break;
     case 'diff':MS.diff=d.id;Menu.show('new');break;
     case 'start':startNew();break;
-    case 'slot-load':loadSave(Store.slots[+d.slot]);break;
-    case 'slot-save':{const i=+d.slot;
-      if(Store.slots[i]&&MS.confirm!=='s'+i){MS.confirm='s'+i;Menu.show('load');return;}
-      MS.confirm=null;saveTo(i);toast('Saved to slot '+i);Menu.show('pause');break;}
-    case 'slot-del':{const i=+d.slot;
-      if(MS.confirm!=='d'+i){MS.confirm='d'+i;Menu.show('load');return;}
-      MS.confirm=null;Store.del(i);Menu.show('load');break;}
+    case 'city-load':loadCity(d.id);break;
+    case 'city-del':{
+      if(MS.confirm!=='d'+d.id){MS.confirm='d'+d.id;Menu.show('load');return;}
+      MS.confirm=null;Cities.del(d.id);Menu.show('load');break;}
     case 'resume':closePause();break;
-    case 'psave':MS.slotMode='save';MS.confirm=null;Menu.show('load');break;
-    case 'pload':MS.slotMode='load';MS.confirm=null;Menu.show('load');break;
+    case 'psave':saveCity().then(()=>toast('City saved',true));break;
+    case 'pload':MS.confirm=null;Menu.show('load');break;
     case 'quit':autosave();enterMenu();break;
   }
 }
@@ -3540,10 +3619,11 @@ function frame(now){
 }
 buildKeymap();applyTheme();Settings.react('horns');Settings.react('updateQuiet');
 Store.init();resize();enterMenu();
+Cities.init().then(()=>{if(mode==='menu'&&(MS.screen==='main'||MS.screen==='load'))Menu.show(MS.screen);});   // the city list arrives a moment after start
 requestAnimationFrame(frame);
 // test helpers
 function line(key,pts){const p=PK[key];let n=0;for(let i=0;i<pts.length-1;i++){const [ax,ay]=pts[i],[bx,by]=pts[i+1];const d=DTAB[(Math.sign(by-ay)+1)*3+Math.sign(bx-ax)+1];const r=placeEdge(p,cellIdx(ax,ay),d);if(r.res==='ok')n++;}rebuild();refreshDock();return n;}
-window.G={Notes,checkAlerts,get view(){return {ox,oy,cs};},setSign,tutEnter,tutTick,startTutorial,get TUT(){return TUT;},tutAdvance,lamps,hwySideOK,Music,Settings,AI,selectTool,sbAct,sbFinish,pose,parkPose,Snd,espd,placeDept,deptOrient,igniteHouse,get depts(){return depts},startParking,toWorld,toLocal,faceOf,expandRegion,crowded,regionLand,AI,aiReach,aiPlanHouse,startDemo,serialize,restore,Store,enterMenu,startGameWith,act,MS,get mode(){return mode},get D(){return D},rebuildGoals,get S(){return S},get cells(){return cells},get cars(){return cars},get blds(){return blds},inv:()=>inv,rebuild,step,route,PK,newGame,line,setDir,rotateBld,cellIdx,get goals(){return goals}};
+window.G={Cities,loadCity,saveCity,Notes,checkAlerts,get view(){return {ox,oy,cs};},setSign,tutEnter,tutTick,startTutorial,get TUT(){return TUT;},tutAdvance,lamps,hwySideOK,Music,Settings,AI,selectTool,sbAct,sbFinish,pose,parkPose,Snd,espd,placeDept,deptOrient,igniteHouse,get depts(){return depts},startParking,toWorld,toLocal,faceOf,expandRegion,crowded,regionLand,AI,aiReach,aiPlanHouse,startDemo,serialize,restore,Store,enterMenu,startGameWith,act,MS,get mode(){return mode},get D(){return D},rebuildGoals,get S(){return S},get cells(){return cells},get cars(){return cars},get blds(){return blds},inv:()=>inv,rebuild,step,route,PK,newGame,line,setDir,rotateBld,cellIdx,get goals(){return goals}};
 </script>
 </body>
 </html>

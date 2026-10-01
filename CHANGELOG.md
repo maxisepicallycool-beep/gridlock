@@ -1,5 +1,11 @@
 # Gridlock changelog
 
+## 1.5.12 — Bug reports, and every city is kept
+- New "Report a bug" (Settings and the pause menu): describe what went wrong, optionally add technical details, and it opens a prefilled GitHub issue for you to submit (or copy the report to send in a message)
+- No more numbered save slots. Every city you play is kept on record, saved automatically, and listed under "Your Cities" where you can load or delete it. Starting a new game never overwrites another city
+- Your old saves are brought across as cities the first time you open this version
+- Pause menu: "Save now" and "Your cities"
+
 ## 1.5.11 — Highways can join loose road ends
 - A highway can now start or end on a loose road end (a dead end that isn't a driveway), including carrying straight on from it
 - The rule for where a highway may meet a road is now exact: the side of a road, a loose end, a corner or junction, or another highway. The only thing refused is running straight along an ordinary through road, which would just extend it
