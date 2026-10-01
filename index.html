@@ -94,6 +94,11 @@ body.inmenu #sbBar{display:none!important}
 #modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(228,220,199,.55);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);z-index:10;animation:fade .25s}
 #modal.hidden,#menu.hidden{display:none}
 @keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet,.panel,.mright{position:relative}
+.sheet::before,.sheet::after,.panel::before,.panel::after,.mright::before,.mright::after{content:"";position:absolute;top:9px;width:84px;height:84px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 84 84'%3E%3Cpath d='M0 0L84.0 0.0M0 0L79.9 26.0M0 0L68.0 49.4M0 0L49.4 68.0M0 0L26.0 79.9M0 0L0.0 84.0M25.2 0.0Q20.4 3.2 24.0 7.8M24.0 7.8Q18.4 9.4 20.4 14.8M20.4 14.8Q14.6 14.6 14.8 20.4M14.8 20.4Q9.4 18.4 7.8 24.0M7.8 24.0Q3.2 20.4 0.0 25.2M46.2 0.0Q37.4 5.9 43.9 14.3M43.9 14.3Q33.8 17.2 37.4 27.2M37.4 27.2Q26.8 26.8 27.2 37.4M27.2 37.4Q17.2 33.8 14.3 43.9M14.3 43.9Q5.9 37.4 0.0 46.2M67.2 0.0Q54.4 8.6 63.9 20.8M63.9 20.8Q49.1 25.0 54.4 39.5M54.4 39.5Q39.0 39.0 39.5 54.4M39.5 54.4Q25.0 49.1 20.8 63.9M20.8 63.9Q8.6 54.4 0.0 67.2' fill='none' stroke='%23a9a9b8' stroke-width='1.1' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat;background-size:contain;opacity:.55;pointer-events:none;z-index:2}
+.sheet::before,.panel::before,.mright::before{left:9px}
+.sheet::after,.panel::after,.mright::after{right:9px;transform:scaleX(-1)}
+@media (max-width:520px){.sheet::before,.sheet::after,.panel::before,.panel::after{width:56px;height:56px}}
 @keyframes rise{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
 .sheet{border-radius:30px;padding:30px 36px;max-width:min(92vw,780px);text-align:center;animation:rise .38s cubic-bezier(.2,.9,.3,1.15)}
 .sheet h2{margin:0 0 4px;font-size:27px;font-weight:850;letter-spacing:-.3px}
@@ -147,7 +152,7 @@ body.inmenu #notes{display:none}
 body.app #menu{padding-top:44px}
 .mwrap{width:min(1020px,100%);display:grid;grid-template-columns:1.05fr 1fr;gap:26px;align-items:center;animation:rise .45s cubic-bezier(.2,.9,.3,1.1)}
 .logo{display:inline-block;font-size:clamp(50px,8.2vw,92px);font-weight:950;letter-spacing:-3px;line-height:.92;padding-bottom:6px;
-  background:linear-gradient(115deg,#f0605d 0%,#ff8b3d 28%,#f4c430 48%,#2fb67c 70%,#4c9be8 92%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 10px rgba(60,50,30,.15))}
+  background:linear-gradient(115deg,#ff8a1f 0%,#c4182c 30%,#8a4fd6 62%,#86d92a 94%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 10px rgba(60,50,30,.15))}
 .road-strip{height:10px;margin:10px 0 14px;border-radius:99px;width:min(300px,70%);background:repeating-linear-gradient(90deg,#fff 0 18px,transparent 18px 32px),#4d535f;box-shadow:0 0 0 3px #ddd6c2, 0 6px 12px rgba(60,50,30,.2)}
 .tag{font-size:18px;color:var(--ink2);font-weight:600;margin-bottom:20px}
 .mbtns{display:grid;gap:11px;max-width:430px}
@@ -271,7 +276,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.5.17';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -287,13 +292,15 @@ const UNIT=DIR.map((v,i)=>[v[0]/LEN[i],v[1]/LEN[i]]);
 const opp=d=>(d+4)&7;
 const DTAB=[5,6,7,4,-1,0,3,2,1];
 const PAL=[
-  {n:'Red',c:'#f0605d',d:'#b93b3b',l:'#ffb3ae'},
-  {n:'Blue',c:'#4c9be8',d:'#2c6bb5',l:'#b0d5fa'},
-  {n:'Yellow',c:'#f4c430',d:'#c39412',l:'#fbe28a'},
-  {n:'Green',c:'#3cc48b',d:'#22895f',l:'#a3ebcb'},
-  {n:'Purple',c:'#a468e6',d:'#7440b3',l:'#d5b6f7'},
-  {n:'Orange',c:'#ff8b3d',d:'#c25c15',l:'#ffc79c'}
+  {n:'Pumpkin',c:'#ff8a1f',d:'#b85a00',l:'#ffc27a'},
+  {n:'Midnight',c:'#2e3048',d:'#14151f',l:'#7a7f9e'},
+  {n:'Twilight',c:'#8a4fd6',d:'#5a2e99',l:'#c7a4f0'},
+  {n:'Headstone',c:'#9ba1a9',d:'#656b73',l:'#d3d7dc',tomb:true},
+  {n:'Slime',c:'#86d92a',d:'#4d9412',l:'#c8f59a'},
+  {n:'Blood',c:'#c4182c',d:'#7a0f1b',l:'#f08c96'}
 ];
+const acc=(d,c)=>d.dest&&(d.color===c||d.color2===c);   // does this destination take cars of colour c? (dual destinations take two colours)
+const bname=b=>PAL[b.color].n+(b.color2>=0?' / '+PAL[b.color2].n:'');
 // layer g = ground roads (k0); layer f = elevated (k1 highway, k2 bridge)
 const kn=k=>PIECES.findIndex(p=>p.k===k)+1;   // a piece's hotkey number
 const PIECES=[
@@ -581,7 +588,7 @@ function applyLimits(){
   }
 }
 const limitMph=f=>Math.round(f*35/5)*5;
-function rebuildGoals(){goals=PAL.map(()=>new Uint8Array(N));for(const b of blds)if(b.dest)goals[b.color][b.an*2]=1;}
+function rebuildGoals(){goals=PAL.map(()=>new Uint8Array(N));for(const b of blds)if(b.dest){goals[b.color][b.an*2]=1;if(b.color2>=0)goals[b.color2][b.an*2]=1;}}
 
 /* ---------- routing ---------- */
 const dist=new Float64Array(N),prevN=new Int32Array(N),hk=[],hv=[];let popK=0;
@@ -614,7 +621,7 @@ function assignedDest(h){   // Relaxed: every house has one fixed destination (n
   if(h.asg&&blds.includes(h.asg))return h.asg;
   let best=null,bs=1e9;
   for(const d of blds){
-    if(!d.dest||d.color!==h.color)continue;
+    if(!acc(d,h.color))continue;
     const n=blds.reduce((k,x)=>k+(x.asg===d?1:0),0),sc=Math.hypot(d.x-h.x,d.y-h.y)+n*4;
     if(sc<bs){bs=sc;best=d;}
   }
@@ -622,9 +629,9 @@ function assignedDest(h){   // Relaxed: every house has one fixed destination (n
 }
 function routeOut(src,color,home){   // outbound trip: prefer quieter destinations of the colour
   if(!D.anyDest&&home){const a=assignedDest(home);if(a)return routeTo(src,a.an*2);}
-  for(const d of blds)if(d.dest&&d.color===color)goalPen[d.an*2]=d.load*3+(d.over>0?12:0);
+  for(const d of blds)if(acc(d,color))goalPen[d.an*2]=d.load*3+(d.over>0?12:0);
   const p=route(src,goals[color]);
-  for(const d of blds)if(d.dest&&d.color===color)goalPen[d.an*2]=0;
+  for(const d of blds)if(acc(d,color))goalPen[d.an*2]=0;
   return p;
 }
 function routeTo(src,dst,allowGhost,useFT,ignoreTraffic){single[dst]=1;const p=route(src,single,allowGhost,useFT,ignoreTraffic);single[dst]=0;return p;}
@@ -649,7 +656,7 @@ function freeFor(x,y,w,gap){
   }
   return true;
 }
-function spawnBld(color,dest,retry){
+function spawnBld(color,dest,retry,color2){
   if(sbNoSpawn)return null;
   const w=dest?2:1,rw=RX1-RX0,rh=RY1-RY0,cx=RX0+rw*.4,cy=RY0+rh*.5;
   let rx=Math.min(rw/2-2,7+S.week*1.7), ry=Math.min(rh/2-2,5+S.week*1.2);
@@ -657,14 +664,14 @@ function spawnBld(color,dest,retry){
     if(t>300){rx=rw/2-1;ry=rh/2-1;}
     const x=Math.round(cx+rnd(-rx,rx)),y=Math.round(cy+rnd(-ry,ry));
     if(!inB(x,y)||!freeFor(x,y,w,1)) continue;
-    const b={id:++bldId,color,dest,x,y,w,cells:[],demand:dest?0:1,out:0,gar:D.fleet,pend:[],timer:rnd(4,8),retry:0,pulse:0,born:time,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?Math.floor(Math.random()*3):0};
+    const b={id:++bldId,color,dest,x,y,w,cells:[],demand:dest?0:1,out:0,gar:D.fleet,pend:[],timer:rnd(4,8),retry:0,pulse:0,born:time,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?Math.floor(Math.random()*3):0,color2:dest&&color2>=0?color2:-1};
     const ok=[];for(let d=0;d<8;d++)if(dirValid(b,d))ok.push(d);
     if(!ok.length)continue;
     setDir(b,pick(ok));
     for(let j=0;j<w;j++)for(let i=0;i<w;i++){const ci=cellIdx(x+i,y+j);cells[ci].bld=b;b.cells.push(ci);}
     blds.push(b); rebuild(); rebuildGoals(); return b;
   }
-  if(!retry&&expandRegion())return spawnBld(color,dest,true);   // no room left: the city grows
+  if(!retry&&expandRegion())return spawnBld(color,dest,true,color2);   // no room left: the city grows
   return null;
 }
 const activeColors=()=>colorOrder.slice(0,S.colors);
@@ -725,10 +732,14 @@ function startWeek(w){
   else{
     if(w%2===0&&S.colors<6) addColor();
     const n0=(1+(w>=4?1:0)+(w>=8?1:0))*D.growth,n=Math.floor(n0)+(Math.random()<n0%1?1:0);
+    if(w===5&&S.colors>=2){const a=activeColors();const c1=pick(a),c2=pick(a.filter(o=>o!==c1));if(spawnBld(c1,true,false,c2)&&!S.demo)toast('New: a dual destination takes two colours of car');}
     for(let i=0;i<n;i++) spawnBld(pick(activeColors()),false);
     for(const c of activeColors()){
-      const hs=blds.filter(b=>b.color===c&&!b.dest).length, ds=blds.filter(b=>b.color===c&&b.dest).length;
-      if(hs>ds*3) spawnBld(c,true);
+      const hs=blds.filter(b=>b.color===c&&!b.dest).length, ds=blds.filter(b=>acc(b,c)).length;
+      if(hs>ds*3){
+        const others=activeColors().filter(o=>o!==c);
+        if(w>=5&&others.length&&Math.random()<.4)spawnBld(c,true,false,pick(others));else spawnBld(c,true);
+      }
     }
   }
 }
@@ -787,7 +798,7 @@ function leaveQueue(c){if(c.qn>=0&&queue[c.qn]){const i=queue[c.qn].indexOf(c);i
 function destOf(p){const b=cells[p[p.length-1]>>1].bld;return b&&b.dest?b:null;}
 function dispatch(h){
   if(!h.linked)return false;
-  if(!blds.some(b=>b.dest&&b.color===h.color))return false;
+  if(!blds.some(b=>acc(b,h.color)))return false;
   const p=routeOut(h.an*2,h.color,h);
   if(!p||p.length<2)return false;
   cars.push({id:++carId,color:h.color,home:h,leg:0,path:p,i:0,u:0,ph:'drive',dwell:0,res:false,resDin:-1,din:-1,stopWait:-1,stopped:-1,blocked:0,wait:0,rrDone:false,qn:-1,force:false,by:null,dest:destOf(p),dead:false});
@@ -1364,7 +1375,7 @@ function reachOf(d){   // which nodes can drive to this one destination (cached 
   const r=REACHC.get(d.id),now=performance.now();if(r&&r.ver===gfxVer&&now-r.t<2000)return r.arr;
   const gs=new Uint8Array(N);gs[d.an*2]=1;const arr=reachTo(d.color,gs);REACHC.set(d.id,{ver:gfxVer,t:now,arr});return arr;
 }
-const connectedToAll=b=>{const ds=blds.filter(d=>d.dest&&d.color===b.color);return ds.length>0&&ds.every(d=>d.linked&&reachOf(d)[b.an*2]);};
+const connectedToAll=b=>{const ds=blds.filter(d=>acc(d,b.color));return ds.length>0&&ds.every(d=>d.linked&&reachOf(d)[b.an*2]);};
 function alertLevel(b){
   if(b.fire)return 2;
   if(b.dest){if(b.over>0||b.load>=D.dcap)return 2;if(b.load>=D.dcap-1&&(b.loadT||0)>=Settings.v.n_delayLoad)return 1;return 0;}
@@ -1374,7 +1385,7 @@ function checkAlerts(){
   if(!D.notify||S.demo||S.tut||mode!=='play')return;
   const dt=.5,v=Settings.v,now=performance.now();
   for(const b of blds){
-    const nm=PAL[b.color].n;
+    const nm=bname(b);
     if(b.dest){
       b.loadT=(b.load>=D.dcap-1&&!(b.over>0))?(b.loadT||0)+dt:0;   // how long it has been filling up
       if(b.over>0)Notes.push('over'+b.id,'crit','!',nm+' destination overloaded','Clear the traffic or it ends in '+Math.max(1,Math.ceil(D.dlimit-b.over))+'s',b);
@@ -1387,7 +1398,7 @@ function checkAlerts(){
       } else {b.pileT=0;b.connAll=false;b.connT=undefined;}
     }
   }
-  for(let c=0;c<6;c++)if(S.stallT[c]>=Math.max(.5,v.n_delayCut)){const d=blds.find(x=>x.dest&&x.color===c);Notes.push('cut'+c,'crit','!',PAL[c].n+' trips cut off','Reconnect them — '+Math.max(1,Math.ceil(D.stall-S.stallT[c]))+'s left',d);}
+  for(let c=0;c<6;c++)if(S.stallT[c]>=Math.max(.5,v.n_delayCut)){const d=blds.find(x=>acc(x,c));Notes.push('cut'+c,'crit','!',PAL[c].n+' trips cut off','Reconnect them — '+Math.max(1,Math.ceil(D.stall-S.stallT[c]))+'s left',d);}
 }
 function drawAlert(b){   // big bobbing marker that stands out above anything that is getting swamped
   const lv=alertLevel(b);if(!lv)return;
@@ -2007,11 +2018,11 @@ function tutSteps(){
   const anyHwy=()=>cells.some(c=>c.f&&c.f.some(e=>e&&e.k===1&&!e.ghost));
   return [
     {ch:'Roads',scene:'first',t:'Welcome to Gridlock',x:'Every house sends cars to the <b>destination of the same colour</b>. Your job is to join them with roads.<br><br>Zoom with the scroll wheel or pinch, move with two-finger scroll, <b>Alt-drag</b> or <b>W A S D</b>. Nothing can go wrong here, so explore.',next:true},
-    {ch:'Roads',t:'Your first road',x:'Pick <b>Road</b> (key <b>'+kn('road')+'</b>) and <b>drag</b> along the blue ghost road from the red house to the red store.<br>Roads snap to 8 directions and bend smoothly.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
+    {ch:'Roads',t:'Your first road',x:'Pick <b>Road</b> (key <b>'+kn('road')+'</b>) and <b>drag</b> along the blue ghost road from the pumpkin house to the pumpkin store.<br>Roads snap to 8 directions and bend smoothly.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
     {ch:'Roads',t:'Watch the traffic',x:'Cars drive to the store, park in a bay, and come back. Wait for <b>3 trips</b>.',cond:()=>plus()>=3,target:()=>[T().d]},
-    {ch:'Driveways',scene:'turn',t:'Turn a driveway',x:'This blue house’s driveway points the wrong way. <b>Click the house</b> to turn its driveway (Shift-click turns it the other way) until it faces the gas station.',cond:()=>T().h.dir!==T().dir0,target:()=>[T().h]},
+    {ch:'Driveways',scene:'turn',t:'Turn a driveway',x:'This midnight house’s driveway points the wrong way. <b>Click the house</b> to turn its driveway (Shift-click turns it the other way) until it faces the gas station.',cond:()=>T().h.dir!==T().dir0,target:()=>[T().h]},
     {ch:'Driveways',t:'Join the pair',x:'Now follow the ghost road from the house to the gas station.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
-    {ch:'Sharing roads',scene:'share',t:'Add the neighbours',x:'The red road already exists. Two new houses want to use it. Follow the ghost roads and join them to it. Cars always take the <b>shortest route</b>, so everyone shares the same road.',cond:()=>tutOK(T().h2)&&tutOK(T().h3),target:()=>[T().h2,T().h3],ghost:{type:'auto',list:()=>[T().h2,T().h3]}},
+    {ch:'Sharing roads',scene:'share',t:'Add the neighbours',x:'The road in the middle already exists. Two new houses want to use it. Follow the ghost roads and join them to it. Cars always take the <b>shortest route</b>, so everyone shares the same road.',cond:()=>tutOK(T().h2)&&tutOK(T().h3),target:()=>[T().h2,T().h3],ghost:{type:'auto',list:()=>[T().h2,T().h3]}},
     {ch:'Sharing roads',t:'One road, many cars',x:'Watch all three houses send cars down the same road. Wait for <b>6 trips</b>.',cond:()=>plus()>=6,setup:()=>{for(const h of [T().h1,T().h2,T().h3])h.demand=4;}},
     {ch:'Junctions',scene:'junction',t:'A busy crossing',x:'Two roads cross here. Cars give way and take turns, but a busy crossing can jam. Watch them for a moment.',next:true,target:()=>[],ring:()=>T().x},
     {ch:'Junctions',t:'Stop signs',x:'Pick the <b>Stop sign</b> (key <b>'+kn('stop')+'</b>) and click the crossing. Cars on that road stop and give way, so the other road flows. <b>Shift-click</b> puts signs on every approach.',cond:anySign,ghost:{type:'sign',ci:()=>T().x}},
@@ -2503,7 +2514,22 @@ function sprite(key,w,h,k,paint){   // pre-rendered once, then just stamped with
   const keep=ctx;ctx=c2;try{paint();}finally{ctx=keep;}
   return SPR[key]=c;
 }
+function paintTomb(p){   // a headstone with a door: rounded top, cross, a little grave mound
+  ctx.fillStyle=p.c+'59';rr(.03,.05,.94,.92,.22);ctx.fill();ctx.strokeStyle=p.c;ctx.lineWidth=.045;rr(.03,.05,.94,.92,.22);ctx.stroke();
+  ctx.fillStyle='rgba(30,30,20,.24)';ctx.beginPath();ctx.ellipse(.54,.9,.4,.09,0,0,7);ctx.fill();
+  ctx.fillStyle='#4a4238';ctx.beginPath();ctx.ellipse(.5,.88,.36,.07,0,0,7);ctx.fill();   // earth
+  const st=()=>{ctx.beginPath();ctx.moveTo(.2,.88);ctx.lineTo(.2,.34);ctx.arc(.5,.34,.3,Math.PI,0);ctx.lineTo(.8,.88);ctx.closePath();};
+  ctx.fillStyle=p.c;st();ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.22)';ctx.beginPath();ctx.moveTo(.2,.88);ctx.lineTo(.2,.34);ctx.arc(.5,.34,.3,Math.PI,Math.PI*1.5);ctx.lineTo(.5,.88);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.14)';ctx.fillRect(.5,.34,.3,.54);
+  ctx.strokeStyle=p.d;ctx.lineWidth=.03;ctx.lineJoin='round';st();ctx.stroke();
+  ctx.fillStyle='#5b6068';ctx.fillRect(.47,.14,.06,.2);ctx.fillRect(.4,.2,.2,.05);                    // cross
+  ctx.fillStyle='#3a3f46';rr(.4,.58,.2,.3,.1);ctx.fill();ctx.fillStyle='#ffe9a8';ctx.beginPath();ctx.arc(.56,.74,.014,0,7);ctx.fill();   // door
+  for(const wx of [.26,.62]){ctx.fillStyle='#ffd27a';rr(wx,.5,.1,.1,.02);ctx.fill();}               // lit windows
+  ctx.fillStyle='rgba(60,70,50,.7)';ctx.beginPath();ctx.arc(.24,.86,.04,0,7);ctx.arc(.78,.86,.035,0,7);ctx.fill();   // moss
+}
 function paintHouse(p){   // a little house with a pointed gable roof
+  if(p.tomb)return paintTomb(p);
   ctx.fillStyle=p.c+'59';rr(.03,.05,.94,.92,.22);ctx.fill();ctx.strokeStyle=p.c;ctx.lineWidth=.045;rr(.03,.05,.94,.92,.22);ctx.stroke();   // a base in the house's colour
   ctx.fillStyle='rgba(30,30,20,.20)';ctx.beginPath();ctx.ellipse(.54,.9,.4,.09,0,0,7);ctx.fill();
   ctx.fillStyle='#8a7a6a';ctx.fillRect(.66,.14,.1,.2);ctx.fillStyle='#6f6253';ctx.fillRect(.64,.12,.14,.05);   // chimney (behind the roof)
@@ -2517,37 +2543,38 @@ function paintHouse(p){   // a little house with a pointed gable roof
   ctx.strokeStyle=p.d;ctx.lineWidth=.03;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(.06,.5);ctx.lineTo(.5,.08);ctx.lineTo(.94,.5);ctx.closePath();ctx.stroke();
   ctx.beginPath();ctx.moveTo(.5,.08);ctx.lineTo(.5,.5);ctx.stroke();
 }
-function lotBase(p,rows){   // every destination sits on a parking lot (the same 2x2 footprint); rows = painted bay rows
+function lotBase(p,rows,p2){   // every destination sits on a parking lot (the same 2x2 footprint); rows = painted bay rows
   ctx.fillStyle='rgba(30,30,20,.20)';rr(.12,.16,1.84,1.84,.2);ctx.fill();
   ctx.fillStyle=p?p.c:'#7f8794';rr(.04,.06,1.92,1.88,.22);ctx.fill();     // a kerb in the destination's colour (fire stations have a plain one)
+  if(p2){ctx.save();ctx.beginPath();ctx.rect(1,0,1,2);ctx.clip();ctx.fillStyle=p2.c;rr(.04,.06,1.92,1.88,.22);ctx.fill();ctx.restore();}   // dual: the other half in the second colour
   ctx.fillStyle='#5b626e';rr(.15,.17,1.7,1.66,.15);ctx.fill();            // asphalt
   ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=.028;ctx.lineCap='round';ctx.beginPath();
   for(const r of rows)for(let k=0;k<=r.n;k++){const x=r.x0+.27*k;ctx.moveTo(x,r.v-.17);ctx.lineTo(x,r.v+.17);}
   ctx.stroke();
 }
-function paintDest(p,kind){   // drawn facing south: building at the back (top), bays and the way in at the front (bottom)
-  lotBase(p,LOTS[kind||0].rows);
+function paintDest(p,kind,p2){   // drawn facing south: building at the back (top), bays and the way in at the front (bottom)
+  lotBase(p,LOTS[kind||0].rows,p2);const q=p2||p;
   if(kind===1){   // gas station: canopy over two pumps, kiosk beside them
     ctx.fillStyle='rgba(0,0,0,.18)';rr(.3,.26,1.4,.5,.08);ctx.fill();
-    ctx.fillStyle='#e9e2d2';rr(1.34,.2,.46,.44,.07);ctx.fill();ctx.fillStyle=p.d;rr(1.34,.2,.46,.12,.05);ctx.fill();
+    ctx.fillStyle='#e9e2d2';rr(1.34,.2,.46,.44,.07);ctx.fill();ctx.fillStyle=q.c;rr(1.34,.2,.46,.12,.05);ctx.fill();
     ctx.fillStyle='#bfe3f6';ctx.fillRect(1.4,.42,.34,.12);
     for(const px of [.44,.84]){ctx.fillStyle='#3b414d';rr(px,.44,.16,.3,.04);ctx.fill();ctx.fillStyle=p.l;ctx.fillRect(px+.03,.48,.1,.08);}
     ctx.fillStyle='#d9d3c4';ctx.fillRect(.34,.22,.05,.44);ctx.fillRect(1.02,.22,.05,.44);
-    ctx.fillStyle=p.c;rr(.24,.14,1.0,.26,.07);ctx.fill();ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(.28,.24,.92,.05);
+    ctx.fillStyle=p.c;rr(.24,.14,1.0,.26,.07);ctx.fill();if(p2){ctx.save();ctx.beginPath();ctx.rect(.74,0,1,1);ctx.clip();ctx.fillStyle=p2.c;rr(.24,.14,1.0,.26,.07);ctx.fill();ctx.restore();}ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(.28,.24,.92,.05);
     ctx.strokeStyle=p.d;ctx.lineWidth=.025;rr(.24,.14,1.0,.26,.07);ctx.stroke();
   } else if(kind===2){   // parking lot: a big P sign and a ticket booth in the back corners
     ctx.fillStyle='rgba(0,0,0,.2)';rr(.14,.16,.32,.3,.06);ctx.fill();
-    ctx.fillStyle='#e9e2d2';rr(.12,.12,.32,.3,.06);ctx.fill();ctx.fillStyle=p.c;rr(.08,.06,.4,.1,.04);ctx.fill();ctx.fillStyle='#bfe3f6';ctx.fillRect(.18,.22,.2,.1);
+    ctx.fillStyle='#e9e2d2';rr(.12,.12,.32,.3,.06);ctx.fill();ctx.fillStyle=q.c;rr(.08,.06,.4,.1,.04);ctx.fill();ctx.fillStyle='#bfe3f6';ctx.fillRect(.18,.22,.2,.1);
     ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.arc(1.83,.31,.15,0,7);ctx.fill();
-    ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(1.81,.28,.15,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=.03;ctx.stroke();
+    ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(1.81,.28,.15,0,7);ctx.fill();if(p2){ctx.fillStyle=p2.c;ctx.beginPath();ctx.arc(1.81,.28,.15,-Math.PI/2,Math.PI/2);ctx.closePath();ctx.fill();}ctx.strokeStyle='#fff';ctx.lineWidth=.03;ctx.stroke();
     ctx.fillStyle='#fff';ctx.font='700 .22px -apple-system,Helvetica,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('P',1.81,.3);
   } else {   // store: striped awning over the door, facing the bays
     ctx.fillStyle='rgba(0,0,0,.2)';rr(.32,.2,1.3,.76,.08);ctx.fill();
     ctx.fillStyle='#fbf4e4';rr(.28,.14,1.3,.74,.08);ctx.fill();
-    ctx.fillStyle=p.c;rr(.28,.14,1.3,.2,.06);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(.5,.2,.5,.08);
+    ctx.fillStyle=p.c;rr(.28,.14,1.3,.2,.06);ctx.fill();if(p2){ctx.save();ctx.beginPath();ctx.rect(.93,0,1,1);ctx.clip();ctx.fillStyle=p2.c;rr(.28,.14,1.3,.2,.06);ctx.fill();ctx.restore();}ctx.fillStyle='#fff';ctx.fillRect(.5,.2,.5,.08);
     ctx.fillStyle='#bfe3f6';rr(.4,.44,.38,.22,.03);ctx.fill();rr(1.06,.44,.38,.22,.03);ctx.fill();
     ctx.fillStyle=p.d;rr(.88,.42,.12,.4,.02);ctx.fill();
-    for(let i=0;i<6;i++){ctx.fillStyle=i%2?'#fff':p.c;ctx.fillRect(.28+i*.2167,.68,.2167,.16);}
+    for(let i=0;i<6;i++){ctx.fillStyle=i%2?'#fff':(p2&&i>=3?p2.c:p.c);ctx.fillRect(.28+i*.2167,.68,.2167,.16);}
     ctx.fillStyle='rgba(0,0,0,.12)';ctx.fillRect(.28,.84,1.3,.03);
   }
 }
@@ -2566,8 +2593,8 @@ function drawBld(b){
     }
   } else {
     ctx.save();ctx.translate(x+1,y+1);ctx.rotate(faceAng(faceOf(b)));ctx.translate(-1,-1);   // the lot turns to face its driveway
-    ctx.drawImage(sprite('d'+b.color+'_'+(b.kind||0),2,2,224,()=>paintDest(p,b.kind||0)),0,0,2,2);ctx.restore();
-    if(b.pulse>0){ctx.strokeStyle=p.c;ctx.globalAlpha=b.pulse;ctx.lineWidth=.08;ctx.beginPath();ctx.arc(x+1,y+1,.9+(1-b.pulse)*.7,0,7);ctx.stroke();ctx.globalAlpha=1;}
+    ctx.drawImage(sprite('d'+b.color+'_'+(b.color2>=0?b.color2:'x')+'_'+(b.kind||0),2,2,224,()=>paintDest(p,b.kind||0,b.color2>=0?PAL[b.color2]:null)),0,0,2,2);ctx.restore();
+    if(b.pulse>0){ctx.strokeStyle=b.color2>=0?PAL[b.color2].c:p.c;ctx.globalAlpha=b.pulse;ctx.lineWidth=.08;ctx.beginPath();ctx.arc(x+1,y+1,.9+(1-b.pulse)*.7,0,7);ctx.stroke();ctx.globalAlpha=1;}
   }
   ctx.restore();
   if(b.fire)drawFire(b);else if(b.steam)drawSteam(b);
@@ -2576,10 +2603,10 @@ function drawBld(b){
     for(let i=0;i<b.load;i++){
       const row=Math.floor(i/D.dcap),n=Math.min(D.dcap,b.load-row*D.dcap);
       const px=x+1+((i%D.dcap)-(n-1)/2)*.2,py=y-.12-row*.19;
-      ctx.lineWidth=.035;ctx.fillStyle=full?(blink?'#e5484d':'#ff8a8a'):near?'#ffb02e':p.c;ctx.strokeStyle='#fff';
+      ctx.lineWidth=.035;ctx.fillStyle=full?(blink?'#e5484d':'#ff8a8a'):near?'#ffb02e':(b.color2>=0&&i%2?PAL[b.color2].c:p.c);ctx.strokeStyle='#fff';
       ctx.beginPath();ctx.arc(px,py,.075,0,7);ctx.fill();ctx.stroke();
     }
-    const st=S.stallT[b.color]||0;
+    const st=Math.max(S.stallT[b.color]||0,b.color2>=0?S.stallT[b.color2]||0:0);
     if(st>0){   // cut-off countdown ring (outer, orange)
       ctx.strokeStyle='#ff8a3d';ctx.lineWidth=.1;ctx.lineCap='round';ctx.globalAlpha=.6+.4*Math.sin(time*6);
       ctx.beginPath();ctx.arc(x+1,y+1,1.45,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,st/D.stall));ctx.stroke();ctx.lineCap='butt';ctx.globalAlpha=1;
@@ -2693,10 +2720,7 @@ function drawGround(){
   for(const t of trees){
     if(t.x<vx0-1||t.x>vx1+1||t.y<vy0-1||t.y>vy1+1)continue;
     const c=cells[cellIdx(Math.floor(t.x),Math.floor(t.y))];if(c.e||c.f||c.bld)continue;
-    const cols=TH.trees[t.s];
-    ctx.fillStyle=TH.treeSh;ctx.beginPath();ctx.ellipse(t.x+.07,t.y+.11,t.r*1.05,t.r*.78,0,0,7);ctx.fill();
-    ctx.fillStyle=cols[0];ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.fill();
-    ctx.fillStyle=cols[1];ctx.beginPath();ctx.arc(t.x-t.r*.25,t.y-t.r*.3,t.r*.58,0,7);ctx.fill();
+    drawDeadTree(t);
   }
   ctx.restore();
   // ground roads + driveways
@@ -2704,6 +2728,21 @@ function drawGround(){
   drawNet('g',-3);drawStubs(-3);                                                   // sidewalks
   for(const ps of [0,1,2]){drawNet('g',ps);drawStubs(ps);}                          // curb, edge band, asphalt
   drawMarks('g');drawStops();
+}
+function drawDeadTree(t){   // a bare black tree seen from above: a star of crooked branches that fork
+  const sd=t.x*12.9898+t.y*78.233,rn=i=>{const v=Math.sin(sd*(i+1)*1.713)*43758.5453;return v-Math.floor(v);};
+  const R=t.r*1.35,n=5+Math.floor(rn(0)*3);
+  ctx.strokeStyle=TH.treeSh;ctx.lineCap='round';ctx.lineWidth=t.r*.2;ctx.beginPath();
+  for(let i=0;i<n;i++){const a=i/n*6.283+rn(i+1)*.7,l=R*(.7+rn(i+9)*.5);ctx.moveTo(t.x+.05,t.y+.08);ctx.lineTo(t.x+.05+Math.cos(a)*l,t.y+.08+Math.sin(a)*l);}
+  ctx.stroke();
+  ctx.strokeStyle='#14141a';
+  for(let i=0;i<n;i++){
+    const a=i/n*6.283+rn(i+1)*.7,l=R*(.7+rn(i+9)*.5),bend=(rn(i+17)-.5)*.7;
+    const mx=t.x+Math.cos(a+bend)*l*.55,my=t.y+Math.sin(a+bend)*l*.55,ex=t.x+Math.cos(a)*l,ey=t.y+Math.sin(a)*l;
+    ctx.lineWidth=t.r*.17;ctx.beginPath();ctx.moveTo(t.x,t.y);ctx.lineTo(mx,my);ctx.lineTo(ex,ey);ctx.stroke();
+    const fa=a+(rn(i+25)>.5?.75:-.75);ctx.lineWidth=t.r*.1;ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(mx+Math.cos(fa)*l*.45,my+Math.sin(fa)*l*.45);ctx.stroke();
+  }
+  ctx.lineCap='butt';ctx.fillStyle='#14141a';ctx.beginPath();ctx.arc(t.x,t.y,t.r*.24,0,7);ctx.fill();
 }
 function renderLayers(k,rx0,rx1,ry0,ry1){   // render the world rectangle [rx0,rx1]x[ry0,ry1] at k pixels per cell
   const w=Math.ceil((rx1-rx0)*k),h=Math.ceil((ry1-ry0)*k);
@@ -2832,7 +2871,8 @@ function drawAmbient(poses){
   for(const b of blds){
     if(b.x<vx0-2||b.x>vx1+2||b.y<vy0-2||b.y>vy1+2)continue;
     if(b.fire){ctx.globalAlpha=Math.min(1,a+.3);ctx.drawImage(fire,b.x+.5-1.5,b.y+.5-1.5,3,3);continue;}
-    if(b.dest){const cg=colorGlow(b.color),r=1.35,cx=b.x+b.w/2,cy=b.y+b.w/2;   // each building glows in its own colour so it can be told apart in the dark
+    if(b.dest){const cg=colorGlow(b.color),r=1.35,cx=b.x+b.w/2,cy=b.y+b.w/2;
+      if(b.color2>=0){ctx.globalAlpha=a*.2;ctx.drawImage(colorGlow(b.color2),cx-r+.35,cy-r,r*2,r*2);}   // each building glows in its own colour so it can be told apart in the dark
       ctx.globalAlpha=a*.26;ctx.drawImage(cg,cx-r,cy-r,r*2,r*2);}   // destinations: just a soft hint of their colour (their coloured kerb does the rest)
     if(b.dest){ctx.globalAlpha=a*.14;ctx.drawImage(cool,b.x+1-1.1,b.y+1-1.1,2.2,2.2);continue;}
     if((b.id*7)%5===0)continue;
@@ -2973,7 +3013,7 @@ function serialize(){
     for(let d=0;d<8;d++){const e=arr[d];if(!e||e.ghost)continue;const bi=nbIdx(i,d);if(bi<i)continue;edges.push([i,d,layer==='f'?1:0,e.k,e.ow]);}
   }
   const signs=[];for(let i=0;i<W*H;i++){const sg=cells[i].sg;if(sg)for(let s=0;s<8;s++)if(sg[s])signs.push([i,s]);}
-  const bl=blds.map(b=>[b.x,b.y,b.w,b.color,b.dest?1:0,b.dir,Math.min(MAXD,b.demand+b.out),+b.timer.toFixed(2),b.kind||0]);
+  const bl=blds.map(b=>[b.x,b.y,b.w,b.color,b.dest?1:0,b.dir,Math.min(MAXD,b.demand+b.out),+b.timer.toFixed(2),b.kind||0,b.color2>=0?b.color2:-1]);
   const dp=depts.map(d=>[d.x,d.y,d.dir,Math.max(0,+(d.readyAt-time).toFixed(1))]);
   return {v:2,rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
     colorBorn:S.colorBorn,stallT:S.stallT.map(v=>+v.toFixed(2)),inv,time:+time.toFixed(2),mid:!!S.mid,edges,signs,bl,dp,tr:Object.keys(sbTerr).map(k=>[+k,sbTerr[k]?1:0]),ns:sbNoSpawn?1:0};
@@ -2993,8 +3033,8 @@ function restore(sv){
      grow:null,expansions:0,sirens:[],fireClock:0,crashes:st.crashes||0,wrecks:[],week:st.week,weekT:st.weekT,weekLen:st.weekLen,score:st.score,colors:st.colors,modal:null,paused:false,speed:1,over:false,mid:!!st.mid,saveClock:0,demo:false};
   for(const [i,d,ly,k,ow] of st.edges)setEdge(ly?'f':'g',i,d,k,ow);
   for(const [i,s] of st.signs)setSign(i,s,true);
-  for(const [x,y,w,color,dest,dir,demand,timer,kind] of st.bl){
-    const b={id:++bldId,color,dest:!!dest,x,y,w,cells:[],demand,out:0,gar:D.fleet,pend:[],timer,retry:0,pulse:0,born:time-5,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?(typeof kind==='number'?kind:(x+y)%3):0};
+  for(const [x,y,w,color,dest,dir,demand,timer,kind,color2] of st.bl){
+    const b={id:++bldId,color,dest:!!dest,x,y,w,cells:[],demand,out:0,gar:D.fleet,pend:[],timer,retry:0,pulse:0,born:time-5,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?(typeof kind==='number'?kind:(x+y)%3):0,color2:dest&&color2>=0?color2:-1};
     setDir(b,dir);for(let j=0;j<w;j++)for(let i=0;i<w;i++){const ci=cellIdx(x+i,y+j);cells[ci].bld=b;b.cells.push(ci);}
     blds.push(b);
   }
@@ -3327,13 +3367,13 @@ function aiForward(color){   // ground cells reachable from this colour's houses
 }
 function aiPlanDest(d){   // a destination nobody has reached yet: join it to the network its colour's houses already use
   const F=aiForward(d.color),ports=new Uint8Array(W*H);
-  for(const h of blds)if(!h.dest&&h.color===d.color&&h.port>=0)ports[h.port]=1;
+  for(const h of blds)if(!h.dest&&(h.color===d.color||h.color===d.color2)&&h.port>=0)ports[h.port]=1;
   if(d.port<0)return null;
   const pl=aiSearch(d.port,F,ports);if(pl)pl.dir=d.dir;return pl;
 }
 function aiPlanHouse(b){
   const R=aiReach(b.color),ports=new Uint8Array(W*H);
-  for(const x of blds)if(x.dest&&x.color===b.color&&x.port>=0)ports[x.port]=1;
+  for(const x of blds)if(acc(x,b.color)&&x.port>=0)ports[x.port]=1;
   let best=null;
   for(let d=0;d<8;d++){
     if(!dirValid(b,d))continue;
@@ -3520,7 +3560,7 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
     const order=needy.slice(this.rr%needy.length).concat(needy).slice(0,4);this.rr++;
     this.job={ii:0,items:order.map(b=>{
       const dest=b.dest;
-      return {b,R:dest?aiForward(b.color):aiReach(b.color),ports:(()=>{const pt=new Uint8Array(W*H);for(const x of blds)if(dest?(!x.dest&&x.color===b.color):(x.dest&&x.color===b.color))if(x.port>=0)pt[x.port]=1;return pt;})(),
+      return {b,R:dest?aiForward(b.color):aiReach(b.color),ports:(()=>{const pt=new Uint8Array(W*H);for(const x of blds)if(dest?(!x.dest&&(x.color===b.color||x.color===b.color2)):acc(x,b.color))if(x.port>=0)pt[x.port]=1;return pt;})(),
         dirs:dest?[b.dir]:[0,1,2,3,4,5,6,7].filter(d=>dirValid(b,d)),di:0,best:null};
     })};
   },

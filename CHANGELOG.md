@@ -1,5 +1,13 @@
 # Gridlock changelog
 
+## 1.6.0 — Spooky season
+- New icon: the spooky night city
+- New colours: Pumpkin, Midnight, Twilight, Headstone, Slime and Blood. Headstone houses are little headstones with doors
+- Dual destinations (from week 5): a lot split in two colours takes cars of both colours, like the one on the icon. Houses of either colour can send cars there, and it fills up with both
+- Trees are now black and dead
+- Cobwebs hang in the corners of menus and pop-ups
+- Saved cities keep working (colours keep their place, they just look different)
+
 ## 1.5.17 — Plain colour names
 - The six colours are now called Red, Blue, Yellow, Green, Purple and Orange everywhere (alerts, lessons and the sandbox)
 
