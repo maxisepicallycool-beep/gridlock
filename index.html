@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.7.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.7.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -3167,6 +3167,23 @@ function drawRipples(){   // the only animated scenery: drifting ripples on the 
 }
 let fogImg=null,batT=0;
 const hash1=(i,k)=>{const v=Math.sin(i*127.1+k*311.7)*43758.5453;return v-Math.floor(v);};
+function drawLocators(){   // a pin in the building's colour bobs above every new house and destination for 3 seconds
+  if(S.demo||S.tut||mode!=='play')return;
+  for(const b of blds){
+    if(b.dept||b.color<0)continue;
+    const t=time-b.born;if(t<0||t>3)continue;
+    if(b.x<vx0-1||b.x>vx1+1||b.y<vy0-1||b.y>vy1+1)continue;
+    const a=Math.min(1,t*5)*Math.min(1,(3-t)*2.5),bob=Math.sin(performance.now()/1000*6)*4,tip=-8+bob,cy=tip-22;
+    ctx.save();ctx.translate(b.x+b.w/2,b.y-(b.dest?.1:.06));ctx.scale(1/cs,1/cs);ctx.globalAlpha=a;
+    const path=()=>{ctx.beginPath();ctx.moveTo(0,tip);ctx.lineTo(-9.6,cy+5.4);ctx.arc(0,cy,11,2.63,Math.PI*2+.513);ctx.closePath();};
+    ctx.lineJoin='round';path();ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.stroke();
+    ctx.fillStyle=PAL[b.color].c;path();ctx.fill();
+    if(b.color2>=0){ctx.save();ctx.beginPath();ctx.rect(0,cy-14,16,50);ctx.clip();ctx.fillStyle=PAL[b.color2].c;path();ctx.fill();ctx.restore();}
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,cy,4,0,7);ctx.fill();
+    ctx.strokeStyle=PAL[b.color].c;ctx.globalAlpha=a*.6*(1-t/3);ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,10+t*14,0,7);ctx.stroke();   // a ring spreading out from the building
+    ctx.restore();
+  }
+}
 function drawFog(){   // slow drifting mist that belongs to the map (it stays put when you pan and zoom), a bit thicker after dark
   if(!fogImg){fogImg=glowImg('rgba(205,210,235,');}
   const T=performance.now()/1000,am=ambient(),ww=RX1-RX0+20,wh=RY1-RY0,n=Math.min(260,Math.ceil((RX1-RX0)*wh/55));
@@ -3221,6 +3238,7 @@ function draw(){
   drawTutorial();
   drawAmbient(poses);
   if(!Settings.v.noHw&&Settings.v.fx&&mode!=='tut'){drawFog();drawBats();}
+  drawLocators();
   if(D.notify&&!S.demo&&!S.tut&&mode==='play'&&Settings.v.n_mark)for(const b of blds)drawAlert(b);
   if(Settings.v.fx)for(const p of particles){ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();}
   ctx.globalAlpha=1;

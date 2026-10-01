@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.7.1 — Locators for new buildings
+- Every new house and destination gets a bobbing pin above it for 3 seconds, in its own colour (split in two for dual destinations), with a ring spreading out from the building. The pin stays the same size on screen at any zoom
+
 ## 1.7.0 — Route shares
 - In the Routes layer, click a road to see what share of the cars use that stretch: a percentage and how many of the current routes it is (for example 37%, 4 of 11), with a split by house colour. The road is highlighted, the label stays readable at any zoom, and the number updates as routes change. Click empty ground to clear it. In the Routes view a click inspects instead of building
 
