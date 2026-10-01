@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.5.9 — Tiny test update
+- Settings now shows which app build and game version you are running (used to check that the apps update themselves)
+- Nothing else has changed
+
 ## 1.5.8 — Everything can be pushed
 - The Mac and Windows apps can now update themselves from GitHub, not just the game: a newer app is downloaded, checked against its checksum and swapped in when you quit (Mac and Windows)
 - The Windows app's own code updates separately and safely, and falls back to its built-in copy if a new set ever fails to start

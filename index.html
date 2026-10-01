@@ -3077,7 +3077,8 @@ const SCREENS={
         +`<div class="srow" style="display:block"><div class="st"><b>Keyboard shortcuts</b><small>Click a key, then press the one you want. Esc cancels.</small></div><div class="binds">${binds}</div><div style="margin-top:10px"><button class="sbtn ghost" data-act="resetkeys">Reset keys to default</button></div></div>`
         +`<div class="srow" style="display:block"><div class="st"><b>Mouse and fixed keys</b></div><div class="keys">${fixed.map(k=>`<div><span>${k[1]}</span><kbd>${k[0]}</kbd></div>`).join('')}</div></div>`)}
       ${sec('Updates',
-        tog('updateQuiet','Install updates quietly','No update pop-ups: new versions are downloaded in the background and installed when the game opens. Experimental updates still ask first.'))}
+        tog('updateQuiet','Install updates quietly','No update pop-ups: new versions are downloaded in the background and installed when the game opens. Experimental updates still ask first.')
+        +row('Version','<span id="aboutv">Checking\u2026</span>',''))}
       ${sec('Main menu AI',
         row('AI speed','How fast the city plays itself behind the menu',seg('aiSpeed',[[1,'Slow'],[2,'Normal'],[4,'Fast'],[8,'Turbo']]))
         +row('AI difficulty','What the AI plays on (it starts a new city when you change it)',seg('aiDiff',[['relaxed','Relaxed'],['standard','Standard'],['rush','Rush Hour'],['gridlock','Gridlock']])))}
@@ -3099,9 +3100,15 @@ const SCREENS={
         </div></div></div>`;
   }
 };
+function fillAbout(){   // which app and game version this is (the app answers when there is one)
+  const el=document.getElementById('aboutv');if(!el)return;
+  if(window.AppBridge)AppBridge.call('info').then(i=>{const e=document.getElementById('aboutv');if(e&&i)e.textContent=(i.platform==='mac'?'Mac':'Windows')+' app build '+i.appBuild+' \u00b7 game '+i.gameVersion;});
+  else el.textContent='Running in a browser';
+}
 const Menu={
   show(screen){MS.screen=screen;menuEl.innerHTML=SCREENS[screen]();menuEl.classList.remove('hidden');
-    if(screen==='new'){const ph=pick(NAMES);MS.placeholder=MS.placeholder||ph;}},
+    if(screen==='new'){const ph=pick(NAMES);MS.placeholder=MS.placeholder||ph;}
+    if(screen==='settings')fillAbout();},
   hide(){menuEl.classList.add('hidden');menuEl.innerHTML='';}
 };
 const SFMT={pct:v=>Math.round(v)+'%',x:v=>(+v).toFixed(1)+'\u00d7',num:v=>String(Math.round(v))};
