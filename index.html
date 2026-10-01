@@ -1408,7 +1408,7 @@ for(const ev of ['pointerdown','keydown'])window.addEventListener(ev,()=>Snd.ini
 /* ---------- music: daytime songs and nighttime songs, crossfaded as the light changes ---------- */
 const TRACKS={
   day:[{f:'day1.mp3',n:'Daytime 1',a:''},{f:'day2.mp3',n:'Daytime 2',a:''}],
-  night:[{f:'satie.mp3',n:'Gymnop\u00e9die No. 1',a:'Erik Satie'},{f:'night1.mp3',n:'Night 1',a:''}]};
+  night:[{f:'satie.mp3',n:'Night 2',a:''},{f:'night1.mp3',n:'Night 1',a:''}]};
 for(const m in TRACKS)for(const t of TRACKS[m])t.mood=m;
 const Music={els:{},active:[],cur:null,last:null,shown:null,unlocked:!!window.__APP,missing:false,
   moodNow(){const m=Settings.v.musicMode;if(m!=='auto')return m;return ambient().n>=.5?'night':'day';},
@@ -2722,7 +2722,7 @@ const SCREENS={
         +tog('musicPause','Fade out while paused','')
         +tog('musicBg','Keep playing in the background','When the window is hidden or another app is in front')
         +row('Now playing',Music.missing?'The music files are not in this copy of the game':(Music.nowPlaying()?'\u266A '+Music.nowPlaying().n+(Music.nowPlaying().a?' \u2014 '+Music.nowPlaying().a:''):(v.music?'Starting\u2026':'Music is off')),'<button class="sbtn" data-act="nextsong">Next song</button>')
-        +`<div class="srow" style="display:block"><div class="st"><b>Songs</b><small>Daytime 1 and Daytime 2 play by day. Gymnop\u00e9die No. 1 (Erik Satie) and Night 1 play by night.</small></div></div>`)}
+        +`<div class="srow" style="display:block"><div class="st"><b>Songs</b><small>Daytime 1 and Daytime 2 play by day. Night 1 and Night 2 play by night.</small></div></div>`)}
       ${sec('Notifications',
         tog('n_crit','Critical alerts','Destinations swamped and trips cut off')
         +tog('n_fire','Fire alerts','Houses on fire and fire station news')

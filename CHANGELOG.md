@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.3.2 — Song names
+- The songs are now simply called Daytime 1, Daytime 2, Night 1 and Night 2
+
 ## 1.3.1 — New songs
 - New soundtrack: two new daytime songs, plus a new nighttime song alongside Gymnopédie No. 1 by Erik Satie
 - The old songs are gone
