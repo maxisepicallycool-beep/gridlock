@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.5';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.6';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -335,9 +335,9 @@ const HOUSE_REST=5,LOT_REST=5;   // seconds a returned car waits at home / a par
 const STALL_FRAC=.75, STALL_GRACE=20, STALL_IDLE=25;   // cut-off countdown: share of a colour's houses stalled / grace for a new colour / seconds with no progress
 const DIFFS=[
   {id:'tutorial',name:'Tutorial',tag:'Learn the game',col:'#2fb67c',demandBase:4,demandMin:3,stall:999,dlimit:999,dcap:99,weekLen:99999,firstWeek:99999,cardMul:1,startMul:1,growth:0,maxOut:2,fleet:2,fireChance:0,fireBurn:80,fireOW:true,fireBuild:15,anyDest:true,crash:0,notify:true,noFail:true,infinite:true},
-  {id:'relaxed', name:'Relaxed',  tag:'Take your time',          col:'#2fb67c',demandBase:14,  demandMin:7,  stall:35,dlimit:22,dcap:7,weekLen:50,firstWeek:60,cardMul:1.3, startMul:1.5, growth:.75,maxOut:2,fleet:0,fireChance:0,fireBurn:80,fireOW:true,fireBuild:20,anyDest:false,crash:0,notify:true},
-  {id:'standard',name:'Standard', tag:'The intended ride',       col:'#4c9be8',demandBase:11,  demandMin:4.5,stall:22.5,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true},
-  {id:'rush',    name:'Rush Hour',tag:'Busy, busy, busy',        col:'#ff8b3d',demandBase:8.5, demandMin:3.5,stall:18,dlimit:10,dcap:5,weekLen:38,firstWeek:44,cardMul:.85, startMul:.8,  growth:1.4,maxOut:2,fleet:2,fireChance:.10,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:0,notify:true},
+  {id:'relaxed', name:'Relaxed',  tag:'Take your time',          col:'#2fb67c',demandBase:14,  demandMin:7,  stall:35,dlimit:22,dcap:7,weekLen:50,firstWeek:60,cardMul:1.3, startMul:1.5, growth:.75,maxOut:2,fleet:0,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:20,anyDest:false,crash:0,notify:true},
+  {id:'standard',name:'Standard', tag:'The intended ride',       col:'#4c9be8',demandBase:11,  demandMin:4.5,stall:22.5,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.10,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true},
+  {id:'rush',    name:'Rush Hour',tag:'Busy, busy, busy',        col:'#ff8b3d',demandBase:8.5, demandMin:3.5,stall:18,dlimit:10,dcap:5,weekLen:38,firstWeek:44,cardMul:.85, startMul:.8,  growth:1.4,maxOut:2,fleet:2,fireChance:.125,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:0,notify:true},
   {id:'gridlock',name:'Gridlock', tag:'Good luck',               col:'#e5484d',demandBase:6.5, demandMin:2.8,stall:15,dlimit:7, dcap:4,weekLen:34,firstWeek:40,cardMul:.7,  startMul:.65, growth:1.8,maxOut:1,fleet:1,fireChance:.15,fireBurn:45,fireOW:false,fireBuild:70,anyDest:true,crash:15,notify:false},
   {id:'sandbox', name:'Sandbox',  tag:'No fail, all the pieces', col:'#a468e6',demandBase:11,  demandMin:4.5,stall:30,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:10,anyDest:true,crash:0,notify:true,noFail:true,infinite:true}
 ];
@@ -3288,7 +3288,7 @@ const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 function timeAgo(ts){const s=Math.max(0,(Date.now()-ts)/1000);if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' h ago';return Math.floor(s/86400)+' d ago';}
 const chip=d=>`<span class="chip" style="--chipc:${d.col}">${d.name}</span>`;
 const statLines=d=>{
-  const fire=d.fireChance?`House fires ${Math.round(d.fireChance*100)}%/min`:'No house fires';
+  const fire=d.fireChance?`House fires ${+(d.fireChance*100).toFixed(1)}%/min`:'No house fires';
   const rules=d.fleet?`${d.fleet} car${d.fleet>1?'s':''} per house, must return · any destination`:'Cars spawn freely · fixed destination';
   if(d.noFail)return ['No fail states','Unlimited pieces',rules,fire];
   return [`Cut-off timer ${d.stall}s`,`Late cars: ${d.dcap} for ${d.dlimit}s ends it`,`Weeks ${d.weekLen}s · pieces ×${d.startMul}`,rules,fire].concat(d.crash?[`Cars crash · ${d.crash} crashes ends it`,'No alerts']:[]);

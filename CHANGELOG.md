@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.6.6 — House fire chances
+- Chance of a house fire each minute: Relaxed 5% (it had none), Standard 10% (was 5%), Rush Hour 12.5% (was 10%), Gridlock 15% (unchanged)
+
 ## 1.6.5 — Graveyard tidy-up
 - The graveyard's gravestones, cross and fence no longer sit on top of the parking bays; they stand in the free strips beside them
 
