@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.5.13 — Delete all cities
+- "Your Cities" has a Delete all cities button. It asks you to press it a second time (or choose Keep them) so you can't wipe your cities by accident
+
 ## 1.5.12 — Bug reports, and every city is kept
 - New "Report a bug" (Settings and the pause menu): describe what went wrong, optionally add technical details, and it opens a prefilled GitHub issue for you to submit (or copy the report to send in a message)
 - No more numbered save slots. Every city you play is kept on record, saved automatically, and listed under "Your Cities" where you can load or delete it. Starting a new game never overwrites another city

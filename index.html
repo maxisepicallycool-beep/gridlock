@@ -268,7 +268,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.5.12';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.5.13';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -2950,6 +2950,10 @@ const Cities={list:[],recs:{},ready:false,backend:'local',
     if(this.backend==='files')this.wr('city-'+id+'.json','');else try{localStorage.removeItem('gridlock.city-'+id+'.json');}catch(e){}
     return this.writeIndex();
   },
+  delAll(){   // every city goes (the files are blanked, the list emptied)
+    for(const c of this.list){delete this.recs[c.id];if(this.backend==='files')this.wr('city-'+c.id+'.json','');else try{localStorage.removeItem('gridlock.city-'+c.id+'.json');}catch(e){}}
+    this.list=[];return this.writeIndex();
+  },
   sorted(){return this.list.slice().sort((a,b)=>b.ts-a.ts);},
   latest(){return this.sorted()[0]||null;},
   count(){return this.list.length;}
@@ -3075,7 +3079,7 @@ const SCREENS={
           <div class="meta">${chip(d)}<span>Week ${c.week}</span><span>${c.score} trips</span><span>${timeAgo(c.ts)}</span></div></div>
         <div class="acts"><button class="sbtn" data-act="city-load" data-id="${c.id}">Load</button><button class="sbtn ${cf==='d'+c.id?'warn':'ghost'}" data-act="city-del" data-id="${c.id}">${cf==='d'+c.id?'Delete it?':'Delete'}</button></div></div>`;
     }).join('');
-    return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Your cities</h2></div><div class="pbody">${rows||'<div class="tiny" style="padding:20px">No cities yet. Start a new game and it will be kept here, saved automatically.</div>'}<div class="tiny" style="margin:8px 4px">Every city is saved automatically while you play and kept until you delete it.</div></div></div>`;
+    return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Your cities</h2></div><div class="pbody">${rows||'<div class="tiny" style="padding:20px">No cities yet. Start a new game and it will be kept here, saved automatically.</div>'}<div class="tiny" style="margin:8px 4px">Every city is saved automatically while you play and kept until you delete it.</div>${list.length?`<div class="row" style="margin:10px 0 2px"><button class="sbtn ${cf==='all'?'warn':'ghost'}" data-act="city-delall">${cf==='all'?'Really delete all '+list.length+' '+(list.length===1?'city':'cities')+'? Press again':'Delete all cities'}</button>${cf==='all'?'<button class="sbtn ghost" data-act="city-keep">Keep them</button>':''}</div>`:''}</div></div>`;
   },
   howto(){
     const tips=[
@@ -3245,6 +3249,10 @@ function act(a,d){
     case 'diff':MS.diff=d.id;Menu.show('new');break;
     case 'start':startNew();break;
     case 'city-load':loadCity(d.id);break;
+    case 'city-keep':MS.confirm=null;Menu.show('load');break;
+    case 'city-delall':{
+      if(MS.confirm!=='all'){MS.confirm='all';Menu.show('load');return;}
+      MS.confirm=null;Cities.delAll();Menu.show('load');toast('All cities deleted',true);break;}
     case 'city-del':{
       if(MS.confirm!=='d'+d.id){MS.confirm='d'+d.id;Menu.show('load');return;}
       MS.confirm=null;Cities.del(d.id);Menu.show('load');break;}
