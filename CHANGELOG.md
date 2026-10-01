@@ -1,5 +1,12 @@
 # Gridlock changelog
 
+## 1.5.8 — Everything can be pushed
+- The Mac and Windows apps can now update themselves from GitHub, not just the game: a newer app is downloaded, checked against its checksum and swapped in when you quit (Mac and Windows)
+- The Windows app's own code updates separately and safely, and falls back to its built-in copy if a new set ever fails to start
+- The songs now stay in step with the repo: new, changed or removed songs are picked up automatically
+- A small toolbox (AppBridge) lets the game ask the app for things, so future features need no new app
+- The app icon (including the one in Finder and on the .exe) updates with the app
+
 ## 1.5.7 — Notification timers
 - New notification timers in Settings: how long a house has to be backed up before it alerts you, how long a destination stays nearly full before it warns you, how long a colour stays cut off before it alerts you, how long alerts stay on screen, and how long before the same alert can repeat
 - A house that can reach every destination of its colour no longer gets a "backed up, is it connected?" alert (it is connected: that's just traffic)
