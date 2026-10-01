@@ -396,7 +396,7 @@ const THEMES={
     casing:['#000','#000','#000'],fill:['#2a2a2a','#000','#fff'],dash:['#fff','#ffd400','#000'],night:0}
 };
 // the natural map: real green grass, only when the theme is not applied to the map
-THEMES.natural=Object.assign({},THEMES.light,{rim:'#d3e8b8',ground:'#c5e0a0',patch:['rgba(120,180,90,','rgba(205,228,130,'],grass:['rgba(80,140,60,','rgba(110,165,70,','rgba(60,120,55,'],grid:'rgba(60,100,40,.08)',trees:[['#5a9d4e','#74b865'],['#4f9246','#6bb05c'],['#62a655','#80c270']],treeSh:'rgba(30,70,20,.25)'});
+THEMES.natural=Object.assign({},THEMES.light,{rim:'#d3e8b8',ground:'#c5e0a0',patch:['rgba(120,180,90,','rgba(205,228,130,'],grass:['rgba(80,140,60,','rgba(110,165,70,','rgba(60,120,55,'],grid:'rgba(60,100,40,.08)',trees:[['#5a9d4e','#74b865'],['#4f9246','#6bb05c'],['#62a655','#80c270']],treeSh:'rgba(30,70,20,.25)',deep:.38});   // deep: extra darkness at night (a bright natural map needs it to feel like night)
 let TH=THEMES.light;
 function themeName(){return Settings.v.theme==='contrast'?'contrast':'dark';}
 /* theme brightness: every colour slides between black (0), the dark theme (30) and white (100) */
@@ -2767,7 +2767,8 @@ function drawAmbient(poses){
   const am=ambient();if(am.n<=.01&&am.warm<=.01)return;
   const k=TH.night;ctx.save();ctx.globalCompositeOperation='source-atop';
   if(am.warm>.01){ctx.fillStyle='rgba(255,140,60,'+(.16*am.warm)+')';ctx.fillRect(vx0-1,vy0-1,vx1-vx0+2,vy1-vy0+2);}
-  if(am.n>.01){ctx.fillStyle='rgba(10,18,58,'+(.6*am.n*k)+')';ctx.fillRect(vx0-1,vy0-1,vx1-vx0+2,vy1-vy0+2);}
+  if(am.n>.01){ctx.fillStyle='rgba(10,18,58,'+(.6*am.n*k)+')';ctx.fillRect(vx0-1,vy0-1,vx1-vx0+2,vy1-vy0+2);
+    if(TH.deep){ctx.fillStyle='rgba(0,2,10,'+(TH.deep*am.n)+')';ctx.fillRect(vx0-1,vy0-1,vx1-vx0+2,vy1-vy0+2);}}
   ctx.restore();
   if(am.n<=.12||!Settings.v.fx)return;
   const a=Math.min(1,am.n*1.25);

@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.5.10 — Darker nights on the natural map
+- With "Don't apply the theme to the map" on, the grass and map now get much darker at night, but stay readable: roads, houses and lights are still easy to see
+
 ## 1.5.9 — Tiny test update
 - Settings now shows which app build and game version you are running (used to check that the apps update themselves)
 - Nothing else has changed
