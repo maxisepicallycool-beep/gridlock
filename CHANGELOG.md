@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.6.10 — Ghost roads clear sooner
+- A road you erased fades out as a ghost while cars are still on it. Now, the moment another route to the same place exists, cars switch to it and the ghost road is cleared (it used to wait for every car to drive past it). Parked cars count too: if there is a way home that does not use the ghost road, it is freed
+
 ## 1.6.9 — A real mute button
 - The Sound button (and the M key) now mutes everything: horns, sound effects and music. Before, it only turned the horns off and the music kept playing. It shows Muted while it is on, and the Car horns switch in Settings still controls horns on their own
 
