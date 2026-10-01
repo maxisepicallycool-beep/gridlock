@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.5.1 — The game owns the keyboard
+- Keys no longer make the Mac's "can't do that" beep
+- Esc opens the pause menu and no longer takes the app out of full screen
+- Typing in text boxes and the Command shortcuts work as before
+
 ## 1.5.0 — A proper tutorial, brightness and a natural map option
 - The tutorial is rebuilt as 8 lessons, each with its own prepared scene: first road, turning a driveway, sharing roads, junctions and stop signs, bridges, highways, fire stations with a real fire, and linking up a whole city
 - A ghost road shows exactly where to build: blue for roads, green for bridges, orange for highways, plus a ghost fire station and a ring on the junction for stop signs. Roads you already built are reused

@@ -2050,6 +2050,7 @@ cv.addEventListener('pointermove',e=>{
 addEventListener('pointerup',()=>{erasing=false;if(sbPaint){sbPaint=false;sbFinish();}finishStroke();});
 cv.addEventListener('pointerleave',()=>{hover=null;hoverF=null;});
 addEventListener('keydown',e=>{
+  if(!(e.target&&e.target.tagName==='INPUT')&&!e.metaKey&&!e.ctrlKey)e.preventDefault();   // the game owns the keyboard: no system beep, Esc never leaves full screen
   if(e.target&&e.target.tagName==='INPUT'){if(e.key==='Enter'&&MS.screen==='new')act('start');if(e.key!=='Escape')return;}
   if(e.key==='Escape'){
     if(mode==='menu'){if(MS.screen!=='main')act('back');return;}
