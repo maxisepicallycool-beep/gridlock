@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.14';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.15';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -2133,7 +2133,7 @@ function tutSteps(){
       target:()=>TUT.burn&&blds.includes(TUT.burn)?[TUT.burn]:[]},
     {ch:'Your city',scene:'city',t:'Link up a whole city',x:'Three colours, three destinations, six houses, a river. Follow the ghost roads one by one. The ghost always shows the next link, and roads you already built are reused.',
       cond:()=>T().all.every(tutOK),target:()=>T().all.filter(b=>!tutOK(b)),ghost:{type:'auto',list:()=>T().all}},
-    {ch:'Your city',t:'Layers',x:'Press <b>L</b> (or the <b>Layers</b> button) to see <b>Traffic</b>, <b>Elevation</b>, <b>Routes</b>, <b>Speed limits</b> and <b>Fire cover</b>. Try one now.',cond:()=>layerMode!=='normal'},
+    {ch:'Your city',t:'Layers',x:'Press <b>L</b> (or the <b>Layers</b> button) to see <b>Traffic</b>, <b>Roads only</b>, <b>Bridges and highways only</b>, <b>Routes</b>, <b>Speed limits</b> and <b>Fire cover</b>. Try one now.',cond:()=>layerMode!=='normal'},
     {ch:'Your city',t:'Make it yours',x:'Open <b>Settings</b> any time: themes, a <b>day and night cycle</b>, music, notifications and rebindable keys. At night every house, store and car glows in its own colour.',next:true},
     {ch:'Your city',t:'The real game',x:'Every week ends with <b>3 cards</b>: pick which pieces to receive. New houses and destinations keep appearing.<br><br>You lose if cars heading to a destination keep running <b>far too late</b> (jammed or badly connected roads) for too long, or most trips of one colour are <b>cut off</b>. Nothing like that happens in this tutorial.',next:true},
     {ch:'Your city',t:'You’re ready!',x:'That’s everything. Start a real game, replay a lesson, or keep building here with unlimited pieces.',final:true}
@@ -2503,7 +2503,7 @@ function drawElevated(){
 }
 /* ---------- layer view ---------- */
 let layerMode='normal';
-const LAYERS=[['normal','Normal','The city as it is','\u25CE','#80869a'],['traffic','Traffic','Where cars flow or get stuck','\u2248','#e5484d'],['elev','Elevation','Bridges and highways only','\u2B06','#ff8b3d'],['routes','Routes','Who drives where, by colour','\u2197','#4c9be8'],['speed','Speed limits','Long straights are fast, junctions slow','\u23F1','#2fb67c'],['fire','Fire cover','How fast a truck reaches each house','\u{1F525}','#d8382f']];
+const LAYERS=[['normal','Normal','The city as it is','\u25CE','#80869a'],['traffic','Traffic','Where cars flow or get stuck','\u2248','#e5484d'],['roads','Roads only','Hides bridges and highways','\u2501','#4c9be8'],['elev','Bridges and highways only','Fades the ground roads','\u2B06','#ff8b3d'],['routes','Routes','Who drives where, by colour','\u2197','#4c9be8'],['speed','Speed limits','Long straights are fast, junctions slow','\u23F1','#2fb67c'],['fire','Fire cover','How fast a truck reaches each house','\u{1F525}','#d8382f']];
 const heat=new Float32Array(N);
 function buildLayerMenu(){
   $('layerMenu').innerHTML=LAYERS.map(l=>`<div class="lrow ${layerMode===l[0]?'on':''}" data-l="${l[0]}" style="--lc:${l[4]}"><i>${l[3]}</i><div><b>${l[1]}</b><small>${l[2]}</small></div></div>`).join('');
@@ -3177,8 +3177,8 @@ function draw(){
   const poses=[];
   for(const c of cars){if(c.ph==='dwell'||isPark(c.ph))continue;const q=pose(c);if(q.x<vx0-2||q.x>vx1+2||q.y<vy0-2||q.y>vy1+2)continue;poses.push([c,q]);}
   for(const [c,q] of poses)if(!q.br)drawCar(c,q);
-  if(!hasElev){}else if(useCache)stampLayer(GC.elev);else drawElevated();
-  for(const [c,q] of poses)if(q.br)drawCar(c,q);
+  if(!hasElev||layerMode==='roads'){}else if(useCache)stampLayer(GC.elev);else drawElevated();
+  if(layerMode!=='roads')for(const [c,q] of poses)if(q.br)drawCar(c,q);
   for(const w of S.wrecks||[]){const a=5-(time-w.t);if(a<=0)continue;ctx.globalAlpha=Math.min(1,a);ctx.font='.8px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u{1F4A5}',w.x,w.y);ctx.globalAlpha=1;}
   for(const b of blds)drawBld(b);
   for(const d of depts)drawDept(d);

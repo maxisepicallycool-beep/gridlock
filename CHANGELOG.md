@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.6.15 — Two layer views instead of Elevation
+- The Elevation layer is now two: Roads only (hides bridges, highways and the cars on them) and Bridges and highways only (fades the ground roads and outlines the elevated ones). The L key cycles through them with the others
+
 ## 1.6.14 — No more house warnings
 - The "house is backed up" warning and the marker over backed-up houses are gone, along with their timer in the notification settings. Destination and cut-off warnings are unchanged
 
