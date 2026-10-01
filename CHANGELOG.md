@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.6.8 — Fog stays put
+- The fog and bats now belong to the map instead of the screen, so they no longer slide or jump when you pan and zoom
+
 ## 1.6.7 — Haunted fire service
 - The fire station is a gothic fire house: jagged gables, a skull plaque, a jack-o'-lantern beacon on its tower, bays with eyes watching from the dark and a cobweb in the corner
 - Fire trucks are black with orange flame decals, a bone ladder, a skull on the roof and a glowing green windscreen. Their sirens flash orange and purple

@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.7';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.8';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -3132,21 +3132,24 @@ function drawRipples(){   // the only animated scenery: drifting ripples on the 
   ctx.stroke();
 }
 let fogImg=null,batT=0;
-function drawFog(){   // slow drifting mist, a bit thicker after dark
+const hash1=(i,k)=>{const v=Math.sin(i*127.1+k*311.7)*43758.5453;return v-Math.floor(v);};
+function drawFog(){   // slow drifting mist that belongs to the map (it stays put when you pan and zoom), a bit thicker after dark
   if(!fogImg){fogImg=glowImg('rgba(205,210,235,');}
-  const T=performance.now()/1000,am=ambient(),w=vx1-vx0+10,h=vy1-vy0;
+  const T=performance.now()/1000,am=ambient(),ww=RX1-RX0+20,wh=RY1-RY0,n=Math.min(260,Math.ceil((RX1-RX0)*wh/55));
   ctx.save();
-  for(let i=0;i<16;i++){
-    const sp=.12+(i%5)*.05,sx=((i*37.1)%w+T*sp)%w,px=vx0-5+sx,py=vy0+((i*53.7)%h)+Math.sin(T*.2+i)*.8,r=3.5+(i%4)*1.3;
+  for(let i=0;i<n;i++){
+    const r=3.5+hash1(i,3)*5,sp=.1+hash1(i,4)*.18,px=RX0-10+((hash1(i,1)*ww+T*sp)%ww),py=RY0+hash1(i,2)*wh+Math.sin(T*.15+i)*.8;
+    if(px+r<vx0||px-r>vx1||py+r<vy0||py-r>vy1)continue;
     ctx.globalAlpha=.16+.12*am.n;ctx.drawImage(fogImg,px-r,py-r*.55,r*2,r*1.1);
   }
   ctx.restore();
 }
-function drawBats(){   // a few bats flap across the sky
-  const T=performance.now()/1000,w=vx1-vx0+12;
+function drawBats(){   // bats flap across the map (world-anchored too)
+  const T=performance.now()/1000,ww=RX1-RX0+24,wh=RY1-RY0,n=Math.min(40,Math.ceil((RX1-RX0)*wh/260));
   ctx.save();ctx.fillStyle='#0c0b12';
-  for(let i=0;i<4;i++){
-    const sp=1.1+i*.35,ph=(T*sp*.35+i*.27)%1,x=vx0-6+((i%2)?1-ph:ph)*w,y=vy0+((i*29.3)%(vy1-vy0))+Math.sin(T*1.6+i*2)*1.2,dir=(i%2)?-1:1,fl=Math.sin(T*16+i*3);
+  for(let i=0;i<n;i++){
+    const dir=hash1(i,5)>.5?1:-1,sp=.9+hash1(i,6)*1.2,ph=((hash1(i,1)+T*sp*.012)%1+1)%1,x=RX0-12+(dir>0?ph:1-ph)*ww,y=RY0+hash1(i,2)*wh+Math.sin(T*1.6+i*2)*1.2,fl=Math.sin(T*16+i*3);
+    if(x<vx0-1||x>vx1+1||y<vy0-1||y>vy1+1)continue;
     ctx.save();ctx.translate(x,y);ctx.scale(dir*.8,.8);
     ctx.globalAlpha=.85;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(.22,-.22*fl-.08,.5,-.04*fl);ctx.quadraticCurveTo(.3,.08,.14,.04);ctx.lineTo(0,.14);ctx.lineTo(-.14,.04);ctx.quadraticCurveTo(-.3,.08,-.5,-.04*fl);ctx.quadraticCurveTo(-.22,-.22*fl-.08,0,0);ctx.fill();
     ctx.restore();
