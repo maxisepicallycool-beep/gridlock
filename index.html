@@ -231,6 +231,8 @@ body.inmenu #coach{display:none!important}
 #coach h3{margin:0 0 5px;font-size:17px}#coach p{margin:0 0 11px;font-size:13px;line-height:1.45;color:var(--ink2)}
 #coach .cbtns{display:flex;gap:8px;flex-wrap:wrap}#coach.ok{border-color:var(--good)}#coach.ok .cbar i{background:var(--good)}
 #menu.still .panel,#menu.still .mwrap{animation:none}
+.mbugbtn{position:fixed;top:18px;right:20px;z-index:6;padding:10px 16px;border-radius:14px;background:var(--card);color:var(--ink);box-shadow:var(--shadow);border:1px solid var(--glassb);font-weight:750}
+.mbugbtn:hover{filter:brightness(1.05)}
 </style>
 </head>
 <body>
@@ -269,7 +271,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.5.15';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.5.16';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -293,20 +295,19 @@ const PAL=[
   {n:'Tangerine',c:'#ff8b3d',d:'#c25c15',l:'#ffc79c'}
 ];
 // layer g = ground roads (k0); layer f = elevated (k1 highway, k2 bridge)
+const kn=k=>PIECES.findIndex(p=>p.k===k)+1;   // a piece's hotkey number
 const PIECES=[
   {k:'road',  label:'Road',            layer:'g',kind:0,ow:false},
   {k:'road1', label:'One-way road',    layer:'g',kind:0,ow:true},
   {k:'hwy',   label:'Highway',         layer:'f',kind:1,ow:false},
-  {k:'hwy1',  label:'One-way highway', layer:'f',kind:1,ow:true},
   {k:'bridge',label:'Bridge',          layer:'f',kind:2,ow:false},
-  {k:'bridge1',label:'One-way bridge', layer:'f',kind:2,ow:true},
   {k:'stop',  label:'Stop sign',       layer:'s'},
   {k:'fire',  label:'Fire station',    layer:'d'}
 ];
 const PK=Object.fromEntries(PIECES.map(p=>[p.k,p]));
 const CARDS=[
-  ['road',[18,38],4],['road1',[10,22],3],['hwy',[6,14],3],['hwy1',[4,9],2],
-  ['bridge',[3,8],3],['bridge1',[3,6],2],['stop',[2,5],3],['fire',[1,2],2]
+  ['road',[18,38],4],['road1',[10,22],3],['hwy',[6,14],3],
+  ['bridge',[3,8],3],['stop',[2,5],3],['fire',[1,2],2]
 ];
 const SPEED=2.6, MAXD=8;
 const HOUSE_REST=5,LOT_REST=5;   // seconds a returned car waits at home / a parked car waits in its bay
@@ -361,7 +362,7 @@ Settings.load();
 const KEYDEF={panL:['arrowleft','a'],panR:['arrowright','d'],panU:['arrowup','w'],panD:['arrowdown','s'],zoomIn:['+','='],zoomOut:['-','_'],fit:['0'],
   t1:['1'],t2:['2'],t3:['3'],t4:['4'],t5:['5'],t6:['6'],t7:['7'],t8:['8'],erase:['9','e','x'],undo:['z'],pause:[' '],layers:['l'],horns:['m']};
 const KEYACT=[['panL','Pan left'],['panR','Pan right'],['panU','Pan up'],['panD','Pan down'],['zoomIn','Zoom in'],['zoomOut','Zoom out'],['fit','Fit the map'],
-  ['t1','Piece 1'],['t2','Piece 2'],['t3','Piece 3'],['t4','Piece 4'],['t5','Piece 5'],['t6','Piece 6'],['t7','Piece 7'],['t8','Piece 8'],
+  ...PIECES.map((p,i)=>['t'+(i+1),'Piece '+(i+1)]),
   ['erase','Erase tool'],['undo','Undo'],['pause','Pause the game'],['layers','Cycle layers'],['horns','Mute horns']];
 let KEYMAP={};
 function keyOverrides(){try{return JSON.parse(Settings.v.keys||'{}')||{};}catch(e){return {};}}
@@ -504,7 +505,7 @@ function setEdge(layer,ai,d,k,ow){
 }
 function keyOfEntry(layer,e){
   if(layer==='g')return e.ow?'road1':'road';
-  return e.k===1?(e.ow?'hwy1':'hwy'):(e.ow?'bridge1':'bridge');
+  return e.k===1?'hwy':'bridge';   // (old one-way pieces are refunded as ordinary ones)
 }
 
 /* ---------- map ---------- */
@@ -701,7 +702,7 @@ function drawGrowth(){   // new land fades in, rippling out from the old edge
 
 /* ---------- game flow ---------- */
 function startInv(){
-  const base={road:60,road1:10,hwy:4,hwy1:0,bridge:6,bridge1:0,stop:3,fire:1},o={};
+  const base={road:60,road1:10,hwy:4,bridge:6,stop:3,fire:1},o={};
   for(const k in base)o[k]=D.infinite?9999:Math.round(base[k]*D.startMul);
   return o;
 }
@@ -732,7 +733,7 @@ function startWeek(w){
   }
 }
 // the bigger the city, the more road a delivery has to cover: road cards grow with the week (from week 4, up to 2.5x), on every difficulty
-function roadBoost(k){return (k==='road'||k==='road1')?1+Math.min(1.5,Math.max(0,S.week-3)*.12):(k==='bridge'||k==='bridge1')?1+Math.min(.6,Math.max(0,S.week-3)*.05):1;}
+function roadBoost(k){return (k==='road'||k==='road1')?1+Math.min(1.5,Math.max(0,S.week-3)*.12):(k==='bridge')?1+Math.min(.6,Math.max(0,S.week-3)*.05):1;}
 function weekEnd(){
   S.modal='cards';stroke=null;
   const pool=CARDS.slice(),offer=[];
@@ -2006,20 +2007,20 @@ function tutSteps(){
   const anyHwy=()=>cells.some(c=>c.f&&c.f.some(e=>e&&e.k===1&&!e.ghost));
   return [
     {ch:'Roads',scene:'first',t:'Welcome to Gridlock',x:'Every house sends cars to the <b>destination of the same colour</b>. Your job is to join them with roads.<br><br>Zoom with the scroll wheel or pinch, move with two-finger scroll, <b>Alt-drag</b> or <b>W A S D</b>. Nothing can go wrong here, so explore.',next:true},
-    {ch:'Roads',t:'Your first road',x:'Pick <b>Road</b> (key <b>1</b>) and <b>drag</b> along the blue ghost road from the coral house to the coral store.<br>Roads snap to 8 directions and bend smoothly.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
+    {ch:'Roads',t:'Your first road',x:'Pick <b>Road</b> (key <b>'+kn('road')+'</b>) and <b>drag</b> along the blue ghost road from the coral house to the coral store.<br>Roads snap to 8 directions and bend smoothly.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
     {ch:'Roads',t:'Watch the traffic',x:'Cars drive to the store, park in a bay, and come back. Wait for <b>3 trips</b>.',cond:()=>plus()>=3,target:()=>[T().d]},
     {ch:'Driveways',scene:'turn',t:'Turn a driveway',x:'This blue house’s driveway points the wrong way. <b>Click the house</b> to turn its driveway (Shift-click turns it the other way) until it faces the gas station.',cond:()=>T().h.dir!==T().dir0,target:()=>[T().h]},
     {ch:'Driveways',t:'Join the pair',x:'Now follow the ghost road from the house to the gas station.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
     {ch:'Sharing roads',scene:'share',t:'Add the neighbours',x:'The coral road already exists. Two new houses want to use it. Follow the ghost roads and join them to it. Cars always take the <b>shortest route</b>, so everyone shares the same road.',cond:()=>tutOK(T().h2)&&tutOK(T().h3),target:()=>[T().h2,T().h3],ghost:{type:'auto',list:()=>[T().h2,T().h3]}},
     {ch:'Sharing roads',t:'One road, many cars',x:'Watch all three houses send cars down the same road. Wait for <b>6 trips</b>.',cond:()=>plus()>=6,setup:()=>{for(const h of [T().h1,T().h2,T().h3])h.demand=4;}},
     {ch:'Junctions',scene:'junction',t:'A busy crossing',x:'Two roads cross here. Cars give way and take turns, but a busy crossing can jam. Watch them for a moment.',next:true,target:()=>[],ring:()=>T().x},
-    {ch:'Junctions',t:'Stop signs',x:'Pick the <b>Stop sign</b> (key <b>7</b>) and click the crossing. Cars on that road stop and give way, so the other road flows. <b>Shift-click</b> puts signs on every approach.',cond:anySign,ghost:{type:'sign',ci:()=>T().x}},
-    {ch:'Bridges',scene:'bridge',t:'Across the river',x:'Roads can’t go on water. Pick <b>Bridge</b> (key <b>5</b>) and drag along the ghost road: the green part is the bridge.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
+    {ch:'Junctions',t:'Stop signs',x:'Pick the <b>Stop sign</b> (key <b>'+kn('stop')+'</b>) and click the crossing. Cars on that road stop and give way, so the other road flows. <b>Shift-click</b> puts signs on every approach.',cond:anySign,ghost:{type:'sign',ci:()=>T().x}},
+    {ch:'Bridges',scene:'bridge',t:'Across the river',x:'Roads can’t go on water. Pick <b>Bridge</b> (key <b>'+kn('bridge')+'</b>) and drag along the ghost road: the green part is the bridge.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
     {ch:'Highways',scene:'highway',t:'The long way round',x:'This road winds a long way between the house and the store. Watch how slow the trip is.',next:true,target:()=>[T().h,T().d]},
-    {ch:'Highways',t:'Build a highway',x:'Pick <b>Highway</b> (key <b>3</b>) and drag along the orange ghost. Highways are elevated and fast, and they fly over roads. They must <b>start and end on the side of a road</b>, on a <b>loose road end</b>, or on <b>another highway</b>.',
+    {ch:'Highways',t:'Build a highway',x:'Pick <b>Highway</b> (key <b>'+kn('hwy')+'</b>) and drag along the orange ghost. Highways are elevated and fast, and they fly over roads. They must <b>start and end on the side of a road</b>, on a <b>loose road end</b>, or on <b>another highway</b>.',
       cond:()=>{if(!anyHwy())return false;const q=route(T().h.an*2,goals[0],false,false,true);return !!q&&q.length<T().len0*.8;},ghost:{type:'hwy',a:()=>T().A,b:()=>T().B}},
     {ch:'Fires',scene:'fire',t:'Be ready for fires',x:'Houses can catch fire. This town has no fire station yet. Fire stations must sit <b>right beside a road and face it</b>.',next:true,target:()=>T().hs},
-    {ch:'Fires',t:'Place a fire station',x:'Pick the <b>Fire station</b> (key <b>8</b>) and click the ghost station.',x2:'Your station is going up.',cond:()=>depts.length>0&&depts[0].linked,ghost:{type:'station',x:()=>T().sx,y:()=>T().sy,dir:()=>T().sd}},
+    {ch:'Fires',t:'Place a fire station',x:'Pick the <b>Fire station</b> (key <b>'+kn('fire')+'</b>) and click the ghost station.',x2:'Your station is going up.',cond:()=>depts.length>0&&depts[0].linked,ghost:{type:'station',x:()=>T().sx,y:()=>T().sy,dir:()=>T().sd}},
     {ch:'Fires',t:'Construction takes time',live:true,
       x:()=>{const left=depts[0]?Math.max(0,Math.ceil(depts[0].readyAt-time)):0;return 'A new station needs time to build: watch the countdown on the scaffolding, <b>'+left+'s</b> left. It is short here; in a real game it takes <b>20 to 70 seconds</b> depending on the difficulty.<br><br>A fire that starts while the station is still going up has to wait, so <b>build stations early</b>, before you need them.';},
       x2:'The station is ready for its first call.',cond:()=>depts.length>0&&time>=depts[0].readyAt,target:()=>depts.length?[depts[0]]:[]},
@@ -2986,7 +2987,8 @@ function restore(sv){
     trees=trees.filter(t=>!cells[cellIdx(Math.floor(t.x),Math.floor(t.y))].water);
     ripples=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(cells[cellIdx(x,y)].water&&((x*7+y*13)%4===0))ripples.push([x,y]);}
   blds=[];cars=[];particles=[];undoStack=[];stroke=null;depts=[];hold.fill(null);queue.fill(null);crashUntil.fill(0);heat.fill(0);bldId=0;
-  time=st.time||0;inv=Object.assign({},st.inv);colorOrder=st.colorOrder.slice();
+  time=st.time||0;inv=Object.assign({},st.inv);inv.hwy=(inv.hwy||0)+(inv.hwy1||0);inv.bridge=(inv.bridge||0)+(inv.bridge1||0);delete inv.hwy1;delete inv.bridge1;   // saved one-way pieces become ordinary ones
+  colorOrder=st.colorOrder.slice();
   S={seed:st.seed,runId:sv.runId||Date.now().toString(36),name:sv.name||'City',stallT:st.stallT.slice(),colorBorn:Object.assign({},st.colorBorn),stall:null,stallClock:0,
      grow:null,expansions:0,sirens:[],fireClock:0,crashes:st.crashes||0,wrecks:[],week:st.week,weekT:st.weekT,weekLen:st.weekLen,score:st.score,colors:st.colors,modal:null,paused:false,speed:1,over:false,mid:!!st.mid,saveClock:0,demo:false};
   for(const [i,d,ly,k,ow] of st.edges)setEdge(ly?'f':'g',i,d,k,ow);
@@ -3044,7 +3046,7 @@ const SCREENS={
     const last=Cities.latest(),n=Cities.count();
     const bests=DIFFS.filter(d=>!d.noFail).map(d=>{const b=Store.meta.best[d.id];
       return `<div class="best">${chip(d)}<div class="sc">${b?b.score+' trips':'—'}<small>${b?'week '+b.week:'not played'}</small></div></div>`;}).join('');
-    return `<div class="mwrap">
+    return `<button class="btn mbugbtn" data-act="bug">Report a bug</button><div class="mwrap">
       <div>
         <div class="logo">Gridlock</div><div class="road-strip"></div>
         <div class="tag">Keep the city moving. Forever.</div>
@@ -3091,11 +3093,11 @@ const SCREENS={
       [bldSvg(1),'Link the colours','Every building has a driveway. <b>Click a house to rotate it</b>, then join it to a road. Houses go to the destination of their own colour.'],
       [icon('stop',40),'Junctions','Cars drive on the right and wait for a clear junction. <b>Stop signs</b> go on one approach (<b>Shift-click</b> for all-way): those cars stop and yield.'],
       [icon('hwy',40),'Highways & bridges','Bridges cross water. <b>Highways</b> are elevated and twice as fast: they fly over roads but must <b>start and end on the side of a road</b>, on a <b>loose road end</b>, or on <b>another highway</b>.'],
-      [icon('fire',40),'Fires','Houses can catch fire. Place a <b>fire station</b> (key 8), link its driveway to a road, and a truck races out with sirens: cars pull over, and it puts the fire out.'],
-      [icon('bridge',40),'Weekly cards','Every week ends with <b>3 cards</b> of random pieces. Pick one. One-way pieces follow your drag direction.'],
+      [icon('fire',40),'Fires','Houses can catch fire. Place a <b>fire station</b> (key '+kn('fire')+'), link its driveway to a road, and a truck races out with sirens: cars pull over, and it puts the fire out.'],
+      [icon('bridge',40),'Weekly cards','Every week ends with <b>3 cards</b> of random pieces. Pick one. One-way roads follow your drag direction.'],
       [miscSvg('<path d="M20 9l12 21H8z" fill="#ff8a3d"/><rect x="18.8" y="15" width="2.4" height="8" rx="1" fill="#fff"/><circle cx="20" cy="26" r="1.5" fill="#fff"/>','#ff8a3d'),'Ways to lose','Keep a destination <b>full too long</b>, or let <b>75% of a colour’s houses</b> get cut off or stuck, and a countdown ends the run.'],
       [miscSvg('<path d="M12 20h16M20 12v16M14 14l-3-3M26 14l3-3M14 26l-3 3M26 26l3 3" stroke="#3f8cff" stroke-width="2.6" stroke-linecap="round" fill="none"/>','#3f8cff'),'Camera','<b>Scroll or pinch</b> to zoom. <b>Two-finger drag</b>, middle-drag, arrows or WASD to pan. <b>0</b> fits the map.'],
-      [miscSvg('<rect x="11" y="11" width="6" height="18" rx="2" fill="#80869a"/><rect x="23" y="11" width="6" height="18" rx="2" fill="#80869a"/>','#80869a'),'Keys','<b>1–8</b> pick a piece, <b>9</b> erase, <b>Space</b> pauses, <b>Esc</b> opens the menu where you can save.']];
+      [miscSvg('<rect x="11" y="11" width="6" height="18" rx="2" fill="#80869a"/><rect x="23" y="11" width="6" height="18" rx="2" fill="#80869a"/>','#80869a'),'Keys','<b>1–'+PIECES.length+'</b> pick a piece, <b>9</b> erase, <b>Space</b> pauses, <b>Esc</b> opens the menu where you can save.']];
     return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">←</button><h2>How to Play</h2></div><div class="pbody"><div class="tips">
       ${tips.map(t=>`<div class="tip"><div>${t[0]}</div><div><b>${t[1]}</b><br>${t[2]}</div></div>`).join('')}</div></div></div>`;
   },
@@ -3348,7 +3350,7 @@ function aiNeeds(pl){
 }
 function aiPickCard(offer){
   const houses=blds.filter(b=>!b.dest).length,wantStn=D.fireChance?1+Math.floor(houses/9):0;
-  const w={road:inv.road<80?2.2:1,road1:.15,bridge:AI.needBridge?1.6:.45,bridge1:.05,hwy:inv.hwy<14?.5:.2,hwy1:.05,stop:inv.stop<5?.9:.3,fire:!D.fireChance?0:(depts.length<wantStn&&inv.fire<1?1.6:.2)};
+  const w={road:inv.road<80?2.2:1,road1:.15,bridge:AI.needBridge?1.6:.45,hwy:inv.hwy<14?.5:.2,stop:inv.stop<5?.9:.3,fire:!D.fireChance?0:(depts.length<wantStn&&inv.fire<1?1.6:.2)};
   let best=offer[0],bs=-1;
   for(const o of offer){const sc=o.n*(w[o.k]||.1)/(1+inv[o.k]/25);if(sc>bs){bs=sc;best=o;}}
   return best;

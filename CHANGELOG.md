@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.5.16 — Report a bug on the main menu, no more one-way highways and bridges
+- A Report a bug button in the top right corner of the main menu
+- One-way highways and one-way bridges are gone (they served no purpose): no pieces, no cards. One-way roads stay. Saved cities that had them keep working, and any you were holding become ordinary highways and bridges
+- Hotkeys now follow the pieces that remain: 1 Road, 2 One-way road, 3 Highway, 4 Bridge, 5 Stop sign, 6 Fire station (the lessons and the how-to say the right numbers)
+
 ## 1.5.15 — More road for a growing city
 - Road cards now give more road as the game goes on: from week 4 they grow every week, up to two and a half times as many by the late game, on every difficulty (bridges grow a little too)
 - Road cards are also a bit bigger from the start
