@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.6.5 — Graveyard tidy-up
+- The graveyard's gravestones, cross and fence no longer sit on top of the parking bays; they stand in the free strips beside them
+
 ## 1.6.4 — Haunted destinations
 - Stores are witch's potion shops: crooked roof, glowing windows, a bubbling cauldron
 - Gas stations are potion pumps: glowing green vials under a scalloped canopy, with a little crypt for a kiosk

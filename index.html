@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.4';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.5';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -2687,11 +2687,10 @@ function paintDestHw(p,kind,p2){   // 0 witch's potion shop, 1 potion pumps + cr
     ctx.fillStyle='#14141a';ctx.beginPath();ctx.moveTo(1.5,.66);ctx.lineTo(1.5,.5);ctx.arc(1.58,.5,.08,Math.PI,0);ctx.lineTo(1.66,.66);ctx.closePath();ctx.fill();
     ctx.fillStyle='#ffd27a';ctx.beginPath();ctx.arc(1.64,.58,.012,0,7);ctx.fill();
   } else if(kind===2){
-    ctx.strokeStyle='#1a1a24';ctx.lineWidth=.03;ctx.beginPath();ctx.moveTo(.5,.46);ctx.lineTo(1.6,.46);ctx.stroke();   // iron fence
-    ctx.lineWidth=.022;ctx.beginPath();for(let x=.52;x<1.6;x+=.1){ctx.moveTo(x,.46);ctx.lineTo(x,.36);}ctx.stroke();
-    ctx.fillStyle='#1a1a24';for(let x=.52;x<1.6;x+=.1){ctx.beginPath();ctx.moveTo(x-.03,.36);ctx.lineTo(x,.3);ctx.lineTo(x+.03,.36);ctx.fill();}
-    rock(.62,.14,.2,.26);rock(.92,.1,.22,.3);rock(1.22,.14,.2,.26);
-    ctx.fillStyle='#6b5a46';ctx.fillRect(1.5,.1,.04,.32);ctx.fillRect(1.43,.18,.18,.04);                 // a cross
+    rock(.2,.56,.15,.22);rock(.38,.62,.13,.19);rock(.22,.86,.13,.18);   // gravestones in the free strip beside the bays
+    ctx.fillStyle='#6b5a46';ctx.fillRect(1.78,.58,.035,.24);ctx.fillRect(1.725,.65,.145,.035);                 // a cross
+    rock(1.72,.9,.13,.18);
+    ctx.strokeStyle='#1a1a24';ctx.lineWidth=.02;ctx.beginPath();ctx.moveTo(.16,1.12);ctx.lineTo(.56,1.12);ctx.stroke();ctx.lineWidth=.016;ctx.beginPath();for(let x=.18;x<.56;x+=.08){ctx.moveTo(x,1.12);ctx.lineTo(x,1.04);}ctx.stroke();   // a bit of iron fence
     // mausoleum
     ctx.fillStyle='rgba(0,0,0,.25)';rr(.14,.18,.34,.32,.04);ctx.fill();
     ctx.fillStyle='#8d939c';rr(.12,.16,.34,.3,.03);ctx.fill();
