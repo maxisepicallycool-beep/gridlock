@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.9.1 — The AI's info on the main menu
+- The main menu now has an AI city panel under Best runs: game time, the week and its progress, trips, cars, houses, destinations, fire stations, roads built (or wrecks on crash difficulties) and the clock on Realism, plus how many of each piece the AI has left (road, one-way road, highway, one-way highway, bridge, stop sign or traffic coordinator, fire station) and what it is doing right now. The AI plays with a limited set of pieces like a player does, so the counts go down as it builds and up as it gets cards and recycles roads
+- Settings, Main menu AI: a switch to hide the panel
+
 ## 1.9.0 — Traffic coordinators, Realism, and an AI that rebuilds jams
 - On Gridlock and the new Realism difficulties the stop sign piece is now a Traffic coordinator (key 5). Click the junction next to the road you want: Yield sign, Stop sign, Straight light, Left-turn light or Right-turn light (press the key again, or use the bar above the dock, to switch). Every other difficulty keeps plain stop signs
 - Traffic lights run on a signal plan for each intersection: movements that never cross share a phase and left arrows get their own. Pick Signal timing and click the junction to edit it: the green time of each phase, which moves are green in it, the all-red gap, a start delay (so you can time lights along a road), and Auto plan to start over. It also shows the junction's level of service from A to F (average delay, cars a minute, queue)

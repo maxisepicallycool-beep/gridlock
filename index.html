@@ -59,6 +59,15 @@ body.app #hud{padding-left:92px;padding-top:10px}
 body.inmenu #sbBar{display:none!important}
 #coordBar{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);display:none;gap:6px;padding:8px 10px;border-radius:20px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:94vw;z-index:7}
 body.inmenu #coordBar,body.inmenu #tlEd{display:none!important}
+#aiInfo{border-radius:22px;padding:14px 18px 13px;display:none;font-size:12px}
+#aiInfo h4{margin:0 0 7px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:850;display:flex;justify-content:space-between;align-items:center}
+#aiInfo .ag{display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;margin-bottom:9px}
+#aiInfo .ag div{display:flex;justify-content:space-between;gap:6px;font-weight:700;color:var(--ink2)}#aiInfo .ag b{color:var(--ink);font-variant-numeric:tabular-nums}
+#aiInfo .wk{height:5px;border-radius:4px;background:var(--soft);overflow:hidden;margin:2px 0 9px}#aiInfo .wk i{display:block;height:100%;background:var(--accent)}
+#aiInfo .ap{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 4px;margin-bottom:8px}
+#aiInfo .ap div{display:flex;flex-direction:column;align-items:center;gap:1px;font-weight:800;font-size:11px;color:var(--ink);font-variant-numeric:tabular-nums}
+#aiInfo .ap svg{width:24px;height:24px}#aiInfo .ap small{font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.2px}
+#aiInfo .ap .low b{color:var(--danger)}#aiInfo .now{font-weight:750;color:var(--ink2);font-size:11.5px;border-top:1px solid var(--line);padding-top:7px}
 #coordBar .sbl{font-size:10px;letter-spacing:.8px;text-transform:uppercase;font-weight:850;color:var(--muted);padding:0 4px}
 #coordBar .btn.on{background:var(--accent);color:#fff}
 #tlEd{position:fixed;right:14px;top:84px;width:348px;max-height:calc(100vh - 300px);overflow:auto;display:none;border-radius:22px;padding:14px 16px;z-index:9}
@@ -192,7 +201,8 @@ body.app #menu{padding-top:44px}
 .aicap::before{content:"";width:8px;height:8px;border-radius:50%;background:#2fb67c;box-shadow:0 0 0 0 rgba(47,182,124,.6);animation:pulse 1.6s infinite}
 @keyframes pulse{70%{box-shadow:0 0 0 7px rgba(47,182,124,0)}100%{box-shadow:0 0 0 0 rgba(47,182,124,0)}}
 .ver{margin-top:14px;font-size:12px;color:var(--muted);font-weight:600}
-.mright{border-radius:28px;padding:20px 24px;align-self:start;margin-top:3vh;max-width:430px;justify-self:end;width:100%}
+.mcol{align-self:start;margin-top:3vh;max-width:430px;justify-self:end;width:100%;display:grid;gap:12px}
+.mright{border-radius:28px;padding:20px 24px;width:100%;box-sizing:border-box}
 .mright h3,.panel h3{margin:0 0 12px;font-size:12px;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted);font-weight:850}
 .best{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
 .best:first-of-type{border-top:0}
@@ -236,7 +246,7 @@ body.app #menu{padding-top:44px}
 .tip{display:flex;gap:13px;padding:14px;border-radius:18px;background:var(--card);box-shadow:0 6px 16px rgba(60,50,30,.09);color:var(--ink2);font-weight:550}
 .tip .ti{flex:none;width:38px;height:38px}
 .tip b{color:var(--ink)}
-@media (max-width:820px){.mwrap{grid-template-columns:1fr}.mright{display:none}.fields{grid-template-columns:1fr}.slot .th{width:92px;height:60px}.slot .acts{flex-direction:column}}
+@media (max-width:820px){.mwrap{grid-template-columns:1fr}.mcol{display:none}.fields{grid-template-columns:1fr}.slot .th{width:92px;height:60px}.slot .acts{flex-direction:column}}
 /* ---- settings ---- */
 .sset{margin:0 0 20px}.sset h3{margin:0 0 8px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:850}
 .srow{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:11px 14px;border-radius:16px;background:var(--card);margin-bottom:7px;box-shadow:0 4px 12px rgba(0,0,0,.05)}
@@ -302,7 +312,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.9.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.9.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -370,7 +380,7 @@ const DIFFS=[
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
-const SET_DEF={theme:'dark',mapNatural:false,noHw:false,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
+const SET_DEF={theme:'dark',mapNatural:false,noHw:false,aiInfo:true,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
   tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:15,n_toastTime:4,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
@@ -3629,10 +3639,10 @@ const SCREENS={
         <div class="aicap" id="aicap"></div>
         <div class="ver">Cmd+Q quits · Esc opens the menu in game</div>
       </div>
-      <div class="mright glass">
+      <div class="mcol"><div class="mright glass">
         ${last?`<h3>Last played</h3><div class="lastcard">${last.thumb?`<img src="${last.thumb}">`:'<div class="ph"></div>'}<div><b style="font-size:17px">${esc(last.name)}</b><div class="tiny" style="margin:3px 0 5px">${timeAgo(last.ts)}</div>${chip(diffById(last.diff))}</div></div>`:''}
         <h3 style="margin-top:14px">Best runs</h3>${bests}
-      </div></div>`;
+      </div><div id="aiInfo" class="glass"></div></div></div>`;
   },
   new(){
     const real=MS.diff.startsWith('realism'),card=d=>`<button class="dcard ${MS.diff===d.id?'sel':''}" style="--dc:${d.col}" data-act="diff" data-id="${d.id}">
@@ -3739,7 +3749,8 @@ const SCREENS={
         tog('updateQuiet','Install updates quietly','No update pop-ups: new versions are downloaded in the background and installed when the game opens. Experimental updates still ask first.')
         +row('Version','<span id="aboutv">Checking\u2026</span>',''))}
       ${sec('Main menu AI',
-        row('AI speed','How fast the city plays itself behind the menu',seg('aiSpeed',[[1,'Slow'],[2,'Normal'],[4,'Fast'],[8,'Turbo']]))
+        tog('aiInfo','Show the AI\u2019s pieces and stats','A panel on the main menu with how many of each piece the AI has left, its game time and its city stats')
+        +row('AI speed','How fast the city plays itself behind the menu',seg('aiSpeed',[[1,'Slow'],[2,'Normal'],[4,'Fast'],[8,'Turbo']]))
         +row('AI difficulty','What the AI plays on (it starts a new city when you change it)',seg('aiDiff',[['relaxed','Relaxed'],['standard','Standard'],['rush','Rush Hour'],['gridlock','Gridlock'],['realism_easy','Realism Easy'],['realism_hard','Realism Hard']])))}
       <div class="row" style="margin:6px 0 4px;gap:10px"><button class="sbtn" data-act="bug">Report a bug</button><button class="sbtn ghost" data-act="resetset">Reset all settings</button></div>
     </div></div>`;
@@ -4333,6 +4344,24 @@ function drawAI(){
   }
   ctx.restore();
 }
+function updateAiInfo(){   // the AI city's game info on the main menu: time and stats, and how many of each piece it has left
+  const el=document.getElementById('aiInfo');if(!el)return;
+  if(!(mode==='menu'&&MS.screen==='main'&&Settings.v.aiInfo&&S&&S.demo)){el.style.display='none';return;}
+  const mm=Math.floor(time/60),ss=Math.floor(time%60),gt=mm+':'+String(ss).padStart(2,'0');
+  const hs=blds.filter(b=>!b.dest).length,ds=blds.filter(b=>b.dest).length;
+  const pcs=[['road','Road'],['road1','One-way'],['hwy','Highway'],['hwy1','1-way hwy'],['bridge','Bridge'],['stop',D.coord?'Coordinator':'Stop sign'],['fire','Fire stn']];
+  const low=(k,n)=>n<=0||(k==='road'&&n<15);
+  const stats=[['Game time',gt],['Week',S.week],['Trips',S.score],['Cars',cars.length],['Houses',hs],['Destinations',ds],['Fire stations',depts.length],D.crash?['Crashes',(S.crashes||0)+'/'+D.crash]:['Roads built',(()=>{let n=0;for(let i=0;i<W*H;i++){const a=cells[i].e;if(a)for(let d=0;d<8;d++)if(a[d]&&nbIdx(i,d)>i)n++;}return n;})()]];
+  if(D.clock)stats.splice(1,0,['Clock',clockText()]);
+  el.innerHTML=`<h4><span>AI city</span><span>${D.name}</span></h4>
+    <div class="ag">${stats.map(x=>`<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>
+    <div class="wk"><i style="width:${Math.min(100,100*S.weekT/Math.max(1,S.weekLen))}%"></i></div>
+    <h4><span>Pieces it has left</span></h4>
+    <div class="ap">${pcs.map(([k,l])=>`<div class="${low(k,inv[k]||0)?'low':''}">${icon(k)}<b>${inv[k]>=999?'\u221e':(inv[k]||0)}</b><small>${l}</small></div>`).join('')}</div>
+    <div class="now">${S.over?'Lost that city, starting a new one\u2026':(AI.doing&&time-AI.doing.t<8?'Now: '+AI.doing.txt:AI.q.length?'Now: drawing':'Now: watching the city')}</div>`;
+  el.style.display='block';
+}
+setInterval(()=>{try{updateAiInfo();}catch(e){}},700);
 function aiCaption(){
   const el=document.getElementById('aicap');if(!el||!S)return;
   el.textContent=S.over?'The AI lost that city — building a new one…':`${AI.doing&&time-AI.doing.t<8?'AI '+AI.doing.txt:AI.q.length?'AI drawing':'AI playing'} · ${D.name} · week ${S.week} · ${S.score} trips`;
@@ -4346,7 +4375,7 @@ function frame(now){
   if(S){
     if(mode==='menu'){
       if(!S.over){for(let k=0;k<Settings.v.aiSpeed;k++){step(dt);AI.tick(dt);}}else if(now>AI.restartAt)startDemo();
-      menuCam(now,dt);if(now-(AI.capT||0)>500){AI.capT=now;aiCaption();}
+      menuCam(now,dt);if(now-(AI.capT||0)>500){AI.capT=now;aiCaption();updateAiInfo();}
     }
     else if(!S.modal&&!S.paused&&!S.over){
       const sub=S.speed;for(let i=0;i<sub;i++){step(dt);if(S.modal)break;}
