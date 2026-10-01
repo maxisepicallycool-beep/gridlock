@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.5.11 — Highways can join loose road ends
+- A highway can now start or end on a loose road end (a dead end that isn't a driveway), including carrying straight on from it
+- The rule for where a highway may meet a road is now exact: the side of a road, a loose end, a corner or junction, or another highway. The only thing refused is running straight along an ordinary through road, which would just extend it
+- The Highways lesson and the how-to text explain the new options
+
 ## 1.5.10 — Darker nights on the natural map
 - With "Don't apply the theme to the map" on, the grass and map now get much darker at night, but stay readable: roads, houses and lights are still easy to see
 

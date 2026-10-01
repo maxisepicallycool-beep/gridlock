@@ -1670,10 +1670,12 @@ function advance(fx,fy){
     if(r.rec)refreshDock();
   }
 }
-function hwySideOK(ci,d){   // a highway may join a road from its side, never in line with it (the road's end)
+function hwySideOK(ci,d){   // where a highway may join a road: from the side, onto a loose end, or at a corner or junction. Never straight along a through road
   const e=cells[ci].e;if(!e)return true;
-  for(let s=0;s<8;s++)if(e[s]&&((s-d)&3)===0)return false;
-  return true;
+  const axes=new Set();let spokes=0;
+  for(let k=0;k<8;k++)if(e[k]){spokes++;axes.add(k&3);}
+  if(spokes<=1)return !blds.some(b=>b.port===ci);   // a loose end (not a driveway's end): the highway may carry straight on from it
+  return !(axes.size===1&&axes.has(d&3));            // a straight road: joining in line with it would just be extending it
 }
 function finishStroke(){
   if(!stroke)return;const p=stroke.piece,s=stroke;stroke=null;
@@ -1688,7 +1690,7 @@ function finishStroke(){
     }
     if(n>=2&&((!startHw&&!hwySideOK(first,dirOf(first*2,s.nodes[1]*2)))||(!endHw&&!hwySideOK(last,dirOf(s.nodes[n-2]*2,last*2))))){
       for(let i=s.steps.length-1;i>=0;i--)if(s.steps[i])undoRec(s.steps[i]);
-      toast('Highways must join the side of a road, not its end');return;
+      toast('Highways must join the side of a road, a loose road end, or another highway');return;
     }
   }
   if(p.layer==='g'&&placed&&inv.road>0){
@@ -1980,7 +1982,7 @@ function tutSteps(){
     {ch:'Junctions',t:'Stop signs',x:'Pick the <b>Stop sign</b> (key <b>7</b>) and click the crossing. Cars on that road stop and give way, so the other road flows. <b>Shift-click</b> puts signs on every approach.',cond:anySign,ghost:{type:'sign',ci:()=>T().x}},
     {ch:'Bridges',scene:'bridge',t:'Across the river',x:'Roads can’t go on water. Pick <b>Bridge</b> (key <b>5</b>) and drag along the ghost road: the green part is the bridge.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
     {ch:'Highways',scene:'highway',t:'The long way round',x:'This road winds a long way between the house and the store. Watch how slow the trip is.',next:true,target:()=>[T().h,T().d]},
-    {ch:'Highways',t:'Build a highway',x:'Pick <b>Highway</b> (key <b>3</b>) and drag along the orange ghost. Highways are elevated and fast, and they fly over roads. They must <b>start and end on the side of a road</b> (never its end) or on <b>another highway</b>.',
+    {ch:'Highways',t:'Build a highway',x:'Pick <b>Highway</b> (key <b>3</b>) and drag along the orange ghost. Highways are elevated and fast, and they fly over roads. They must <b>start and end on the side of a road</b>, on a <b>loose road end</b>, or on <b>another highway</b>.',
       cond:()=>{if(!anyHwy())return false;const q=route(T().h.an*2,goals[0],false,false,true);return !!q&&q.length<T().len0*.8;},ghost:{type:'hwy',a:()=>T().A,b:()=>T().B}},
     {ch:'Fires',scene:'fire',t:'Be ready for fires',x:'Houses can catch fire. This town has no fire station yet. Fire stations must sit <b>right beside a road and face it</b>.',next:true,target:()=>T().hs},
     {ch:'Fires',t:'Place a fire station',x:'Pick the <b>Fire station</b> (key <b>8</b>) and click the ghost station.',x2:'Your station is going up.',cond:()=>depts.length>0&&depts[0].linked,ghost:{type:'station',x:()=>T().sx,y:()=>T().sy,dir:()=>T().sd}},
@@ -3014,7 +3016,7 @@ const SCREENS={
       [icon('road',40),'Draw roads','<b>Drag</b> to draw. Roads snap to <b>8 directions</b> and curve at bends. Drag back to undo, <b>Z</b> undoes a stroke, right-click erases.'],
       [bldSvg(1),'Link the colours','Every building has a driveway. <b>Click a house to rotate it</b>, then join it to a road. Houses go to the destination of their own colour.'],
       [icon('stop',40),'Junctions','Cars drive on the right and wait for a clear junction. <b>Stop signs</b> go on one approach (<b>Shift-click</b> for all-way): those cars stop and yield.'],
-      [icon('hwy',40),'Highways & bridges','Bridges cross water. <b>Highways</b> are elevated and twice as fast: they fly over roads but must <b>start and end on the side of a road</b> (never its end) or on <b>another highway</b>.'],
+      [icon('hwy',40),'Highways & bridges','Bridges cross water. <b>Highways</b> are elevated and twice as fast: they fly over roads but must <b>start and end on the side of a road</b>, on a <b>loose road end</b>, or on <b>another highway</b>.'],
       [icon('fire',40),'Fires','Houses can catch fire. Place a <b>fire station</b> (key 8), link its driveway to a road, and a truck races out with sirens: cars pull over, and it puts the fire out.'],
       [icon('bridge',40),'Weekly cards','Every week ends with <b>3 cards</b> of random pieces. Pick one. One-way pieces follow your drag direction.'],
       [miscSvg('<path d="M20 9l12 21H8z" fill="#ff8a3d"/><rect x="18.8" y="15" width="2.4" height="8" rx="1" fill="#fff"/><circle cx="20" cy="26" r="1.5" fill="#fff"/>','#ff8a3d'),'Ways to lose','Keep a destination <b>full too long</b>, or let <b>75% of a colour’s houses</b> get cut off or stuck, and a countdown ends the run.'],
