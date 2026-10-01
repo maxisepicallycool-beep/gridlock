@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.2.7 — Calmer crisis honks
+- Honks near the end of a swamp or cut-off timer are about 1.8x gentler: quieter, less frantic and less frequent
+
 ## 1.2.6 — Real car horn
 - Cars now honk with a real car horn recording, played quietly and sped up
 - Every car has its own pitch
