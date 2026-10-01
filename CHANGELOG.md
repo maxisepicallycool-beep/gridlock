@@ -1,5 +1,14 @@
 # Gridlock changelog
 
+## 1.5.0 — A proper tutorial, brightness and a natural map option
+- The tutorial is rebuilt as 8 lessons, each with its own prepared scene: first road, turning a driveway, sharing roads, junctions and stop signs, bridges, highways, fire stations with a real fire, and linking up a whole city
+- A ghost road shows exactly where to build: blue for roads, green for bridges, orange for highways, plus a ghost fire station and a ring on the junction for stop signs. Roads you already built are reused
+- The tutorial never warns or fails: no alerts, markers, swamp timers or game over. There is a Restart lesson button if you want a fresh scene
+- Brightness slider in Settings dims or brightens everything
+- The Light theme is gone (brightness covers it): themes are Dark, Midnight and High contrast. Old saved settings switch to Dark
+- New setting "Don't apply the theme to the map": the map keeps its natural colours and only the menus use the theme
+- Night glows toned down: destinations get a soft hint of their colour and no outline; houses keep their glow
+
 ## 1.4.0 — Tutorial, fire truck manners and colours you can see at night
 - New Tutorial level (main menu): a guided town that teaches roads, rotating driveways, traffic, bridges, stop signs, highways, fire stations, layers and the weekly cards, step by step with highlights
 - Fire trucks no longer shove every car off the road: only cars in the truck's way ease over to the right, let it pass, then smoothly pull back out. This also fixes cars getting stuck at the kerb afterwards

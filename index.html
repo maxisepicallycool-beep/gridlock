@@ -230,6 +230,7 @@ body.inmenu #coach{display:none!important}
 #coach .cbar{height:5px;border-radius:99px;background:var(--soft);margin:7px 0 10px;overflow:hidden}#coach .cbar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
 #coach h3{margin:0 0 5px;font-size:17px}#coach p{margin:0 0 11px;font-size:13px;line-height:1.45;color:var(--ink2)}
 #coach .cbtns{display:flex;gap:8px;flex-wrap:wrap}#coach.ok{border-color:var(--good)}#coach.ok .cbar i{background:var(--good)}
+body.bri{filter:brightness(var(--bri,1))}
 </style>
 </head>
 <body>
@@ -307,7 +308,7 @@ const SPEED=2.6, MAXD=8;
 const HOUSE_REST=5,LOT_REST=5;   // seconds a returned car waits at home / a parked car waits in its bay
 const STALL_FRAC=.75, STALL_GRACE=20, STALL_IDLE=25;   // cut-off countdown: share of a colour's houses stalled / grace for a new colour / seconds with no progress
 const DIFFS=[
-  {id:'tutorial',name:'Tutorial',tag:'Learn the game',col:'#2fb67c',demandBase:5,demandMin:3,stall:999,dlimit:999,dcap:99,weekLen:99999,firstWeek:99999,cardMul:1,startMul:1,growth:0,maxOut:2,fleet:2,fireChance:0,fireBurn:80,fireOW:true,fireBuild:6,anyDest:true,crash:0,notify:true,noFail:true,infinite:true},
+  {id:'tutorial',name:'Tutorial',tag:'Learn the game',col:'#2fb67c',demandBase:4,demandMin:3,stall:999,dlimit:999,dcap:99,weekLen:99999,firstWeek:99999,cardMul:1,startMul:1,growth:0,maxOut:2,fleet:2,fireChance:0,fireBurn:80,fireOW:true,fireBuild:6,anyDest:true,crash:0,notify:true,noFail:true,infinite:true},
   {id:'relaxed', name:'Relaxed',  tag:'Take your time',          col:'#2fb67c',demandBase:14,  demandMin:7,  stall:35,dlimit:22,dcap:7,weekLen:50,firstWeek:60,cardMul:1.3, startMul:1.5, growth:.75,maxOut:2,fleet:0,fireChance:0,fireBurn:80,fireOW:true,fireBuild:20,anyDest:false,crash:0,notify:true},
   {id:'standard',name:'Standard', tag:'The intended ride',       col:'#4c9be8',demandBase:11,  demandMin:4.5,stall:22.5,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true},
   {id:'rush',    name:'Rush Hour',tag:'Busy, busy, busy',        col:'#ff8b3d',demandBase:8.5, demandMin:3.5,stall:18,dlimit:10,dcap:5,weekLen:38,firstWeek:44,cardMul:.85, startMul:.8,  growth:1.4,maxOut:2,fleet:2,fireChance:.10,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:0,notify:true},
@@ -316,9 +317,9 @@ const DIFFS=[
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
-const SET_DEF={theme:'light',cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,
+const SET_DEF={theme:'dark',mapNatural:false,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
-  tutDone:false,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
+  tutDone:false,bri:100,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
 const Settings={v:Object.assign({},SET_DEF),
   load(){
@@ -326,6 +327,7 @@ const Settings={v:Object.assign({},SET_DEF),
     try{if(window.__SETTINGS&&typeof window.__SETTINGS==='object')j=window.__SETTINGS;}catch(e){}
     if(!j){try{j=JSON.parse(localStorage.getItem('gridlock-settings')||'{}');}catch(e){j={};}}
     for(const k in SET_DEF)if(j[k]!==undefined&&typeof j[k]===typeof SET_DEF[k])this.v[k]=j[k];
+    if(!['dark','midnight','contrast'].includes(this.v.theme))this.v.theme='dark';   // the old Light and Match-system themes are gone: brightness covers them
   },
   save(){
     const t=JSON.stringify(this.v);
@@ -334,9 +336,10 @@ const Settings={v:Object.assign({},SET_DEF),
   },
   vol(){return this.v.sfx/100*.85},
   set(k,val){this.v[k]=val;this.save();this.react(k);},
-  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','sfx','horns','aiDiff'])this.react(k);},
+  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','mapNatural','bri','sfx','horns','aiDiff'])this.react(k);},
   react(k){
-    if(k==='theme')applyTheme();
+    if(k==='theme'||k==='mapNatural')applyTheme();
+    else if(k==='bri'){const v=this.v.bri;document.documentElement.style.setProperty('--bri',v/100);document.body.classList.toggle('bri',v!==100);}
     else if(k==='sfx'){if(typeof Snd!=='undefined')Snd.setVol();}
     else if(k==='horns'){const b=document.getElementById('bsnd');if(b)b.textContent=this.v.horns?'Sound':'Muted';}
     else if(k==='aiDiff'){if(mode==='menu'&&typeof startDemo==='function')startDemo();}
@@ -387,8 +390,8 @@ const THEMES={
     casing:['#000','#000','#000'],fill:['#2a2a2a','#000','#fff'],dash:['#fff','#ffd400','#000'],night:0}
 };
 let TH=THEMES.light;
-function themeName(){const t=Settings.v.theme;return t==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):(THEMES[t]?t:'light');}
-function applyTheme(){const n=themeName();TH=THEMES[n];document.body.dataset.theme=n;GC.dirty=true;gfxVer++;}
+function themeName(){const t=Settings.v.theme;return t==='midnight'||t==='contrast'?t:'dark';}
+function applyTheme(){const n=themeName();TH=Settings.v.mapNatural?THEMES.light:THEMES[n];document.body.dataset.theme=n;GC.dirty=true;gfxVer++;}   // with 'natural map' on, only the menus use the theme
 
 const diffById=id=>DIFFS.find(d=>d.id===id)||DIFFS[2];
 
@@ -1287,7 +1290,7 @@ function reachTo(color,goalSet){   // every node that can drive to a destination
 const Notes={keys:{},
   clear(){this.keys={};const el=$('notes');if(el)el.innerHTML='';},
   push(key,kind,icon,title,text,target){
-    if(!D.notify||S.demo||mode!=='play'||Settings.v['n_'+kind]===false)return;
+    if(!D.notify||S.demo||S.tut||mode!=='play'||Settings.v['n_'+kind]===false)return;
     const now=performance.now();if(this.keys[key]&&now-this.keys[key]<(kind==='crit'?14000:30000))return;
     this.keys[key]=now;
     const el=$('notes'),n=document.createElement('div');
@@ -1308,7 +1311,7 @@ function alertLevel(b){
   return b.demand>=MAXD?1:0;
 }
 function checkAlerts(){
-  if(!D.notify||S.demo||mode!=='play')return;
+  if(!D.notify||S.demo||S.tut||mode!=='play')return;
   for(const b of blds){
     const nm=PAL[b.color].n;
     if(b.dest){
@@ -1803,116 +1806,222 @@ function drawSbHover(){
     ctx.fillStyle=ok?(t==='fire'?'rgba(216,56,47,.3)':PAL[sbColor].c+'66'):'rgba(229,72,77,.35)';ctx.strokeStyle=ok?'rgba(35,39,51,.5)':'#e5484d';ctx.lineWidth=.05;rr(x+.04,y+.04,w-.08,w-.08,.15);ctx.fill();ctx.stroke();}
   ctx.restore();
 }
-/* ---------- tutorial level ---------- */
-const TUT_SEED=7;
+/* ---------- tutorial level: a prepared scene for every lesson, with a ghost road showing where to build ---------- */
 let TUT=null;
 function tutPlace(color,dest,kind,x,y,pref){
   const w=dest?2:1;
-  const b={id:++bldId,color,dest,x,y,w,cells:[],demand:dest?0:1,out:0,gar:D.fleet,pend:[],timer:rnd(3,5),retry:0,pulse:0,born:time,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?kind:0};
+  const b={id:++bldId,color,dest,x,y,w,cells:[],demand:dest?0:3,out:0,gar:D.fleet,pend:[],timer:rnd(2,4),retry:0,pulse:0,born:time,dir:0,an:0,port:-1,linked:false,load:0,over:0,busy:0,lastProg:time,stalled:false,kind:dest?kind:0};
   const ok=[];for(let d=0;d<8;d++)if(dirValid(b,d))ok.push(d);if(!ok.length)return null;
   setDir(b,ok.includes(pref)?pref:ok[0]);
   for(let j=0;j<w;j++)for(let i=0;i<w;i++){const ci=cellIdx(x+i,y+j);cells[ci].bld=b;b.cells.push(ci);}
   blds.push(b);return b;
 }
-function tutBuild(){   // a small fixed town: a coral pair, a blue pair whose house faces the wrong way, and a mint pair on opposite banks of the river
-  for(const b of blds)for(const ci of b.cells)cells[ci].bld=null;
-  blds=[];cars=[];sbNoSpawn=true;colorOrder=[0,1,3,2,4,5];S.colors=3;for(const c of [0,1,3])S.colorBorn[c]=-999;
-  const spot=(w,ax,ay)=>{for(let r=0;r<10;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;const x=ax+dx,y=ay+dy;if(inB(x,y)&&inB(x+w-1,y+w-1)&&freeFor(x,y,w,1))return [x,y];}return null;};
-  let run=null;
-  for(const y of [30,29,31,28,32,27]){let a=-1;for(let x=RX0;x<RX1;x++){const wt=cells[cellIdx(x,y)].water;if(wt&&a<0)a=x;if(!wt&&a>=0){if(x-a>=2&&x-a<=6&&a>33){run={a,b:x-1,y};break;}a=-1;}}if(run)break;}
-  const T={},clear=()=>{for(const b of blds)for(const ci of b.cells)cells[ci].bld=null;blds=[];};
-  if(!run)return null;
-  const put=(key,color,dest,kind,w,ax,ay,pref)=>{const q=spot(w,ax,ay);if(!q)return false;const b=tutPlace(color,dest,kind,q[0],q[1],pref);if(!b)return false;T[key]=b;return true;};
-  if(!(put('cd',0,true,0,2,32,25,4)&&put('ch',0,false,0,1,20,24,0)&&put('bd',1,true,1,2,32,13,4)&&put('bh',1,false,0,1,20,14,4)&&put('md',3,true,2,2,run.a-8,run.y,0)&&put('mh',3,false,0,1,run.b+6,run.y,4))){clear();return null;}
-  T.bh0=T.bh.dir;rebuild();rebuildGoals();return T;
+function tutWipe(){   // a clean, flat map with one straight river (x 38-40), so every scene can rely on the terrain
+  for(const c of cells){c.e=null;c.f=null;c.sg=null;c.bld=null;c.water=false;}
+  for(let y=0;y<H;y++)for(let x=38;x<=40;x++)cells[y*W+x].water=true;
+  trees=trees.filter(t=>!cells[cellIdx(Math.floor(t.x),Math.floor(t.y))].water);
+  ripples=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(cells[y*W+x].water&&((x*7+y*13)%4===0))ripples.push([x,y]);
+  blds=[];depts=[];cars=[];particles=[];undoStack=[];stroke=null;
+  hold.fill(null);queue.fill(null);crashUntil.fill(0);heat.fill(0);
+  S.sirens=[];S.wrecks=[];S.stallT=[0,0,0,0,0,0];S.crashes=0;
+  sbNoSpawn=true;colorOrder=[0,1,3,2,4,5];S.colors=3;for(const c of [0,1,3])S.colorBorn[c]=-999;
+  layerMode='normal';
+  rebuild();rebuildGoals();GC.dirty=true;gfxVer++;
 }
-function startTutorial(){
-  let T=null;
-  for(let k=0;k<40&&!T;k++){newGame('tutorial',TUT_SEED+k);S.tut=true;T=tutBuild();}
-  S.name='Tutorial';Menu.hide();document.getElementById('modal').className='hidden';setPlay();
-  if(!T){toast('The tutorial map could not be built',true);return;}
-  TUT={T,i:0,doneAt:0,ignitedAt:0,nextCheck:0,steps:tutSteps(T)};
-  tutShow();
+function tutRoad(pts,piece){   // lay a road through waypoints (one grid step at a time)
+  let [x,y]=pts[0];
+  for(let i=1;i<pts.length;i++){const [tx,ty]=pts[i];
+    while(x!==tx||y!==ty){const nx=x+Math.sign(tx-x),ny=y+Math.sign(ty-y);line(piece||'road',[[x,y],[nx,ny]]);x=nx;y=ny;}}
 }
-function tutSteps(T){
-  const linked=(h,d)=>blds.includes(h)&&h.linked&&d.linked&&!!reachTo(h.color)[h.an*2];
+function tutDone(){rebuild();rebuildGoals();fitView();}
+// one scene per lesson ---------------------------------------------------------------
+const TUT_SCENES={
+  first(){tutWipe();const T={};T.h=tutPlace(0,false,0,21,23,0);T.d=tutPlace(0,true,0,32,22,4);tutDone();return T;},
+  turn(){tutWipe();const T={};T.h=tutPlace(1,false,0,22,18,4);T.d=tutPlace(1,true,1,32,17,4);T.dir0=T.h.dir;tutDone();return T;},
+  share(){tutWipe();const T={};T.h1=tutPlace(0,false,0,20,22,0);T.d=tutPlace(0,true,0,34,22,4);
+    tutRoad([[21,22],[33,22]]);T.h2=tutPlace(0,false,0,26,17,2);T.h3=tutPlace(0,false,0,29,27,6);tutDone();return T;},
+  junction(){tutWipe();const T={};
+    T.a=tutPlace(0,false,0,19,22,0);T.ad=tutPlace(0,true,0,34,22,4);T.b=tutPlace(1,false,0,27,12,2);T.bd=tutPlace(1,true,1,27,32,6);
+    tutRoad([[20,22],[33,22]]);tutRoad([[27,13],[27,31]]);
+    for(const h of [T.a,T.b])h.demand=8;
+    T.x=cellIdx(27,22);tutDone();return T;},
+  bridge(){tutWipe();const T={};T.d=tutPlace(0,true,0,31,22,0);T.h=tutPlace(0,false,0,46,22,4);tutDone();return T;},
+  highway(){tutWipe();const T={};
+    T.h=tutPlace(0,false,0,17,30,0);T.d=tutPlace(0,true,0,36,30,4);
+    tutRoad([[18,30],[18,20],[35,20],[35,30]]);
+    tutDone();T.len0=(()=>{const q=route(T.h.an*2,goals[0],false,false,true);return q?q.length:99;})();
+    T.A=cellIdx(18,25);T.B=cellIdx(35,25);return T;},
+  fire(){tutWipe();const T={};
+    T.d=tutPlace(0,true,0,35,22,4);T.hs=[tutPlace(0,false,0,20,21,2),tutPlace(0,false,0,24,23,6),tutPlace(0,false,0,28,21,2),tutPlace(0,false,0,31,23,6)];
+    tutRoad([[20,22],[34,22]]);for(const h of T.hs)h.demand=6;
+    T.sx=25;T.sy=20;T.sd=2;tutDone();return T;},
+  city(){tutWipe();const T={};
+    T.cd=tutPlace(0,true,0,33,15,4);T.sd=tutPlace(1,true,1,33,29,4);T.md=tutPlace(3,true,2,31,22,0);
+    T.hs=[tutPlace(0,false,0,19,13,0),tutPlace(0,false,0,23,19,3),tutPlace(1,false,0,19,27,0),tutPlace(1,false,0,26,32,6),
+          tutPlace(3,false,0,47,15,4),tutPlace(3,false,0,48,27,4)];
+    T.all=T.hs.concat([T.cd,T.sd,T.md]);tutDone();return T;}
+};
+// ghost road: where the tutorial wants you to build ------------------------------------
+const tutOK=b=>blds.includes(b)&&b.linked&&(b.dest?blds.some(h=>!h.dest&&h.color===b.color&&h.linked&&reachTo(h.color)[h.an*2]):!!reachTo(b.color)[b.an*2]);
+function tutGhostEdges(g){
+  if(!g)return [];
+  const none=new Uint8Array(W*H),set=a=>{const t=new Uint8Array(W*H);for(const c of a)if(c>=0)t[c]=1;return t;};
+  if(g.type==='pair'){const A=g.a(),B=g.b();if(!A||!B||A.port<0||B.port<0)return [];const pl=aiSearch(A.port,set([B.port]),none);return pl?pl.edges:[];}
+  if(g.type==='auto'){   // like the AI: destinations first, then each house to a network that reaches its colour
+    const list=g.list().filter(b=>blds.includes(b)),order=list.filter(b=>b.dest).concat(list.filter(b=>!b.dest));
+    for(const b of order){
+      if(b.port<0||tutOK(b))continue;
+      const R=b.dest?aiForward(b.color):aiReach(b.color),pt=new Uint8Array(W*H);
+      for(const x of blds)if(b.dest?(!x.dest&&x.color===b.color):(x.dest&&x.color===b.color))if(x.port>=0)pt[x.port]=1;
+      const pl=aiSearch(b.port,R,pt);if(pl)return pl.edges;
+    }
+    return [];
+  }
+  if(g.type==='hwy'){   // a straight elevated link between two road cells
+    const A=g.a(),B=g.b(),edges=[];let x=A%W,y=(A/W)|0;const bx=B%W,by=(B/W)|0;
+    while(x!==bx||y!==by){const sx=Math.sign(bx-x),sy=Math.sign(by-y),d=DTAB[(sy+1)*3+sx+1];edges.push({a:cellIdx(x,y),d,layer:'f',hwy:true});x+=sx;y+=sy;}
+    return edges;
+  }
+  return [];
+}
+function tutDrawGhost(edges){
+  const t=performance.now()/1000,pul=.5+.13*Math.sin(t*3.6);
+  const todo=edges.filter(e=>{const ex=getEdge(e.a,e.d,e.layer);return !ex||ex.ghost;});
+  if(!todo.length)return;
+  const seg=e=>{const b=nbIdx(e.a,e.d);if(b<0)return null;return [ctr(e.a),ctr(b)];};
+  const stroke=(list,w,col,dash,off)=>{if(!list.length)return;ctx.strokeStyle=col;ctx.lineWidth=w;ctx.setLineDash(dash||[]);ctx.lineDashOffset=off||0;ctx.beginPath();for(const e of list){const q=seg(e);if(q){ctx.moveTo(q[0][0],q[0][1]);ctx.lineTo(q[1][0],q[1][1]);}}ctx.stroke();ctx.setLineDash([]);};
+  const gr=todo.filter(e=>e.layer==='g'),br=todo.filter(e=>e.layer==='f'&&!e.hwy),hw=todo.filter(e=>e.hwy);
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.save();ctx.translate(.07,.12);ctx.globalAlpha=.25*pul*2;stroke(hw,.8,'rgba(0,0,0,1)');ctx.restore();   // a highway's shadow on the ground below
+  ctx.globalAlpha=pul+.1;
+  stroke(gr,.66,'#ffffff');stroke(br,.66,'#ffffff');stroke(hw,.8,'#ffffff');
+  ctx.globalAlpha=pul+.2;
+  stroke(gr,.5,'#3f8cff');stroke(br,.5,'#2fb6a5');stroke(hw,.62,'#ff8b3d');
+  ctx.globalAlpha=.9;
+  stroke(gr,.05,'#ffffff',[.1,.14],-t*.5);stroke(br,.05,'#ffffff',[.1,.14],-t*.5);stroke(hw,.05,'#ffffff',[.1,.14],-t*.5);
+  ctx.restore();
+}
+// the lessons ---------------------------------------------------------------------------
+function tutSteps(){
+  const T=()=>TUT.T,plus=()=>S.score-TUT.score0;
   const anySign=()=>cells.some(c=>c.sg&&c.sg.some(Boolean));
   const anyHwy=()=>cells.some(c=>c.f&&c.f.some(e=>e&&e.k===1&&!e.ghost));
   return [
-    {t:'Welcome to Gridlock',x:'Every house sends cars to the destination of the <b>same colour</b>. Your job is to join them with roads before traffic piles up.<br><br>Zoom with the scroll wheel or pinch, move around with two-finger scroll, <b>Alt-drag</b> or <b>W A S D</b>.',next:true},
-    {t:'Your first road',x:'Pick <b>Road</b> (key <b>1</b>) at the bottom, then <b>drag</b> from the coral house\u2019s driveway to the coral store. Roads snap to 8 directions and curve at bends.',cond:()=>linked(T.ch,T.cd),target:()=>[T.ch,T.cd],guide:true},
-    {t:'Watch the traffic',x:'Cars drive from the house to the store, park, and come back. Wait for <b>3 trips</b> to finish.',cond:()=>S.score>=3,target:()=>[T.cd]},
-    {t:'Turn a driveway',x:'The blue house\u2019s driveway faces away from the blue gas station. <b>Click the house</b> to rotate its driveway (Shift-click turns the other way).',cond:()=>T.bh.dir!==T.bh0,target:()=>[T.bh]},
-    {t:'Join the blue pair',x:'Now draw a road from the blue house to the blue gas station. Cars always use the shortest route, so they\u2019ll share your first road if it helps.',cond:()=>linked(T.bh,T.bd),target:()=>[T.bh,T.bd],guide:true},
-    {t:'Cross the river',x:'The mint house is on the other side of the river. Roads can\u2019t go on water, so pick <b>Bridge</b> (key <b>5</b>) and drag across the water to join it to the mint parking lot.',cond:()=>linked(T.mh,T.md),target:()=>[T.mh,T.md],guide:true},
-    {t:'Stop signs',x:'Where two roads cross, cars wait for a clear junction. Make a junction by crossing one road with another, pick the <b>Stop sign</b> (key <b>7</b>) and click it. Cars on that approach stop and give way. <b>Shift-click</b> makes it all-way.',cond:anySign},
-    {t:'Highways',x:'Pick <b>Highway</b> (key <b>3</b>). Highways are elevated and fast, and fly over roads. They must start and end on the <b>side of a road</b>, never its end. Draw a short one.',cond:anyHwy},
-    {t:'Fire stations',x:'Houses can catch fire. Pick the <b>Fire station</b> (key <b>8</b>) and place it right beside a road, <b>facing it</b>. The road has to run along its whole front, and it should join the roads your houses use.',cond:()=>depts.length>0&&depts[0].linked},
-    {t:'A house is on fire!',x:'Your station is ready and a house is burning. Watch the truck race out: cars in its way <b>pull over</b>, then pull back out once it has passed.<br><br><small>Nothing happening? Join the road in front of your station to a house\u2019s road.</small>',setup:()=>{TUT.ignitedAt=0;TUT.burn=null;},cond:()=>{
-        if(!TUT.ignitedAt){
-          if(depts.length&&time>=depts[0].readyAt){
-            const h=[T.ch,T.bh,T.mh].find(q=>blds.includes(q)&&q.linked&&!q.fire&&routeTo(depts[0].port*2,q.port*2,false,D.fireOW,true));
-            if(h){TUT.burn=h;igniteHouse(h);TUT.ignitedAt=time;}
-          }
-          return false;
-        }
-        return !TUT.burn.fire&&time-TUT.ignitedAt>4;},target:()=>TUT.burn&&blds.includes(TUT.burn)?[TUT.burn]:[]},
-    {t:'Layers',x:'Press <b>L</b> (or the <b>Layers</b> button) to see <b>Traffic</b>, <b>Elevation</b>, <b>Routes</b>, <b>Speed limits</b> and <b>Fire cover</b>. Try one now.',cond:()=>layerMode!=='normal'},
-    {t:'Make it yours',x:'Open <b>Settings</b> any time: themes, a <b>day and night cycle</b>, music, notifications and rebindable keys. At night every house, store and car glows in its own colour.',next:true},
-    {t:'Weekly cards',x:'Every week ends with <b>3 cards</b>: pick which pieces to receive. New houses and destinations keep appearing, so keep building.<br><br>You lose if a destination stays <b>swamped</b> with cars too long, or most trips of one colour are <b>cut off</b> from their destination.',next:true},
-    {t:'You\u2019re ready!',x:'That\u2019s everything. Start a real game, or keep playing here with unlimited pieces.',final:true}
+    {ch:'Roads',scene:'first',t:'Welcome to Gridlock',x:'Every house sends cars to the <b>destination of the same colour</b>. Your job is to join them with roads.<br><br>Zoom with the scroll wheel or pinch, move with two-finger scroll, <b>Alt-drag</b> or <b>W A S D</b>. Nothing can go wrong here, so explore.',next:true},
+    {ch:'Roads',t:'Your first road',x:'Pick <b>Road</b> (key <b>1</b>) and <b>drag</b> along the blue ghost road from the coral house to the coral store.<br>Roads snap to 8 directions and bend smoothly.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
+    {ch:'Roads',t:'Watch the traffic',x:'Cars drive to the store, park in a bay, and come back. Wait for <b>3 trips</b>.',cond:()=>plus()>=3,target:()=>[T().d]},
+    {ch:'Driveways',scene:'turn',t:'Turn a driveway',x:'This blue house’s driveway points the wrong way. <b>Click the house</b> to turn its driveway (Shift-click turns it the other way) until it faces the gas station.',cond:()=>T().h.dir!==T().dir0,target:()=>[T().h]},
+    {ch:'Driveways',t:'Join the pair',x:'Now follow the ghost road from the house to the gas station.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
+    {ch:'Sharing roads',scene:'share',t:'Add the neighbours',x:'The coral road already exists. Two new houses want to use it. Follow the ghost roads and join them to it. Cars always take the <b>shortest route</b>, so everyone shares the same road.',cond:()=>tutOK(T().h2)&&tutOK(T().h3),target:()=>[T().h2,T().h3],ghost:{type:'auto',list:()=>[T().h2,T().h3]}},
+    {ch:'Sharing roads',t:'One road, many cars',x:'Watch all three houses send cars down the same road. Wait for <b>6 trips</b>.',cond:()=>plus()>=6,setup:()=>{for(const h of [T().h1,T().h2,T().h3])h.demand=4;}},
+    {ch:'Junctions',scene:'junction',t:'A busy crossing',x:'Two roads cross here. Cars give way and take turns, but a busy crossing can jam. Watch them for a moment.',next:true,target:()=>[],ring:()=>T().x},
+    {ch:'Junctions',t:'Stop signs',x:'Pick the <b>Stop sign</b> (key <b>7</b>) and click the crossing. Cars on that road stop and give way, so the other road flows. <b>Shift-click</b> puts signs on every approach.',cond:anySign,ghost:{type:'sign',ci:()=>T().x}},
+    {ch:'Bridges',scene:'bridge',t:'Across the river',x:'Roads can’t go on water. Pick <b>Bridge</b> (key <b>5</b>) and drag along the ghost road: the green part is the bridge.',cond:()=>tutOK(T().h)&&tutOK(T().d),target:()=>[T().h,T().d],ghost:{type:'pair',a:()=>T().h,b:()=>T().d}},
+    {ch:'Highways',scene:'highway',t:'The long way round',x:'This road winds a long way between the house and the store. Watch how slow the trip is.',next:true,target:()=>[T().h,T().d]},
+    {ch:'Highways',t:'Build a highway',x:'Pick <b>Highway</b> (key <b>3</b>) and drag along the orange ghost. Highways are elevated and fast, and they fly over roads. They must <b>start and end on the side of a road</b>, never its end.',
+      cond:()=>{if(!anyHwy())return false;const q=route(T().h.an*2,goals[0],false,false,true);return !!q&&q.length<T().len0*.8;},ghost:{type:'hwy',a:()=>T().A,b:()=>T().B}},
+    {ch:'Fires',scene:'fire',t:'Be ready for fires',x:'Houses can catch fire. This town has no fire station yet. Fire stations must sit <b>right beside a road and face it</b>.',next:true,target:()=>T().hs},
+    {ch:'Fires',t:'Place a fire station',x:'Pick the <b>Fire station</b> (key <b>8</b>) and click the ghost station. It takes a few seconds to build, then it is ready.',cond:()=>depts.length>0&&depts[0].linked&&time>=depts[0].readyAt,ghost:{type:'station',x:()=>T().sx,y:()=>T().sy,dir:()=>T().sd}},
+    {ch:'Fires',t:'A house is on fire!',x:'The station is ready, and a house is burning. Watch the truck race out. Cars in its way <b>ease over to the right</b>, then pull back out once it has passed.',
+      setup:()=>{TUT.ignitedAt=0;TUT.burn=null;},
+      cond:()=>{
+        if(!TUT.ignitedAt){const h=T().hs.find(q=>blds.includes(q)&&q.linked&&!q.fire&&routeTo(depts[0].port*2,q.port*2,false,D.fireOW,true));
+          if(h){TUT.burn=h;igniteHouse(h);TUT.ignitedAt=time;}return false;}
+        return !TUT.burn.fire&&time-TUT.ignitedAt>4;},
+      target:()=>TUT.burn&&blds.includes(TUT.burn)?[TUT.burn]:[]},
+    {ch:'Your city',scene:'city',t:'Link up a whole city',x:'Three colours, three destinations, six houses, a river. Follow the ghost roads one by one. The ghost always shows the next link, and roads you already built are reused.',
+      cond:()=>T().all.every(tutOK),target:()=>T().all.filter(b=>!tutOK(b)),ghost:{type:'auto',list:()=>T().all}},
+    {ch:'Your city',t:'Layers',x:'Press <b>L</b> (or the <b>Layers</b> button) to see <b>Traffic</b>, <b>Elevation</b>, <b>Routes</b>, <b>Speed limits</b> and <b>Fire cover</b>. Try one now.',cond:()=>layerMode!=='normal'},
+    {ch:'Your city',t:'Make it yours',x:'Open <b>Settings</b> any time: themes, a <b>day and night cycle</b>, music, notifications and rebindable keys. At night every house, store and car glows in its own colour.',next:true},
+    {ch:'Your city',t:'The real game',x:'Every week ends with <b>3 cards</b>: pick which pieces to receive. New houses and destinations keep appearing.<br><br>You lose if a destination stays <b>swamped</b> with cars for too long, or most trips of one colour are <b>cut off</b>. Nothing like that happens in this tutorial.',next:true},
+    {ch:'Your city',t:'You’re ready!',x:'That’s everything. Start a real game, replay a lesson, or keep building here with unlimited pieces.',final:true}
   ];
+}
+function tutEnter(i){
+  TUT.i=i;TUT.doneAt=0;TUT.ghost=null;TUT.gnext=0;
+  const st=TUT.steps[i];
+  if(st.scene)TUT.T=TUT_SCENES[st.scene]();
+  TUT.score0=S.score;
+  if(st.setup)st.setup();
+  if(st.final)Settings.set('tutDone',true);
+  tutShow();
+}
+function startTutorial(){
+  newGame('tutorial',7);S.tut=true;S.name='Tutorial';
+  Menu.hide();document.getElementById('modal').className='hidden';setPlay();
+  TUT={T:null,i:0,steps:tutSteps(),doneAt:0,nextCheck:0,ignitedAt:0,burn:null,score0:0,ghost:null,gnext:0};
+  tutEnter(0);
 }
 function tutShow(){
   const el=$('coach');if(!el)return;
   if(!TUT){el.style.display='none';return;}
   const st=TUT.steps[TUT.i],n=TUT.steps.length,done=TUT.doneAt>0;
+  const chs=[...new Set(TUT.steps.map(q=>q.ch))],ci=chs.indexOf(st.ch)+1;
   el.style.display='block';el.classList.toggle('ok',done);
-  el.innerHTML=`<div class="cstep">Tutorial \u00b7 step ${TUT.i+1} of ${n}</div><div class="cbar"><i style="width:${(TUT.i+(done?1:0))/n*100}%"></i></div>
-    <h3>${done?'\u2713 ':''}${st.t}</h3><p>${st.x}</p>
-    <div class="cbtns">${st.final?'<button class="sbtn" data-c="play">Keep playing</button><button class="sbtn" data-c="menu">Main menu</button>'
-      :st.next?'<button class="sbtn" data-c="next">Next</button>':(done?'':'<button class="sbtn ghost" data-c="skip">Skip step</button>')}
-      ${st.final?'':'<button class="sbtn ghost" data-c="exit">Exit</button>'}</div>`;
+  el.innerHTML=`<div class="cstep">Lesson ${ci} of ${chs.length} · ${st.ch}</div><div class="cbar"><i style="width:${(TUT.i+(done?1:0))/n*100}%"></i></div>
+    <h3>${done?'✓ ':''}${st.t}</h3><p>${st.x}</p>
+    <div class="cbtns">${st.final?'<button class="sbtn" data-c="play">Keep playing</button><button class="sbtn" data-c="menu">Main menu</button><button class="sbtn ghost" data-c="again">Replay</button>'
+      :st.next?'<button class="sbtn" data-c="next">Next</button>':(done?'':'<button class="sbtn ghost" data-c="skip">Skip</button>')}
+      ${st.final?'':'<button class="sbtn ghost" data-c="redo" title="Rebuild this lesson’s scene">Restart lesson</button><button class="sbtn ghost" data-c="exit">Exit</button>'}</div>`;
 }
-function tutAdvance(){
-  if(!TUT)return;
-  TUT.i=Math.min(TUT.steps.length-1,TUT.i+1);TUT.doneAt=0;
-  const st=TUT.steps[TUT.i];if(st.setup)st.setup();
-  if(st.final)Settings.set('tutDone',true);
-  tutShow();
-}
+function tutAdvance(){if(TUT)tutEnter(Math.min(TUT.steps.length-1,TUT.i+1));}
 function tutTick(){
   if(!TUT||mode!=='play')return;
+  try{tutTick2();}catch(e){}
+}
+function tutTick2(){
   const now=performance.now();
-  if(TUT.doneAt){if(now-TUT.doneAt>1400)tutAdvance();return;}
-  if(now<TUT.nextCheck)return;TUT.nextCheck=now+250;
+  if(TUT.doneAt){if(now-TUT.doneAt>1500)tutAdvance();return;}
   const st=TUT.steps[TUT.i];
-  if(st.cond&&st.cond()){TUT.doneAt=now;tutShow();}
+  if(st.ghost&&now>TUT.gnext){TUT.gnext=now+350;TUT.ghost=st.ghost.type==='sign'||st.ghost.type==='station'?null:tutGhostEdges(st.ghost);}
+  if(now<TUT.nextCheck)return;TUT.nextCheck=now+250;
+  if(st.cond&&st.cond()){TUT.doneAt=now;TUT.ghost=null;tutShow();}
 }
 $('coach').addEventListener('click',e=>{
   const b=e.target.closest('[data-c]');if(!b||!TUT)return;
   const c=b.dataset.c;
   if(c==='next'||c==='skip')tutAdvance();
+  else if(c==='redo'){let i=TUT.i;while(i>0&&!TUT.steps[i].scene)i--;tutEnter(i);}
+  else if(c==='again'){tutEnter(0);}
   else if(c==='exit'||c==='menu'){TUT=null;tutShow();S.tut=false;enterMenu();}
   else if(c==='play'){TUT=null;tutShow();}
 });
 function drawTutorial(){
   if(!TUT||mode!=='play')return;
-  const st=TUT.steps[TUT.i];if(!st.target||TUT.doneAt)return;
-  const ts=st.target(),t=performance.now()/1000;
+  try{tutDraw();}catch(e){}   // a hiccup in the lesson overlay must never stop the game drawing
+}
+function tutDraw(){
+  const st=TUT.steps[TUT.i];if(TUT.doneAt)return;
+  const t=performance.now()/1000;
+  if(TUT.ghost&&TUT.ghost.length)tutDrawGhost(TUT.ghost);
   ctx.save();
-  if(st.guide&&ts.length>=2){   // a faint dashed hint line between the pair
-    const a=ctr(ts[0].port),b=ctr(ts[1].port);ctx.strokeStyle='rgba(63,140,255,.55)';ctx.lineWidth=.09;ctx.lineCap='round';ctx.setLineDash([.18,.16]);ctx.lineDashOffset=-t*.6;
-    ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();ctx.setLineDash([]);
+  const g=st.ghost;
+  if(g&&g.type==='station'){   // the fire station to place, and the stretch of road it will face
+    const x=g.x(),y=g.y(),dir=g.dir();
+    if(!depts.length){
+      ctx.save();ctx.translate(x+1,y+1);ctx.rotate(deptAng({dir}));ctx.translate(-1,-1);ctx.globalAlpha=.5+.12*Math.sin(t*3.6);ctx.drawImage(sprite('dept2',2,2,224,paintDept),0,0,2,2);ctx.restore();
+      ctx.strokeStyle='#3f8cff';ctx.lineWidth=.09;ctx.setLineDash([.14,.12]);ctx.lineDashOffset=-t*.5;rr(x+.04,y+.04,1.92,1.92,.2);ctx.stroke();ctx.setLineDash([]);
+      const fr=deptFront(x,y,dir);ctx.strokeStyle='rgba(47,182,124,.9)';ctx.lineWidth=.12;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(fr[0][0]+.5,fr[0][1]+.5);ctx.lineTo(fr[1][0]+.5,fr[1][1]+.5);ctx.stroke();
+      drawArrow(x+1,y-.2,t);
+    }
+  } else if(g&&g.type==='sign'){
+    const ci=g.ci(),C=ctr(ci),sides=signSides(cells[ci]);
+    ctx.strokeStyle='#3f8cff';ctx.lineWidth=.1;ctx.beginPath();ctx.arc(C[0],C[1],.55+Math.sin(t*4)*.06,0,7);ctx.stroke();
+    for(const sd of sides)if(!(cells[ci].sg&&cells[ci].sg[sd]))drawSign(signPos(ci,sd),.55);
+    drawArrow(C[0],C[1]-.9,t);
   }
-  for(const b of ts){
+  if(st.ring){const C=ctr(st.ring());ctx.strokeStyle='#3f8cff';ctx.lineWidth=.1;ctx.beginPath();ctx.arc(C[0],C[1],.7+Math.sin(t*4)*.07,0,7);ctx.stroke();}
+  if(st.target)for(const b of st.target()){
     const cx=b.x+b.w/2,cy=b.y+b.w/2,r=b.w*.62+.3+Math.sin(t*4)*.08;
     ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=.16;ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.stroke();
     ctx.strokeStyle='#3f8cff';ctx.lineWidth=.09;ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.stroke();
-    const by=b.y-.75+Math.sin(t*5)*.1;   // a bobbing arrow
-    ctx.fillStyle='#3f8cff';ctx.strokeStyle='#fff';ctx.lineWidth=.05;ctx.beginPath();ctx.moveTo(cx,by+.34);ctx.lineTo(cx-.22,by);ctx.lineTo(cx+.22,by);ctx.closePath();ctx.fill();ctx.stroke();
+    drawArrow(cx,b.y-.5,t);
   }
   ctx.restore();
+}
+function drawArrow(cx,y0,t){
+  const by=y0-.25+Math.sin(t*5)*.1;
+  ctx.fillStyle='#3f8cff';ctx.strokeStyle='#fff';ctx.lineWidth=.05;ctx.beginPath();ctx.moveTo(cx,by+.34);ctx.lineTo(cx-.22,by);ctx.lineTo(cx+.22,by);ctx.closePath();ctx.fill();ctx.stroke();
 }
 /* ---------- input ---------- */
 function worldPos(e){return [(e.clientX-ox)/cs,(e.clientY-oy)/cs];}
@@ -2024,7 +2133,7 @@ function hud(force){
   set('wt',Math.max(0,Math.ceil(S.weekLen-S.weekT))+'s');
   let wt=0,wc=-1;for(let c=0;c<6;c++)if(S.stallT[c]>wt){wt=S.stallT[c];wc=c;}
   const wel=$('warn');
-  if(wc>=0&&wt>.5){const g=S.stall&&S.stall[wc],pct=g?Math.round(g.bad/g.n*100):0;
+  if(wc>=0&&wt>.5&&!S.tut){const g=S.stall&&S.stall[wc],pct=g?Math.round(g.bad/g.n*100):0;
     wel.innerHTML=`<i style="background:${PAL[wc].c}"></i>${PAL[wc].n} trips cut off (${pct}% of houses) \u00b7 ${Math.max(0,Math.ceil(D.stall-wt))}s`;wel.style.display='flex';}
   else wel.style.display='none';
   $('wbar').style.width=Math.min(100,S.weekT/S.weekLen*100)+'%';
@@ -2615,9 +2724,8 @@ function drawAmbient(poses){
   for(const b of blds){
     if(b.x<vx0-2||b.x>vx1+2||b.y<vy0-2||b.y>vy1+2)continue;
     if(b.fire){ctx.globalAlpha=Math.min(1,a+.3);ctx.drawImage(fire,b.x+.5-1.5,b.y+.5-1.5,3,3);continue;}
-    {const cg=colorGlow(b.color),r=b.dest?1.7:.95,cx=b.x+b.w/2,cy=b.y+b.w/2;   // each building glows in its own colour so it can be told apart in the dark
-      ctx.globalAlpha=a*(b.dest?.7:.6);ctx.drawImage(cg,cx-r,cy-r,r*2,r*2);
-      if(b.dest){ctx.globalAlpha=a*.9;ctx.strokeStyle=PAL[b.color].c;ctx.lineWidth=.07;rr(b.x+.02,b.y+.04,1.96,1.92,.24);ctx.stroke();}}
+    {const cg=colorGlow(b.color),r=b.dest?1.35:.95,cx=b.x+b.w/2,cy=b.y+b.w/2;   // each building glows in its own colour so it can be told apart in the dark
+      ctx.globalAlpha=a*(b.dest?.26:.6);ctx.drawImage(cg,cx-r,cy-r,r*2,r*2);}   // destinations: just a soft hint of their colour (their coloured kerb does the rest)
     if(b.dest){ctx.globalAlpha=a*.14;ctx.drawImage(cool,b.x+1-1.1,b.y+1-1.1,2.2,2.2);continue;}
     if((b.id*7)%5===0)continue;
     ctx.globalAlpha=a*.55;   // the glow comes out of the windows
@@ -2677,7 +2785,7 @@ function draw(){
   for(const c of cars){if(c.dead||!isPark(c.ph))continue;const q=parkPose(c);if(q.x<vx0-2||q.x>vx1+2||q.y<vy0-2||q.y>vy1+2)continue;drawCar(c,q);}
   drawTutorial();
   drawAmbient(poses);
-  if(D.notify&&!S.demo&&mode==='play'&&Settings.v.n_mark)for(const b of blds)drawAlert(b);
+  if(D.notify&&!S.demo&&!S.tut&&mode==='play'&&Settings.v.n_mark)for(const b of blds)drawAlert(b);
   if(Settings.v.fx)for(const p of particles){ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();}
   ctx.globalAlpha=1;
   drawAI();
@@ -2858,7 +2966,9 @@ const SCREENS={
       const ks=keysOf(a);return `<div class="bd"><span>${label}</span><button class="kb${rebinding===a?' wait':''}" data-bind="${a}">${rebinding===a?'Press a key\u2026':(ks.length?ks.map(keyLabel).join(' / '):'Unbound')}</button></div>`;}).join('');
     return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Settings</h2></div><div class="pbody">
       ${sec('Display',
-        row('Theme','Colours for the menus and the map',seg('theme',[['light','Light'],['dark','Dark'],['midnight','Midnight'],['contrast','High contrast'],['system','Match system']]))
+        row('Theme','Colours for the menus and the map',seg('theme',[['dark','Dark'],['midnight','Midnight'],['contrast','High contrast']]))
+        +tog('mapNatural','Don\u2019t apply the theme to the map','The map keeps its natural colours; only the menus and buttons use the theme')
+        +sld('bri','Brightness','Dim or brighten everything, the map and the menus',60,140,5,'pct')
         +tog('cycle','Day and night cycle','The light fades to night and back as the game runs. Not used in High contrast.')
         +row('Cycle length','How long one full day takes',seg('cycleLen',[[120,'2 min'],[240,'4 min'],[480,'8 min']]))
         +row('Time of day','Used while the cycle is off',seg('tod',[['day','Day'],['dusk','Dusk'],['night','Night']]))
@@ -3343,12 +3453,12 @@ function frame(now){
   }
   requestAnimationFrame(frame);
 }
-buildKeymap();applyTheme();Settings.react('horns');
+buildKeymap();applyTheme();Settings.react('bri');Settings.react('horns');
 Store.init();resize();enterMenu();
 requestAnimationFrame(frame);
 // test helpers
 function line(key,pts){const p=PK[key];let n=0;for(let i=0;i<pts.length-1;i++){const [ax,ay]=pts[i],[bx,by]=pts[i+1];const d=DTAB[(Math.sign(by-ay)+1)*3+Math.sign(bx-ax)+1];const r=placeEdge(p,cellIdx(ax,ay),d);if(r.res==='ok')n++;}rebuild();refreshDock();return n;}
-window.G={tutTick,startTutorial,get TUT(){return TUT;},tutAdvance,lamps,hwySideOK,Music,Settings,AI,selectTool,sbAct,sbFinish,pose,parkPose,Snd,espd,placeDept,deptOrient,igniteHouse,get depts(){return depts},startParking,toWorld,toLocal,faceOf,expandRegion,crowded,regionLand,AI,aiReach,aiPlanHouse,startDemo,serialize,restore,Store,enterMenu,startGameWith,act,MS,get mode(){return mode},get D(){return D},rebuildGoals,get S(){return S},get cells(){return cells},get cars(){return cars},get blds(){return blds},inv:()=>inv,rebuild,step,route,PK,newGame,line,setDir,rotateBld,cellIdx,get goals(){return goals}};
+window.G={setSign,tutEnter,tutTick,startTutorial,get TUT(){return TUT;},tutAdvance,lamps,hwySideOK,Music,Settings,AI,selectTool,sbAct,sbFinish,pose,parkPose,Snd,espd,placeDept,deptOrient,igniteHouse,get depts(){return depts},startParking,toWorld,toLocal,faceOf,expandRegion,crowded,regionLand,AI,aiReach,aiPlanHouse,startDemo,serialize,restore,Store,enterMenu,startGameWith,act,MS,get mode(){return mode},get D(){return D},rebuildGoals,get S(){return S},get cells(){return cells},get cars(){return cars},get blds(){return blds},inv:()=>inv,rebuild,step,route,PK,newGame,line,setDir,rotateBld,cellIdx,get goals(){return goals}};
 </script>
 </body>
 </html>
