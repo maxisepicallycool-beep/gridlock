@@ -1,5 +1,15 @@
 # Gridlock changelog
 
+## 1.8.0 — A much smarter menu AI, and one-way highways are back
+- One-way highways return as a rare piece: a new One-way highway card (a small amount, shown less often than the others), a starter piece, and hotkey 7. One-way bridges stay gone
+- The menu AI was rebuilt around how a city engineer works:
+  - It finds and connects houses that reach some destinations but not all of them (a bug had left them stuck with the AI doing nothing), so it survives far longer on Standard, Rush Hour and Relaxed
+  - Roundabouts: a busy junction becomes a one-way square ring with the crossing roads taken up (roads come back as pieces). On Gridlock the entries get give-way signs
+  - Tidying up: roads no trip needs any more are removed and recycled, now keeping every route a house might take to any destination of its colour
+  - It builds many more shortcuts when it has road to spare, so trips stay short
+  - It picks cards for what it needs (roads first, bridges when a river is in the way, fire stations when the city has grown), speeds up when a city is in trouble, and on Gridlock puts stop signs where cars wreck
+  - The caption under the AI now says what it is doing: connecting a new house, building a roundabout, tidying up roads, adding a shortcut and so on
+
 ## 1.7.2 — Longer alerts you can set, and settings that stick
 - Alerts now stay on screen for 15 seconds by default (it was 8) and the time is a slider from 3 to 60 seconds in Settings. Urgent alerts stay 2 seconds longer. If you were on the old 8 second default you move to 15
 - New slider, Hints stay on screen (1 to 15 seconds, 4 by default, was 2): the small pop-ups like "No room for that here"

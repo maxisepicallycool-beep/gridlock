@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.7.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.8.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -323,12 +323,13 @@ const PIECES=[
   {k:'hwy',   label:'Highway',         layer:'f',kind:1,ow:false},
   {k:'bridge',label:'Bridge',          layer:'f',kind:2,ow:false},
   {k:'stop',  label:'Stop sign',       layer:'s'},
-  {k:'fire',  label:'Fire station',    layer:'d'}
+  {k:'fire',  label:'Fire station',    layer:'d'},
+  {k:'hwy1',  label:'One-way highway', layer:'f',kind:1,ow:true}
 ];
 const PK=Object.fromEntries(PIECES.map(p=>[p.k,p]));
 const CARDS=[
   ['road',[18,38],4],['road1',[10,22],3],['hwy',[6,14],3],
-  ['bridge',[3,8],3],['stop',[2,5],3],['fire',[1,2],2]
+  ['bridge',[3,8],3],['stop',[2,5],3],['fire',[1,2],2],['hwy1',[2,5],1]   // one-way highways are rare
 ];
 const SPEED=2.6, MAXD=8;
 const HOUSE_REST=5,LOT_REST=5;   // seconds a returned car waits at home / a parked car waits in its bay
@@ -540,7 +541,7 @@ function setEdge(layer,ai,d,k,ow){
 }
 function keyOfEntry(layer,e){
   if(layer==='g')return e.ow?'road1':'road';
-  return e.k===1?'hwy':'bridge';   // (old one-way pieces are refunded as ordinary ones)
+  return e.k===1?(e.ow?'hwy1':'hwy'):'bridge';   // (one-way bridges are gone: they are refunded as ordinary ones)
 }
 
 /* ---------- map ---------- */
@@ -752,7 +753,7 @@ function drawGrowth(){   // new land fades in, rippling out from the old edge
 
 /* ---------- game flow ---------- */
 function startInv(){
-  const base={road:60,road1:10,hwy:4,bridge:6,stop:3,fire:1},o={};
+  const base={road:60,road1:10,hwy:4,bridge:6,stop:3,fire:1,hwy1:1},o={};
   for(const k in base)o[k]=D.infinite?9999:Math.round(base[k]*D.startMul);
   return o;
 }
@@ -877,6 +878,7 @@ function chordDist(a,b){
 }
 function crash(nx,a,b){   // hardest difficulty: crossing paths in an unsigned junction end in a wreck
   crashUntil[nx]=time+5;S.crashes=(S.crashes||0)+1;
+  if(S.demo&&typeof AI!=='undefined'&&AI.crashAt){const k=nx>>1;AI.crashAt[k]=(AI.crashAt[k]||0)+1;}   // the menu AI learns where wrecks happen
   const px=(nx>>1)%W+.5,py=(((nx>>1)/W)|0)+.5;
   S.wrecks.push({x:px,y:py,t:time});if(S.wrecks.length>12)S.wrecks.shift();
   for(let i=0;i<22;i++)particles.push({x:px,y:py,vx:rnd(-3,3),vy:rnd(-3,3),life:rnd(.5,1.1),max:1.1,col:pick(['#ffb02e','#ff6b3d','#444','#ffe08a']),r:rnd(.04,.1)});
@@ -3337,7 +3339,7 @@ function restore(sv){
     trees=trees.filter(t=>!cells[cellIdx(Math.floor(t.x),Math.floor(t.y))].water);
     ripples=[];for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(cells[cellIdx(x,y)].water&&((x*7+y*13)%4===0))ripples.push([x,y]);}
   blds=[];cars=[];particles=[];undoStack=[];stroke=null;depts=[];hold.fill(null);queue.fill(null);crashUntil.fill(0);heat.fill(0);bldId=0;
-  time=st.time||0;inv=Object.assign({},st.inv);inv.hwy=(inv.hwy||0)+(inv.hwy1||0);inv.bridge=(inv.bridge||0)+(inv.bridge1||0);delete inv.hwy1;delete inv.bridge1;   // saved one-way pieces become ordinary ones
+  time=st.time||0;inv=Object.assign({},st.inv);inv.hwy1=inv.hwy1||0;inv.bridge=(inv.bridge||0)+(inv.bridge1||0);delete inv.bridge1;   // saved one-way bridges become ordinary ones
   colorOrder=st.colorOrder.slice();
   S={seed:st.seed,runId:sv.runId||Date.now().toString(36),name:sv.name||'City',stallT:st.stallT.slice(),colorBorn:Object.assign({},st.colorBorn),stall:null,stallClock:0,
      grow:null,expansions:0,sirens:[],fireClock:0,crashes:st.crashes||0,wrecks:[],week:st.week,weekT:st.weekT,weekLen:st.weekLen,score:st.score,colors:st.colors,modal:null,paused:false,speed:1,over:false,mid:!!st.mid,saveClock:0,demo:false};
@@ -3635,6 +3637,9 @@ function aiReach(color){   // ground cells whose road can already reach a destin
   for(let n=0;n<N;n+=2)if(seen[n]&&!isBld(n))out[n>>1]=1;
   return out;
 }
+function aiCells(seen){   // a node-indexed reach map as a per-cell map (what the path search wants)
+  const out=new Uint8Array(W*H);for(let n=0;n<N;n+=2)if(seen[n]&&!isBld(n))out[n>>1]=1;return out;
+}
 function aiDiagBlocked(u,d,layer){
   if(!(d&1))return false;
   const dx=DIR[d][0],dy=DIR[d][1],x=u%W,y=(u/W)|0;
@@ -3699,19 +3704,20 @@ function aiNeeds(pl){
   for(const e of pl.edges){const ex=getEdge(e.a,e.d,e.layer);if(ex)continue;if(e.layer==='g')road++;else bridge++;}
   return {road,bridge};
 }
-function aiPickCard(offer){
+function aiPickCard(offer){   // roads are the currency; everything else is only worth it for a reason
   const houses=blds.filter(b=>!b.dest).length,wantStn=D.fireChance?1+Math.floor(houses/9):0;
-  const w={road:inv.road<80?2.2:1,road1:.15,bridge:AI.needBridge?1.6:.45,hwy:inv.hwy<14?.5:.2,stop:inv.stop<5?.9:.3,fire:!D.fireChance?0:(depts.length<wantStn&&inv.fire<1?1.6:.2)};
+  const low=inv.road<70;
+  const w={road:low?3.2:2.2,road1:AI.opt.round?(inv.road1<14?.9:.25):.12,bridge:AI.needBridge?(inv.bridge<4?3:1.4):(inv.bridge<3?.9:.25),hwy:inv.hwy<8?.6:.15,stop:D.crash?(inv.stop<8?2.4:.8):(inv.stop<4?.8:.2),fire:!D.fireChance?0:(depts.length+inv.fire<wantStn?2.4:.1)};
   let best=offer[0],bs=-1;
-  for(const o of offer){const sc=o.n*(w[o.k]||.1)/(1+inv[o.k]/25);if(sc>bs){bs=sc;best=o;}}
+  for(const o of offer){const sc=o.n*(w[o.k]||.1)/(1+inv[o.k]/30);if(sc>bs){bs=sc;best=o;}}
   return best;
 }
-const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,lastHwy:-99,needBridge:false,restartAt:0,runs:0,rr:0,
-  reset(){this.job=null;this.pen=null;this.recent=[];this.q=[];this.acc=0;this.think=.3;this.flow={};this.flowClock=0;this.signClock=0;this.lastHwy=-99;this.needBridge=false;this.rr=0;},
+const AI={crashAt:{},opt:{prune2:true,fast:true,round:true,short2:true},pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,lastHwy:-99,needBridge:false,restartAt:0,runs:0,rr:0,
+  reset(){this.crashAt={};this.doing=null;this.rounds=[];this.lastRound=-99;this.job=null;this.pen=null;this.recent=[];this.q=[];this.acc=0;this.think=.3;this.flow={};this.flowClock=0;this.signClock=0;this.lastHwy=-99;this.needBridge=false;this.rr=0;},
   exec(it){
     if(it.t==='dir'){if(blds.includes(it.b)&&dirValid(it.b,it.dir)){setDir(it.b,it.dir);rebuild();this.pen={x:it.b.x+it.b.w/2,y:it.b.y+it.b.w/2,t:time};}}
     else if(it.t==='edge'){
-      const r=placeEdge(it.layer==='g'?PK.road:(it.hwy?PK.hwy:PK.bridge),it.a,it.d);
+      const r=placeEdge(it.layer==='g'?(it.ow?PK.road1:PK.road):(it.hwy?PK.hwy:PK.bridge),it.a,it.d);
       if(r.res==='empty'||r.res==='blocked'){this.q.length=0;return;}
       rebuild();
       const b2=nbIdx(it.a,it.d),ca=ctr(it.a),cb=ctr(b2);
@@ -3720,6 +3726,13 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
     } else if(it.t==='erase'){   // take up a road nobody drives on any more and get the piece back
       const arr=arrOf(cells[it.a],'g'),e=arr&&arr[it.d];
       if(e&&e.k===0&&e.ow===0&&!e.ghost&&!edgeInUse('g',it.a,it.d)){removeEdge('g',it.a,it.d,e);rebuild();refreshDock();const c=ctr(it.a);this.pen={x:c[0],y:c[1],t:time};}
+    } else if(it.t==='spoke'){   // a road into the middle of a new roundabout comes up (fades out if cars are still on it, like a player's erase)
+      const arr=arrOf(cells[it.a],'g'),e=arr&&arr[it.d];
+      if(e&&e.k===0&&!e.ghost){
+        if(edgeInUse('g',it.a,it.d)){const bi=nbIdx(it.a,it.d),B=arrOf(cells[bi],'g')[opp(it.d)];e.ghost=true;e.refunded=true;if(B){B.ghost=true;B.refunded=true;}inv.road++;}
+        else removeEdge('g',it.a,it.d,e);
+        rebuild();refreshDock();const c=ctr(it.a);this.pen={x:c[0],y:c[1],t:time};
+      }
     } else if(it.t==='dept'){
       if(inv.fire>0&&freeFor(it.x,it.y,2,0)&&deptFits(it.x,it.y,it.dir)){
         makeDept(it.x,it.y,it.dir,time+Math.min(D.fireBuild,12));inv.fire--;rebuild();refreshDock();this.pen={x:it.x+1,y:it.y+1,t:time};
@@ -3736,15 +3749,28 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
   signs(){   // quiet side roads give way to the busy one
     const by={};for(const k in this.flow){const n=(k/8)|0;(by[n]||(by[n]=[])).push([k%8,this.flow[k]]);}
     for(const n in by){
-      const arr=by[n],tot=arr.reduce((a,x)=>a+x[1],0);if(tot<10||arr.length<2)continue;
+      const arr=by[n],tot=arr.reduce((a,x)=>a+x[1],0);if(tot<(D.crash?3:10)||arr.length<2)continue;
       const ci=n>>1,c=cells[ci];if(!c.e)continue;
       const main=Math.max(...arr.map(x=>x[1])),signed=c.sg?c.sg.filter(Boolean).length:0;
       for(const [sd,f] of arr){
-        if(f>main*.45||f<2||!c.e[sd]||(c.sg&&c.sg[sd])||signed>=arr.length-1)continue;
-        if(inv.stop<=0)return;this.q.push({t:'sign',ci,s:sd});return;
+        if(f>main*(D.crash?.75:.45)||f<(D.crash?1:2)||!c.e[sd]||(c.sg&&c.sg[sd])||signed>=arr.length-1)continue;
+        if(inv.stop<=0)return;this.q.push({t:'sign',ci,s:sd});this.note('adding a stop sign');return;
       }
     }
     for(const k in this.flow)this.flow[k]*=.5;
+  },
+  crashSigns(){   // where cars wreck, every junction needs give-way signs: all approaches but the busiest one, worst crash sites first
+    const J=[];
+    for(let i=0;i<W*H;i++){const c=cells[i];if(!c.e)continue;const sides=signSides(c);if(sides.length<3)continue;
+      const signed=sides.filter(sd=>c.sg&&c.sg[sd]).length;if(signed>=sides.length-1)continue;
+      let busiest=-1,bf=-1;for(const sd of sides){const f=this.flow[(i*2)*8+sd]||0;if(f>bf){bf=f;busiest=sd;}}
+      J.push({i,sides,busiest,score:(this.crashAt[i]||0)*10+sides.length});}
+    if(!J.length)return false;
+    J.sort((a,b)=>b.score-a.score);
+    const j=J[0],c=cells[j.i];let n=0;
+    for(const sd of j.sides){if(sd===j.busiest||(c.sg&&c.sg[sd])||inv.stop-n<=0)continue;this.q.push({t:'sign',ci:j.i,s:sd});n++;}
+    if(n)this.note('adding give-way signs');
+    return n>0;
   },
   highway(){   // skip a long winding stretch of an existing route with an elevated link between two road cells
     if(inv.hwy<7||time-this.lastHwy<40)return false;
@@ -3773,7 +3799,7 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
       }
     }
     if(!best)return false;
-    this.q.push(...best.edges);this.lastHwy=time;return true;
+    this.q.push(...best.edges);this.lastHwy=time;this.note('building a highway shortcut');return true;
   },
   dept(){   // a fire station beside a road that reaches the houses, near the middle of town
     if(!D.fireChance||inv.fire<=0)return false;
@@ -3797,44 +3823,83 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
     return false;
   },
   lastPrune:-99,
-  prune(){   // roads that no house's trip (or fire truck trip) uses any more: recycle them
+  prune(aggressive){   // a civil engineer's clean-up: keep the shortest route between every house and every destination it can drive to (and fire trucks), take up the rest and get the pieces back
     const used=new Set(),ports=new Set();
     for(const b of blds.concat(depts))if(b.port>=0)ports.add(b.port);
     const mark=p=>{for(let k=0;k+1<p.length;k++){const a=p[k],b=p[k+1];if((a&1)||(b&1))continue;const ca=a>>1,cb=b>>1,lo=Math.min(ca,cb),hi=Math.max(ca,cb);used.add(lo*8+dirOf(lo*2,hi*2));}};
     const hs=blds.filter(b=>!b.dest&&b.linked);
-    for(const h of hs){const p=route(h.an*2,goals[h.color],false,false,true);if(p)mark(p);}
-    for(const d of depts)if(d.linked)for(const h of hs.slice(0,8)){const p=routeTo(d.port*2,h.port*2,false,D.fireOW,true);if(p)mark(p);}
-    const out=[];
-    for(let i=0;i<W*H&&out.length<14;i++){
+    for(const h of hs){
+      if(this.opt.prune2||!needAll()){for(const d of blds)if(acc(d,h.color)&&d.linked){const p=routeTo(h.an*2,d.an*2,false,false,true);if(p)mark(p);}}
+      const p=route(h.an*2,goals[h.color],false,false,true);if(p)mark(p);
+    }
+    for(const d of depts)if(d.linked)for(const h of hs){const p=routeTo(d.port*2,h.port*2,false,D.fireOW,true);if(p)mark(p);}
+    const out=[],cap=aggressive?40:14;
+    for(let i=0;i<W*H&&out.length<cap;i++){
       const arr=cells[i].e;if(!arr||!inB(i%W,(i/W)|0))continue;
       for(let d=0;d<8;d++){
         const e=arr[d];if(!e||e.k!==0||e.ow!==0||e.ghost)continue;
         const bi=nbIdx(i,d);if(bi<i||ports.has(i)||ports.has(bi))continue;
         if(cells[i].sg&&cells[i].sg[d])continue;
         if(used.has(i*8+d))continue;
-        out.push({t:'erase',a:i,d});if(out.length>=14)break;
+        out.push({t:'erase',a:i,d});if(out.length>=cap)break;
       }
     }
     this.lastPrune=time;
     if(!out.length)return false;
-    this.q.push(...out);return true;
+    this.q.push(...out);this.note('tidying up roads nobody needs');return true;
   },
+  lastRound:-99,rounds:[],
+  roundabout(){   // a busy junction becomes a one-way ring (a 3x3 square round the old crossing): cars flow round it instead of crossing each other
+    if(!this.opt.round||time-this.lastRound<40||inv.road<26||inv.road1<8)return false;
+    const tot={};for(const k in this.flow){const n=(k/8)|0;if(n&1)continue;const ci=n>>1;tot[ci]=(tot[ci]||0)+this.flow[k];}
+    if(D.crash)for(const k in this.crashAt)tot[k]=(tot[k]||0)+this.crashAt[k]*14;   // where cars wreck, a roundabout with give-way entries is the fix
+    const cand=Object.keys(tot).map(Number).filter(ci=>tot[ci]>=14).sort((a,b)=>tot[b]-tot[a]);
+    if(!cand.length)return false;
+    const ports=new Set();for(const b of blds.concat(depts))if(b.port>=0)ports.add(b.port);
+    const ring=[[0,-1],[-1,-1],[-1,0],[-1,1],[0,1],[1,1],[1,0],[1,-1]];   // round the junction, anticlockwise on the map
+    for(const ci of cand.slice(0,6)){
+      const c=cells[ci];if(!c.e||c.water||c.bld||ports.has(ci)||(c.sg&&c.sg.some(Boolean)))continue;
+      const x=ci%W,y=(ci/W)|0;if(x<RX0+2||x>=RX1-2||y<RY0+2||y>=RY1-2)continue;
+      let arms=0,ok=true;for(let d=0;d<8;d++)if(c.e[d]){if(c.e[d].k!==0||c.e[d].ow!==0||c.e[d].ghost){ok=false;break;}arms++;}
+      if(!ok||arms<3)continue;
+      if(this.rounds.some(r=>Math.abs(r%W-x)<8&&Math.abs(((r/W)|0)-y)<8))continue;
+      const nodes=ring.map(([dx,dy])=>cellIdx(x+dx,y+dy));
+      if(nodes.some(n=>cells[n].bld||cells[n].water))continue;
+      const edges=[];let fine=true;
+      for(let k=0;k<8;k++){
+        const a=nodes[k],b=ring[(k+1)%8],q=ring[k],dx=b[0]-q[0],dy=b[1]-q[1],d=DTAB[(dy+1)*3+dx+1];
+        if(getEdge(a,d,'g')){fine=false;break;}   // keep it simple: only where the ring is open ground
+        edges.push({t:'edge',a,d,layer:'g',ow:true});
+      }
+      if(!fine)continue;
+      const spokes=[];for(let d=0;d<8;d++)if(c.e[d])spokes.push({t:'spoke',a:ci,d});
+      const signs=[];   // entries give way to the ring (where crashes are a thing, that is what keeps cars apart)
+      if(D.crash)for(let k=0;k<8;k+=2){const n=nodes[k],cn=cells[n];if(!cn.e)continue;for(let sd=0;sd<8;sd++){if(!cn.e[sd])continue;const nb=nbIdx(n,sd);if(nb===ci||nodes.includes(nb))continue;signs.push({t:'sign',ci:n,s:sd});}}
+      this.q.push(...edges,...spokes,...signs.slice(0,Math.max(0,inv.stop)));this.lastRound=time;this.rounds.push(ci);this.note('building a roundabout');return true;
+    }
+    return false;
+  },
+  note(t){this.doing={t:time,txt:t};},
   lastShort:-99,
-  shortcut(){   // a straight road across a long detour on a busy route (what a good player adds once the basics are connected)
+  shortcut(){   // straight roads across long detours on busy routes (a trip goes to any destination of its colour, so any house-to-destination pair counts)
     const hot=blds.find(b=>b.dest&&(b.jam>=D.dcap-2||b.over>0));   // a destination filling up: shorter trips are the cure
-    if(time-this.lastShort<(hot?6:20)||inv.road<(hot?24:100))return false;   // otherwise keep a reserve of roads for linking new houses
+    const rich=this.opt.short2&&inv.road>45;   // plenty of road in stock: spend it on shorter trips
+    if(time-this.lastShort<(hot?6:rich?5:20)||inv.road<(hot?24:rich?45:100))return false;   // otherwise keep a reserve of roads for linking new houses
     const hs=blds.filter(x=>!x.dest&&x.linked&&(!hot||x.color===hot.color));if(!hs.length)return false;
     let best=null;
-    for(let q=0;q<3;q++){
+    for(let q=0;q<(rich?6:3);q++){
       const h=hs[(this.shi=(this.shi||0)+1)%hs.length];
-      const p=route(h.an*2,goals[h.color]);if(!p||p.length<10)continue;
+      let p;
+      if(rich&&needAll()){const ds=blds.filter(d=>acc(d,h.color)&&d.linked);if(!ds.length)continue;p=routeTo(h.an*2,ds[(this.shj=(this.shj||0)+1)%ds.length].an*2,false,false,true);}
+      else p=route(h.an*2,goals[h.color]);
+      if(!p||p.length<10)continue;
       for(let i=0;i<p.length-5;i++){
         if(p[i]&1)continue;
         for(let j=i+5;j<p.length;j++){
           if(p[j]&1)continue;
           const A=p[i]>>1,B=p[j]>>1,ax=A%W,ay=(A/W)|0,bx=B%W,by=(B/W)|0,L=Math.max(Math.abs(bx-ax),Math.abs(by-ay));
-          if(L<4||L>26)continue;
-          const saved=(j-i)-L*1.05;if(saved<5)continue;
+          if(L<4||L>(rich?34:26))continue;
+          const saved=(j-i)-L*1.05;if(saved<(rich?3:5))continue;
           const edges=[];let x=ax,y=ay,ok=true,fresh=0;
           while((x!==bx||y!==by)&&ok){
             const sx=Math.sign(bx-x),sy=Math.sign(by-y),d=DTAB[(sy+1)*3+sx+1],u=cellIdx(x,y),v=cellIdx(x+sx,y+sy);
@@ -3842,12 +3907,12 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
             if(!getEdge(u,d,'g')){fresh++;edges.push({t:'edge',a:u,d,layer:'g'});}
             x+=sx;y+=sy;
           }
-          if(!ok||!fresh||fresh>inv.road-35||saved<fresh*1.1)continue;   // only spend roads where they clearly pay off
+          if(!ok||!fresh||fresh>inv.road-(rich?30:35)||saved<fresh*(rich?.9:1.1))continue;   // only spend roads where they clearly pay off
           const sc=saved-fresh*.35;if(!best||sc>best.sc)best={sc,edges};
         }
       }
     }
-    if(!best||best.sc<3)return false;
+    if(!best||best.sc<(rich?1.5:3))return false;
     this.q.push(...best.edges);this.lastShort=time;return true;
   },
   lastExpand:-99,fails:0,
@@ -3859,19 +3924,21 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
   },
   decide(){
     buildRev();this.grow();const reach={},R=c=>reach[c]||(reach[c]=reachTo(c));
+    if(D.crash&&inv.stop>0&&this.crashSigns())return;
     const needy=blds.filter(b=>b.dest?!b.linked:(!b.linked||!R(b.color)[b.an*2]||(needAll()&&missingDest(b))));
-    if(needy.length&&inv.road<14&&time-this.lastPrune>10&&this.prune())return;   // starved of roads: reclaim the unused ones first
+    if(needy.length&&inv.road<30&&time-this.lastPrune>6&&this.prune(inv.road<14))return;   // starved of roads: reclaim the unused ones first
     if(needy.length){this.planStart(needy);return;}
-    if(time-this.lastPrune>30&&this.prune())return;
-    if(this.dept())return;
-    if(this.shortcut())return;
+    if(time-this.lastPrune>(inv.road<60?12:25)&&this.prune())return;
+    if(this.dept()){this.note('placing a fire station');return;}
+    if(this.roundabout())return;
+    if(this.shortcut()){this.note('adding a shortcut');return;}
     if(!this.highway()&&this.signClock>6){this.signClock=0;this.signs();}
   },
   planStart(needy){   // the path searches run a little each tick (never a frame-long hitch)
-    const order=needy.slice(this.rr%needy.length).concat(needy).slice(0,4);this.rr++;
+    const order=needy.slice(this.rr%needy.length).concat(needy).slice(0,4);this.rr++;const rc={};
     this.job={ii:0,items:order.map(b=>{
-      const dest=b.dest,m=!dest&&needAll()&&b.linked&&aiReach(b.color)[b.an*2]?missingDest(b):null;   // a house that reaches some destination but not all of them
-      return {b,R:dest?aiForward(b.color):(m?reachOf(m):aiReach(b.color)),ports:(()=>{const pt=new Uint8Array(W*H);if(m){pt[m.port]=1;return pt;}for(const x of blds)if(dest?(!x.dest&&(x.color===b.color||x.color===b.color2)):acc(x,b.color))if(x.port>=0)pt[x.port]=1;return pt;})(),
+      const dest=b.dest,m=!dest&&needAll()&&b.linked&&(rc[b.color]||(rc[b.color]=reachTo(b.color)))[b.an*2]?missingDest(b):null;   // a house that reaches some destination but not all of them
+      return {b,R:dest?aiForward(b.color):(m?aiCells(reachOf(m)):aiReach(b.color)),ports:(()=>{const pt=new Uint8Array(W*H);if(m){pt[m.port]=1;return pt;}for(const x of blds)if(dest?(!x.dest&&(x.color===b.color||x.color===b.color2)):acc(x,b.color))if(x.port>=0)pt[x.port]=1;return pt;})(),
         dirs:dest?[b.dir]:[0,1,2,3,4,5,6,7].filter(d=>dirValid(b,d)),di:0,best:null};
     })};
   },
@@ -3894,7 +3961,7 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
       if(!best||pl.cost<best.pl.cost)best={b:it.b,pl};
     }
     if(!best||!blds.includes(best.b)){this.fails++;return;}
-    this.fails=0;
+    this.fails=0;this.note(best.b.dest?'connecting a new destination':'connecting a new house');
     if(best.pl.dir!==best.b.dir&&!best.b.dest)this.q.push({t:'dir',b:best.b,dir:best.pl.dir});
     for(const e of best.pl.edges)this.q.push({t:'edge',a:e.a,d:e.d,layer:e.layer});
     if(!best.pl.edges.length){   // the driveways already meet at one cell: it just needs a first piece of road there
@@ -3907,13 +3974,14 @@ const AI={pen:null,recent:[],q:[],acc:0,think:0,flow:{},flowClock:0,signClock:0,
   },
   tick(dt){
     if(!S||!S.demo||S.over)return;
-    const gap=this.q.length>28?.07:.12;   // slow enough to watch it draw; speeds up for long roads
+    const urgent=this.opt.fast&&(S.stallT.some(v=>v>0)||blds.some(b=>!b.linked));
+    const gap=urgent?.03:(this.q.length>28?.07:.12);   // slow enough to watch it draw; speeds up for long roads and when a city is in trouble
     this.acc=Math.min(.5,this.acc+dt);
     while(this.acc>=gap&&this.q.length){this.acc-=gap;this.exec(this.q.shift());}
     this.flowClock+=dt;if(this.flowClock>.5){this.flowClock=0;this.sample();}
     this.signClock+=dt;this.think-=dt;
     if(this.job)this.planStep(2.2);
-    else if(this.think<=0&&!this.q.length){this.think=.9;this.decide();}
+    else if(this.think<=0&&!this.q.length){this.think=urgent?.25:.9;this.decide();}
   }
 };
 function startDemo(){
@@ -3966,7 +4034,7 @@ function drawAI(){
 }
 function aiCaption(){
   const el=document.getElementById('aicap');if(!el||!S)return;
-  el.textContent=S.over?'The AI lost that city — building a new one…':`${AI.q.length?'AI drawing':'AI playing'} ${D.name} · week ${S.week} · ${S.score} trips`;
+  el.textContent=S.over?'The AI lost that city — building a new one…':`${AI.doing&&time-AI.doing.t<8?'AI '+AI.doing.txt:AI.q.length?'AI drawing':'AI playing'} · ${D.name} · week ${S.week} · ${S.score} trips`;
 }
 
 /* ---------- loop ---------- */
