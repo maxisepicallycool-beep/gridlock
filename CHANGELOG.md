@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.2.3 — Test update 2
+- Another test update to check the new fast update check
+- Nothing in the game has changed
+- Choose Download or Ignore to try either one
+
 ## 1.2.2 — Faster updates
 - Gridlock checks for updates the moment it opens
 - It also checks every 15 minutes while open, and when you switch back to it
