@@ -318,7 +318,7 @@ let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
 const SET_DEF={theme:'dark',mapNatural:false,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
-  tutDone:false,updateQuiet:false,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
+  tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:8,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
 const Settings={v:Object.assign({},SET_DEF),
   load(){
@@ -1337,35 +1337,49 @@ const Notes={keys:{},
   clear(){this.keys={};const el=$('notes');if(el)el.innerHTML='';},
   push(key,kind,icon,title,text,target){
     if(!D.notify||S.demo||S.tut||mode!=='play'||Settings.v['n_'+kind]===false)return;
-    const now=performance.now();if(this.keys[key]&&now-this.keys[key]<(kind==='crit'?14000:30000))return;
+    const now=performance.now(),rep=(Settings.v.n_repeat||600)*1000;if(this.keys[key]&&now-this.keys[key]<(kind==='crit'?Math.max(8000,rep/2):rep))return;
     this.keys[key]=now;
     const el=$('notes'),n=document.createElement('div');
     n.className='note glass'+(kind==='crit'?' crit':'');n.style.setProperty('--nc',kind==='crit'?'#e5484d':kind==='fire'?'#ff6b2c':kind==='good'?'#2fb67c':'#ffb02e');
     n.innerHTML=`<div class="ni">${icon}</div><div><b>${title}</b><small>${text}</small></div>`;
     n.onclick=()=>{if(target&&blds.includes(target))focusOn(target);n.remove();};
     el.prepend(n);while(el.children.length>4)el.lastChild.remove();
-    setTimeout(()=>{n.classList.add('out');setTimeout(()=>n.remove(),450);},kind==='crit'?9000:7000);
+    setTimeout(()=>{n.classList.add('out');setTimeout(()=>n.remove(),450);},(Settings.v.n_show+(kind==='crit'?2:0))*1000);
   }
 };
 function focusOn(b){   // jump the camera to a building
   if(mode!=='play')return;
   zoomZ=Math.max(zoomZ,2.2);cs=baseCs*zoomZ;ox=cw/2-(b.x+b.w/2)*cs;oy=ch/2-(b.y+b.w/2)*cs;clampView();
 }
+const REACHC=new Map();
+function reachOf(d){   // which nodes can drive to this one destination (cached for a couple of seconds)
+  const r=REACHC.get(d.id),now=performance.now();if(r&&r.ver===gfxVer&&now-r.t<2000)return r.arr;
+  const gs=new Uint8Array(N);gs[d.an*2]=1;const arr=reachTo(d.color,gs);REACHC.set(d.id,{ver:gfxVer,t:now,arr});return arr;
+}
+const connectedToAll=b=>{const ds=blds.filter(d=>d.dest&&d.color===b.color);return ds.length>0&&ds.every(d=>d.linked&&reachOf(d)[b.an*2]);};
 function alertLevel(b){
   if(b.fire)return 2;
-  if(b.dest){if(b.over>0||b.load>=D.dcap)return 2;if(b.load>=D.dcap-1)return 1;return 0;}
-  return b.demand>=MAXD?1:0;
+  if(b.dest){if(b.over>0||b.load>=D.dcap)return 2;if(b.load>=D.dcap-1&&(b.loadT||0)>=Settings.v.n_delayLoad)return 1;return 0;}
+  return b.demand>=MAXD&&(b.pileT||0)>=Settings.v.n_delayHouse&&!b.connAll?1:0;
 }
 function checkAlerts(){
   if(!D.notify||S.demo||S.tut||mode!=='play')return;
+  const dt=.5,v=Settings.v,now=performance.now();
   for(const b of blds){
     const nm=PAL[b.color].n;
     if(b.dest){
+      b.loadT=(b.load>=D.dcap-1&&!(b.over>0))?(b.loadT||0)+dt:0;   // how long it has been filling up
       if(b.over>0)Notes.push('over'+b.id,'crit','!',nm+' destination overloaded','Clear the traffic or it ends in '+Math.max(1,Math.ceil(D.dlimit-b.over))+'s',b);
-      else if(b.load>=D.dcap-1)Notes.push('load'+b.id,'warn','!',nm+' destination getting swamped',b.load+' of '+D.dcap+' cars heading there',b);
-    } else if(b.demand>=MAXD)Notes.push('pile'+b.id,'warn','!',nm+' house is backed up',b.demand+' trips waiting \u2014 is it connected?',b);
+      else if(b.load>=D.dcap-1&&b.loadT>=v.n_delayLoad)Notes.push('load'+b.id,'warn','!',nm+' destination getting swamped',b.load+' of '+D.dcap+' cars heading there',b);
+    } else {
+      if(b.demand>=MAXD){
+        b.pileT=(b.pileT||0)+dt;   // how long trips have been piling up
+        if(b.connT===undefined||now-b.connT>2000){b.connAll=connectedToAll(b);b.connT=now;}
+        if(b.pileT>=v.n_delayHouse&&!b.connAll)Notes.push('pile'+b.id,'warn','!',nm+' house is backed up',b.demand+' trips waiting — is it connected?',b);
+      } else {b.pileT=0;b.connAll=false;b.connT=undefined;}
+    }
   }
-  for(let c=0;c<6;c++)if(S.stallT[c]>.5){const d=blds.find(x=>x.dest&&x.color===c);Notes.push('cut'+c,'crit','!',PAL[c].n+' trips cut off','Reconnect them \u2014 '+Math.max(1,Math.ceil(D.stall-S.stallT[c]))+'s left',d);}
+  for(let c=0;c<6;c++)if(S.stallT[c]>=Math.max(.5,v.n_delayCut)){const d=blds.find(x=>x.dest&&x.color===c);Notes.push('cut'+c,'crit','!',PAL[c].n+' trips cut off','Reconnect them — '+Math.max(1,Math.ceil(D.stall-S.stallT[c]))+'s left',d);}
 }
 function drawAlert(b){   // big bobbing marker that stands out above anything that is getting swamped
   const lv=alertLevel(b);if(!lv)return;
@@ -3047,6 +3061,11 @@ const SCREENS={
         +tog('n_fire','Fire alerts','Houses on fire and fire station news')
         +tog('n_good','Good news','City growth and stations ready')
         +tog('n_warn','Warnings','Things that are starting to back up')
+        +row('House backed up','How long trips pile up at a house that can\u2019t get through before it alerts you',seg('n_delayHouse',[[0,'Instant'],[5,'5 s'],[10,'10 s'],[20,'20 s'],[40,'40 s']]))
+        +row('Destination filling up','How long a destination stays nearly full before it warns you',seg('n_delayLoad',[[0,'Instant'],[3,'3 s'],[6,'6 s'],[10,'10 s']]))
+        +row('Trips cut off','How long a colour stays cut off before it alerts you',seg('n_delayCut',[[0,'Instant'],[3,'3 s'],[6,'6 s'],[10,'10 s']]))
+        +row('Alerts stay on screen','How long each alert is shown',seg('n_show',[[4,'4 s'],[8,'8 s'],[12,'12 s'],[20,'20 s']]))
+        +row('Repeat an alert after','How long before the same alert can appear again',seg('n_repeat',[[15,'15 s'],[30,'30 s'],[60,'1 min'],[0,'Never']]))
         +tog('n_mark','Markers above buildings','The big bobbing icons over swamped houses and destinations')
         +tog('n_toast','Hints and messages','Small pop-ups like "No room for that here"'))}
       ${sec('Controls',
@@ -3514,7 +3533,7 @@ Store.init();resize();enterMenu();
 requestAnimationFrame(frame);
 // test helpers
 function line(key,pts){const p=PK[key];let n=0;for(let i=0;i<pts.length-1;i++){const [ax,ay]=pts[i],[bx,by]=pts[i+1];const d=DTAB[(Math.sign(by-ay)+1)*3+Math.sign(bx-ax)+1];const r=placeEdge(p,cellIdx(ax,ay),d);if(r.res==='ok')n++;}rebuild();refreshDock();return n;}
-window.G={get view(){return {ox,oy,cs};},setSign,tutEnter,tutTick,startTutorial,get TUT(){return TUT;},tutAdvance,lamps,hwySideOK,Music,Settings,AI,selectTool,sbAct,sbFinish,pose,parkPose,Snd,espd,placeDept,deptOrient,igniteHouse,get depts(){return depts},startParking,toWorld,toLocal,faceOf,expandRegion,crowded,regionLand,AI,aiReach,aiPlanHouse,startDemo,serialize,restore,Store,enterMenu,startGameWith,act,MS,get mode(){return mode},get D(){return D},rebuildGoals,get S(){return S},get cells(){return cells},get cars(){return cars},get blds(){return blds},inv:()=>inv,rebuild,step,route,PK,newGame,line,setDir,rotateBld,cellIdx,get goals(){return goals}};
+window.G={Notes,checkAlerts,get view(){return {ox,oy,cs};},setSign,tutEnter,tutTick,startTutorial,get TUT(){return TUT;},tutAdvance,lamps,hwySideOK,Music,Settings,AI,selectTool,sbAct,sbFinish,pose,parkPose,Snd,espd,placeDept,deptOrient,igniteHouse,get depts(){return depts},startParking,toWorld,toLocal,faceOf,expandRegion,crowded,regionLand,AI,aiReach,aiPlanHouse,startDemo,serialize,restore,Store,enterMenu,startGameWith,act,MS,get mode(){return mode},get D(){return D},rebuildGoals,get S(){return S},get cells(){return cells},get cars(){return cars},get blds(){return blds},inv:()=>inv,rebuild,step,route,PK,newGame,line,setDir,rotateBld,cellIdx,get goals(){return goals}};
 </script>
 </body>
 </html>

@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.5.7 — Notification timers
+- New notification timers in Settings: how long a house has to be backed up before it alerts you, how long a destination stays nearly full before it warns you, how long a colour stays cut off before it alerts you, how long alerts stay on screen, and how long before the same alert can repeat
+- A house that can reach every destination of its colour no longer gets a "backed up, is it connected?" alert (it is connected: that's just traffic)
+
 ## 1.5.6 — Quiet updates, green grass for the natural map
 - New setting "Install updates quietly" (Settings → Updates): no update pop-ups. New versions are downloaded in the background and installed when the game opens. Experimental updates still ask first
 - Green grass now belongs to the natural map ("Don't apply the theme to the map"). The themed map keeps its own beige / dark colours and follows the theme brightness slider. Both get dark at night
