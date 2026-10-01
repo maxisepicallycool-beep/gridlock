@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.6.9 — A real mute button
+- The Sound button (and the M key) now mutes everything: horns, sound effects and music. Before, it only turned the horns off and the music kept playing. It shows Muted while it is on, and the Car horns switch in Settings still controls horns on their own
+
 ## 1.6.8 — Fog stays put
 - The fog and bats now belong to the map instead of the screen, so they no longer slide or jump when you pan and zoom
 

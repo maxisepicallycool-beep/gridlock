@@ -259,7 +259,7 @@ body.inmenu #coach{display:none!important}
     <div class="pill glass" style="gap:6px;padding:8px">
       <button class="btn" id="bzout" title="Zoom out (-)">−</button><button class="btn" id="bfit" title="Fit map (0)">Fit</button><button class="btn" id="bzin" title="Zoom in (+)">+</button>
     </div>
-    <div class="pill glass" style="gap:6px;padding:8px"><button class="btn" id="blayer" title="Layers (L)">Layers</button><button class="btn" id="bsnd" title="Horns on/off (M)">Sound</button><button class="btn" id="bset" title="Settings">Settings</button></div>
+    <div class="pill glass" style="gap:6px;padding:8px"><button class="btn" id="blayer" title="Layers (L)">Layers</button><button class="btn" id="bsnd" title="Mute or unmute all sound (M)">Sound</button><button class="btn" id="bset" title="Settings">Settings</button></div>
     <div class="pill glass" style="gap:6px;padding:8px">
       <button class="btn" id="bpause" title="Space">Pause</button>
       <button class="btn" id="bspeed" title="Speed">1×</button>
@@ -278,7 +278,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.6.8';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.6.9';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -343,7 +343,7 @@ const DIFFS=[
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
-const SET_DEF={theme:'dark',mapNatural:false,noHw:false,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,
+const SET_DEF={theme:'dark',mapNatural:false,noHw:false,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
   tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:8,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
@@ -364,9 +364,9 @@ const Settings={v:Object.assign({},SET_DEF),
     try{localStorage.setItem('gridlock-settings',t);}catch(e){}
     try{const h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.gridlock;if(h)h.postMessage({op:'settings',json:t});}catch(e){}
   },
-  vol(){return this.v.sfx/100*.85},
+  vol(){return this.v.mute?0:this.v.sfx/100*.85},
   set(k,val){this.v[k]=val;this.save();this.react(k);},
-  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','mapNatural','noHw','lum','sfx','horns','aiDiff','updateQuiet'])this.react(k);},
+  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','mapNatural','noHw','lum','sfx','horns','mute','aiDiff','updateQuiet'])this.react(k);},
   react(k){
     if(k==='updateQuiet'){   // tell the app (Mac or Windows) so it installs updates without asking
       try{const h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.gridlock;if(h)h.postMessage({op:'updatepref',quiet:!!this.v.updateQuiet});}catch(e){}
@@ -374,7 +374,7 @@ const Settings={v:Object.assign({},SET_DEF),
     }
     else if(k==='theme'||k==='mapNatural'||k==='lum'||k==='noHw')applyTheme();
     else if(k==='sfx'){if(typeof Snd!=='undefined')Snd.setVol();}
-    else if(k==='horns'){const b=document.getElementById('bsnd');if(b)b.textContent=this.v.horns?'Sound':'Muted';}
+    else if(k==='mute'){if(typeof Snd!=='undefined')Snd.setVol();const b=document.getElementById('bsnd');if(b){b.textContent=this.v.mute?'Muted':'Sound';b.classList.toggle('on',!!this.v.mute);b.setAttribute('aria-pressed',this.v.mute?'true':'false');}}
     else if(k==='aiDiff'){if(mode==='menu'&&typeof startDemo==='function')startDemo();}
   }
 };
@@ -384,7 +384,7 @@ const KEYDEF={panL:['arrowleft','a'],panR:['arrowright','d'],panU:['arrowup','w'
   t1:['1'],t2:['2'],t3:['3'],t4:['4'],t5:['5'],t6:['6'],t7:['7'],t8:['8'],erase:['9','e','x'],undo:['z'],pause:[' '],layers:['l'],horns:['m']};
 const KEYACT=[['panL','Pan left'],['panR','Pan right'],['panU','Pan up'],['panD','Pan down'],['zoomIn','Zoom in'],['zoomOut','Zoom out'],['fit','Fit the map'],
   ...PIECES.map((p,i)=>['t'+(i+1),'Piece '+(i+1)]),
-  ['erase','Erase tool'],['undo','Undo'],['pause','Pause the game'],['layers','Cycle layers'],['horns','Mute horns']];
+  ['erase','Erase tool'],['undo','Undo'],['pause','Pause the game'],['layers','Cycle layers'],['horns','Mute all sound']];
 let KEYMAP={};
 function keyOverrides(){try{return JSON.parse(Settings.v.keys||'{}')||{};}catch(e){return {};}}
 function keysOf(a){const ov=keyOverrides();return ov[a]||KEYDEF[a]||[];}
@@ -1642,7 +1642,7 @@ const Music={loading:0,els:{},active:[],cur:null,last:null,shown:null,unlocked:!
       if(!this.cur)this.next(3);
       else if(this.cur._goal>0&&this.cur._t.mood!==this.moodNow())this.next();   // the light changed: crossfade to the other set of songs
     } else if(this.cur&&this.cur._goal>0){this.cur._goal=0;this.cur._rate=1/1.5;}
-    const master=v.musicVol/100*.7;
+    const master=v.mute?0:v.musicVol/100*.7;
     for(const e of this.active.slice()){
       e._g+=Math.sign(e._goal-e._g)*Math.min(Math.abs(e._goal-e._g),dt*e._rate);
       e.volume=Math.max(0,Math.min(1,e._g*master));
@@ -2274,7 +2274,7 @@ addEventListener('keydown',e=>{
     case 'fit':fitView();break;
     case 'erase':selectTool('erase');break;
     case 'undo':undoLast();break;
-    case 'horns':Snd.init();Settings.set('horns',!Settings.v.horns);break;
+    case 'horns':Snd.init();Settings.set('mute',!Settings.v.mute);break;
     case 'layers':{const i=LAYERS.findIndex(l=>l[0]===layerMode);setLayer(LAYERS[(i+1)%LAYERS.length][0]);break;}
     case 'pause':e.preventDefault();togglePause();break;
     default:if(ka&&ka[0]==='t')selectTool(PIECES[+ka[1]-1].k);
@@ -2502,7 +2502,7 @@ function buildLayerMenu(){
   $('layerMenu').innerHTML=LAYERS.map(l=>`<div class="lrow ${layerMode===l[0]?'on':''}" data-l="${l[0]}" style="--lc:${l[4]}"><i>${l[3]}</i><div><b>${l[1]}</b><small>${l[2]}</small></div></div>`).join('');
 }
 function setLayer(k){layerMode=k;const l=LAYERS.find(x=>x[0]===k);$('blayer').textContent=k==='normal'?'Layers':l[1];$('blayer').classList.toggle('on',k!=='normal');$('layerMenu').classList.remove('open');}
-$('bsnd').onclick=()=>{Snd.init();Settings.set('horns',!Settings.v.horns);};
+$('bsnd').onclick=()=>{Snd.init();Settings.set('mute',!Settings.v.mute);};
 $('bset').onclick=()=>{if(mode!=='play'||S.over||(S.modal&&S.modal!=='pause'))return;if(S.modal!=='pause')openPause();Menu.show('settings');};
 $('blayer').onclick=()=>{buildLayerMenu();$('layerMenu').classList.toggle('open');};
 $('layerMenu').addEventListener('click',e=>{const r=e.target.closest('[data-l]');if(r)setLayer(r.dataset.l);});
@@ -3932,7 +3932,7 @@ function frame(now){
   }
   requestAnimationFrame(frame);
 }
-buildKeymap();applyTheme();Settings.react('horns');Settings.react('updateQuiet');
+buildKeymap();applyTheme();Settings.react('mute');Settings.react('updateQuiet');
 Store.init();resize();enterMenu();
 Cities.init().then(()=>{if(mode==='menu'&&(MS.screen==='main'||MS.screen==='load'))Menu.show(MS.screen);});   // the city list arrives a moment after start
 requestAnimationFrame(frame);
