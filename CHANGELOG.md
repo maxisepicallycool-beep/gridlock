@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.18.8 — Less lag from snow
+- Snowflakes now fall in clumps of four that land together, and are drawn as tiny squares in one batch, so a heavy snowfall costs about a quarter of the work. The look is the same
+
 ## 1.18.7 — Smoother snow
 - The snow, leaves and wet on the ground are drawn at 2.6 times the detail, so up close they are no longer blocky or pixelated
 
