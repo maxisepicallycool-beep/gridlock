@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.18.5 — The grass turns white in snow
+- When snow weather begins the grass fades to the colour of the snow over 10 seconds, and fades back after the snow has gone. Roads, water and buildings keep their own look, so tyre tracks still show
+
 ## 1.18.4 — Crisper snow
 - Snow on the ground is built from smaller, fully white specks (half the size, no see-through), so the cover looks sharper. It falls a bit heavier to make up for the smaller specks
 
