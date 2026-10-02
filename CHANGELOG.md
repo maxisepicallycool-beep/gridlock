@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.18.6 — The grass stays green
+- The grass no longer turns white when it snows (snow settles on the ground, roads and all, as before and tyres still wipe tracks through it)
+
 ## 1.18.5 — The grass turns white in snow
 - When snow weather begins the grass fades to the colour of the snow over 10 seconds, and fades back after the snow has gone. The white goes on the ground itself, under the roads, so it never creeps onto them, and tyre tracks still show against the road. Snow, leaves and wetness settle around trees, gravestones and pumpkins instead of covering them
 
