@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.20.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.20.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -2645,7 +2645,7 @@ const gameDown=e=>{
   if(c.bld){if(c.bld.dest&&D.id!=='sandbox')toast('Destinations can\u2019t be rotated');else if(c.bld.dept)toast('Fire stations face the road they were built on');else{if(c.bld.dest)for(const q of cars)if(!q.dead&&q.lotB===c.bld)killCar(q,'rot');rotateBld(c.bld,e.shiftKey?-1:1);}return;}
   if(tool==='stop'){placeStop(ci,fx,fy,e.shiftKey);return;}
   if(tool==='fire'){placeDept(fx,fy);return;}
-  if(tool==='ring'){buildRoundabout(ci);return;}
+  if(tool==='ring'){buildRoundabout(ringTarget(fx,fy));return;}
   if(tool==='line'){if(lineA===null){lineA=ci;lineDrag=true;}else{lineCommit(lineA,ci);lineA=null;}return;}
   if(PK[tool])startStroke(ci);
 };
@@ -3406,6 +3406,16 @@ function drawCar(c,q){
 }
 /* ---------- the roundabout tool and the straight road tool ---------- */
 const RING8=[[0,-1],[-1,-1],[-1,0],[-1,1],[0,1],[1,1],[1,0],[1,-1]];   // round a junction, anticlockwise on the map
+function ringTarget(fx,fy){   // the junction a click means: the one under the finger, else the closest one within a cell of it (a finger is not a pin)
+  const x0=Math.floor(fx),y0=Math.floor(fy),arms=c=>{let n=0;if(c&&c.e)for(let d=0;d<8;d++)if(c.e[d])n++;return n;};
+  let best=cellIdx(x0,y0),bd=1e9;
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+    const x=x0+dx,y=y0+dy;if(!inW(x,y))continue;const c=cells[cellIdx(x,y)];
+    if(arms(c)<3)continue;const d=Math.hypot(x+.5-fx,y+.5-fy)-(dx||dy?0:.35);   // (the cell actually pressed wins a close call)
+    if(d<bd){bd=d;best=cellIdx(x,y);}
+  }
+  return best;
+}
 function roundaboutPlan(ci){
   const c=cells[ci];
   if(!c||!c.e||c.water||c.bld)return {ok:false,why:'Click a junction (3 or more roads meeting)'};
@@ -3491,8 +3501,8 @@ function lineCommit(a,b){
 function drawToolGhost(){   // the previews for the roundabout and straight road tools
   const t=(txt,x,y,col)=>{ctx.save();ctx.font='800 .26px -apple-system,Helvetica,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=.07;ctx.strokeStyle='rgba(20,24,34,.85)';ctx.strokeText(txt,x,y);ctx.fillStyle=col||'#fff';ctx.fillText(txt,x,y);ctx.restore();};
   if(tool==='ring'&&hover){
-    const ci=cellIdx(hover[0],hover[1]),pl=roundaboutPlan(ci);
-    if(!pl.ok){if(cells[ci].e&&cells[ci].e.some(Boolean))t(pl.why,hover[0]+.5,hover[1]-.6,'#ff9a9a');return;}
+    const ci=hoverF?ringTarget(hoverF[0],hoverF[1]):cellIdx(hover[0],hover[1]),pl=roundaboutPlan(ci),hx=ci%W,hy=(ci/W)|0;
+    if(!pl.ok){if(cells[ci].e&&cells[ci].e.some(Boolean))t(pl.why,hx+.5,hy-.6,'#ff9a9a');return;}
     const ok=inv.road1>=8,col=ok?'#3ddc97':'#ff6b6b',C=ctr(ci);
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
     ctx.strokeStyle=col;ctx.globalAlpha=.55;ctx.lineWidth=.5;ctx.beginPath();pl.nodes.forEach((n,i)=>{const q=ctr(n);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.closePath();ctx.stroke();

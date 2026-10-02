@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.20.1 — Roundabouts find the junction
+- The roundabout tool now picks the junction nearest to where you press (within one cell), instead of insisting on the exact cell. A finger on a touch screen, or a slightly early click, no longer gets \u201cClick a junction\u201d while a junction is right there. The preview shows the one it will use
+
 ## 1.20.0 — Touch controls
 - On a touch screen (the iPad app) one finger builds as before, but two fingers now pinch to zoom and drag to move the map without placing or erasing anything: a touch is held back for a split second, and a second finger landing cancels it. A new hand button next to the zoom buttons makes one finger move the map as well. The page can no longer be zoomed by accident
 
