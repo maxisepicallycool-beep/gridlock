@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.16.0 — A verified daily leaderboard
+- No more honour system. While you play the daily level the game records a trail of checkpoints (game time, week, trips, houses, cars and the real clock every 20 seconds). When you post a score, that trail goes with it, and a GitHub Action on the repository checks it automatically: edited or typed-in numbers, trips the houses could not have delivered, weeks or game speed that don't add up, a run that wasn't played on that day, or a score posted long after it was played are all rejected with a reason. Only scores that pass appear on the leaderboard, which is now a small verified file (daily/DATE.json) that the game reads
+- Scores are posted from your own GitHub account. Where the app can, it signs you in to GitHub from inside the game (a short code you confirm on github.com, with no password in the game) and posts for you; otherwise it opens the prefilled GitHub issue and you press Submit. Either way the same checks apply
+- Earlier daily runs, from before this update, have no trail and can't be posted
+
 ## 1.15.0 — Time-lapse
 - The game now records a time-lapse of your city: a map-style picture of the whole land every few seconds of game time (4, 8, 15 or 30, in Settings under Time-lapse; it can be turned off), independent of where your camera is. Open it from the pause menu (Time-lapse) or on the game-over screen (Watch your city grow): play it at four speeds, scrub through it, and see the week, trips and clock on every picture
 - Save it as a video clip (MP4 or WebM, whichever your window can record), as the current picture, or as a contact sheet of 12 pictures through the city. Footage is kept with each saved city and goes when the city is deleted. In the Windows app files go to Downloads\Gridlock and are shown in Explorer; the Mac app needs its next build for that (until then, and in a browser, the file downloads in the usual way)

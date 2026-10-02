@@ -1,0 +1,21 @@
+name: daily-score
+on:
+  issues:
+    types: [opened, edited, reopened]
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: daily-board
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: startsWith(github.event.issue.title, '[daily] ')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const d = require('./.github/scripts/daily.js');
+            await d.run({ github, context, core });
