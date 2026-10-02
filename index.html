@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.19.4';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.19.5';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -4528,7 +4528,7 @@ const SCREENS={
 };
 function fillAbout(){   // which app and game version this is (the app answers when there is one)
   const el=document.getElementById('aboutv');if(!el)return;
-  if(window.AppBridge)AppBridge.call('info').then(i=>{const e=document.getElementById('aboutv');if(e&&i)e.textContent=(i.platform==='mac'?'Mac':'Windows')+' app build '+i.appBuild+' \u00b7 game '+i.gameVersion;});
+  if(window.AppBridge)AppBridge.call('info').then(i=>{const e=document.getElementById('aboutv');if(e&&i)e.textContent=(i.platform==='mac'?'Mac':i.platform==='ios'?'iPad':'Windows')+' app build '+i.appBuild+' \u00b7 game '+i.gameVersion;});
   else el.textContent='Running in a browser';
 }
 const Menu={

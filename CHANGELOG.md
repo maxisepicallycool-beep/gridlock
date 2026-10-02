@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.19.5 — Ready for the iPad
+- The About line names the iPad app. The game now has an iPad app (in the ios folder of the project) that updates itself the same way the other apps do: it checks on launch, when you come back to it, every 15 minutes and while it is closed, keeps the last good copy, and goes back to it if a new version fails to start
+
 ## 1.19.4 — Fainter snow
 - Snow on the ground is 50% opaque, so the roads and the land show through it more
 
