@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.17.2 — Halloween songs only in the Halloween look
+- The two Halloween songs are now 35% quieter than the others (the music volume slider still scales them), play only with the Halloween look, and are the only songs then. Turn the look off (or pick another season) and the original songs return
+
 ## 1.17.1 — Two spooky songs
 - Two new songs: Halloween Day 1 joins the daytime playlist and Halloween Night 1 the night one
 

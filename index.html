@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.17.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.17.2';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1824,10 +1824,10 @@ const Snd={ac:null,out:null,on:true,t:0,buf:null,
 for(const ev of ['pointerdown','keydown'])window.addEventListener(ev,()=>Snd.init(),{passive:true});
 /* ---------- music: daytime songs and nighttime songs, crossfaded as the light changes ---------- */
 const TRACKS={
-  day:[{f:'day1.mp3',n:'Daytime 1',a:''},{f:'day2.mp3',n:'Daytime 2',a:''},{f:'halloween-day1.mp3',n:'Halloween Day 1',a:''}],
-  night:[{f:'satie.mp3',n:'Night 2',a:''},{f:'night1.mp3',n:'Night 1',a:''},{f:'halloween-night1.mp3',n:'Halloween Night 1',a:''}]};
+  day:[{f:'day1.mp3',n:'Daytime 1',a:''},{f:'day2.mp3',n:'Daytime 2',a:''},{f:'halloween-day1.mp3',n:'Halloween Day 1',a:'',hw:true,g:.65}],
+  night:[{f:'satie.mp3',n:'Night 2',a:''},{f:'night1.mp3',n:'Night 1',a:''},{f:'halloween-night1.mp3',n:'Halloween Night 1',a:'',hw:true,g:.65}]};
 for(const m in TRACKS)for(const t of TRACKS[m])t.mood=m;
-const MUSIC_REV='1.4.0';   // bump when the songs change so cached copies are replaced
+const MUSIC_REV='1.4.1';   // bump when the songs change so cached copies are replaced
 const MUSIC_BASES=['https://api.github.com/repos/maxisepicallycool-beep/gridlock/contents/music/','https://raw.githubusercontent.com/maxisepicallycool-beep/gridlock/main/music/','https://cdn.jsdelivr.net/gh/maxisepicallycool-beep/gridlock@main/music/'];
 const MCache={db:undefined,
   open(){if(this.db!==undefined)return Promise.resolve(this.db);return new Promise(res=>{try{const r=indexedDB.open('gridlock-music',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>res(this.db=r.result);r.onerror=()=>res(this.db=null);}catch(e){res(this.db=null);}});},
@@ -1859,7 +1859,8 @@ const Music={loading:0,els:{},active:[],cur:null,last:null,shown:null,unlocked:!
     if(e===this.cur&&e._goal>0){const pr=e.play();if(pr&&pr.catch)pr.catch(()=>{});}
     if(!this.warmed){this.warmed=true;setTimeout(()=>{for(const m in TRACKS)for(const x of TRACKS[m])if(!this.els[x.f])this.el(x);},4000);}   // fetch the rest in the background so the crossfades stay smooth
   },
-  pick(mood){const list=TRACKS[mood];let c=list.filter(t=>t!==this.last);if(!c.length)c=list;return c[(Math.random()*c.length)|0];},
+  pick(mood){const hw=hwLook(),list=TRACKS[mood].filter(t=>!!t.hw===hw);   // the Halloween songs play only in the Halloween look, and then they are the only ones
+    let c=list.filter(t=>t!==this.last);if(!c.length)c=list;return c[(Math.random()*c.length)|0];},
   play(t,fade){
     const e=this.el(t),rate=1/Math.max(.5,fade);
     if(this.cur&&this.cur!==e){this.cur._goal=0;this.cur._rate=rate;}
@@ -1880,12 +1881,12 @@ const Music={loading:0,els:{},active:[],cur:null,last:null,shown:null,unlocked:!
     const want=v.music&&this.unlocked&&!hidden&&!paused&&!menuOff;
     if(want){
       if(!this.cur)this.next(3);
-      else if(this.cur._goal>0&&this.cur._t.mood!==this.moodNow())this.next();   // the light changed: crossfade to the other set of songs
+      else if(this.cur._goal>0&&(this.cur._t.mood!==this.moodNow()||!!this.cur._t.hw!==hwLook()))this.next();   // the light changed: crossfade to the other set of songs
     } else if(this.cur&&this.cur._goal>0){this.cur._goal=0;this.cur._rate=1/1.5;}
     const master=v.mute?0:v.musicVol/100*.7;
     for(const e of this.active.slice()){
       e._g+=Math.sign(e._goal-e._g)*Math.min(Math.abs(e._goal-e._g),dt*e._rate);
-      e.volume=Math.max(0,Math.min(1,e._g*master));
+      e.volume=Math.max(0,Math.min(1,e._g*master*(e._t.g||1)));
       if(e._g<=0&&e._goal===0){e.pause();this.active.splice(this.active.indexOf(e),1);if(e===this.cur)this.cur=null;}
     }
   }
