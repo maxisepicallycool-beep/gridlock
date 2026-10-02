@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.19.2 — See-through snow
+- Snow on the ground is 75% opaque, so the roads and the land show faintly through it
+
 ## 1.19.1 — Clear driveways
 - Snow, leaves and wetness no longer settle on driveways: the strip from each building to its road stays clear
 

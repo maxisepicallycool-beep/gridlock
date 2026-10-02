@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.19.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.19.2';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -4002,7 +4002,7 @@ function wxStep(dt,w,poses){
   }
 }
 function drawWxGround(){   // the snow, leaves and wet that have gathered (under the cars, so the tracks show)
-  const base={wet:.55,snow:1,leaves:1};
+  const base={wet:.55,snow:.75,leaves:1};
   for(const k in WXL){const L=WXL[k];if(L.m<=.01)continue;
     ctx.globalAlpha=L.m*base[k];ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(L.cv,vx0*WXPX,vy0*WXPX,(vx1-vx0)*WXPX,(vy1-vy0)*WXPX,vx0,vy0,vx1-vx0,vy1-vy0);}
   ctx.globalAlpha=1;
