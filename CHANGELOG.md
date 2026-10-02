@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.20.3 — Houses face the road beside them
+- A house with no road at the end of its driveway, but a road right next to it, now turns its driveway to that road by itself, so a house standing beside your road is connected
+- The \u201cBuildings not connected\u201d warning now says what is actually wrong: how many buildings have no road at their driveway, and that the road has to reach the red dotted circle at its end (a road beside the building does not count)
+
 ## 1.20.2 — A tidier main menu
 - The AI's game info panel on the main menu is now off until you switch it on (Settings > Show the AI\u2019s pieces and stats), and it is much more compact: the stats sit in four columns and the pieces in one row
 - The right-hand column of the main menu shrinks to fit the window, so it never needs scrolling
