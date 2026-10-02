@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.19.0 — Tick boxes for traffic coordinators
+- The traffic coordinator bar now has tick boxes instead of one-at-a-time buttons: Stop sign, Yield sign, Straight light, Left-turn light, Right-turn light. Tick any mix of the three lights and one click puts all those heads on a side at once (a stop or yield sign stands alone, so ticking one clears the others). Signal timing is its own button. Pressing the key again cycles stop, yield, all three lights and signal timing
+
 ## 1.18.8 — Less lag from snow
 - Snowflakes now fall in clumps of four that land together, and are drawn as tiny squares in one batch, so a heavy snowfall costs about a quarter of the work. The look is the same
 
