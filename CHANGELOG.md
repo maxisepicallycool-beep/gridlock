@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.12.0 — Seasons and weather
+- Four seasons for the map, in Settings under Display: Spring (fresh green, blossom trees), Summer (rich greens, bright water), Autumn (orange and gold, falling leaves) and Winter (snow-covered ground, icy water, snowy trees), next to the Halloween look that was already there. Auto goes through the four seasons, six weeks each, as the game runs. Houses, colours and everything else keep their look; the No Halloween theme switch still turns the spooky houses and colours off (and makes the Halloween season look like summer)
+- Weather, for effect only, also in Settings: Auto (follows the season: rain and blossom in spring, the odd summer storm with lightning, leaves and fog in autumn, snow in winter, and green rain in the Halloween look), Off, or pick Rain, Storm, Snow, Leaves or Fog yourself, with a Weather strength slider. It comes and goes in spells, and it follows the Visual effects switch
+
 ## 1.11.0 — A City rating view
 - New view in the Layers menu (and the L key), next to Fire cover: City rating. It circles on the map what is dragging your rating down: houses waiting too long (amber), cars running late (red rings on the cars), destinations backed up (purple), a colour cut off (blue crosses on its houses and rings on its destinations), buildings with no road (red, dashed) and houses on fire (orange). A panel lists each cause with what it costs per second, how many of them there are (and the share of the city), a line on what to do about it, and the recent instant hits like wrecks and burned-down houses. It only appears on difficulties that have a rating
 

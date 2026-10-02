@@ -322,7 +322,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.11.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.12.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -390,7 +390,7 @@ const DIFFS=[
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
-const SET_DEF={theme:'dark',mapNatural:false,noHw:false,aiInfo:true,loc:true,locMode:'until',locTime:15,locHover:true,locConnect:true,locEdge:true,locSize:1,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
+const SET_DEF={theme:'dark',mapNatural:false,noHw:false,season:'spooky',weather:'auto',wxAmt:60,aiInfo:true,loc:true,locMode:'until',locTime:15,locHover:true,locConnect:true,locEdge:true,locSize:1,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
   tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:15,n_toastTime:4,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
@@ -417,13 +417,13 @@ const Settings={v:Object.assign({},SET_DEF),
   },
   vol(){return this.v.mute?0:this.v.sfx/100*.85},
   set(k,val){this.v[k]=val;this.save();this.react(k);},
-  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','mapNatural','noHw','lum','sfx','horns','mute','aiDiff','updateQuiet'])this.react(k);},
+  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','mapNatural','noHw','season','lum','sfx','horns','mute','aiDiff','updateQuiet'])this.react(k);},
   react(k){
     if(k==='updateQuiet'){   // tell the app (Mac or Windows) so it installs updates without asking
       try{const h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.gridlock;if(h)h.postMessage({op:'updatepref',quiet:!!this.v.updateQuiet});}catch(e){}
       try{if(window.__BRIDGE&&window.__BRIDGE.setQuiet)window.__BRIDGE.setQuiet(!!this.v.updateQuiet);}catch(e){}
     }
-    else if(k==='theme'||k==='mapNatural'||k==='lum'||k==='noHw')applyTheme();
+    else if(k==='theme'||k==='mapNatural'||k==='lum'||k==='noHw'||k==='season')applyTheme();
     else if(k==='sfx'){if(typeof Snd!=='undefined')Snd.setVol();}
     else if(k==='mute'){if(typeof Snd!=='undefined')Snd.setVol();const b=document.getElementById('bsnd');if(b){b.textContent=this.v.mute?'Muted':'Sound';b.classList.toggle('on',!!this.v.mute);b.setAttribute('aria-pressed',this.v.mute?'true':'false');}}
     else if(k==='aiDiff'){if(mode==='menu'&&typeof startDemo==='function')startDemo();}
@@ -517,13 +517,40 @@ function spookify(T,nat){   // the haunted map: murky purple ground, dead grass,
     grass:[m(T.grass[0],'rgba(150,115,70,',.7),m(T.grass[1],'rgba(130,80,160,',.7),m(T.grass[2],'rgba(80,115,70,',.6)],
     water:m(T.water,'#2c6a56',.55),shore:T.shore.map(([w,c],i)=>[w,i?m(c,'#9a93b8',.5):c])});
 }
+/* ---------- seasons: the ground, water and trees follow the season (Halloween is the spooky one) ---------- */
+const SEASON_ORDER=['spring','summer','autumn','winter'];
+let seasonSeen='';
+function effSeason(){   // which look the map has right now
+  const v=Settings.v;let se=v.season||'spooky';
+  if(se==='auto')se=SEASON_ORDER[Math.floor(Math.max(0,((typeof S!=='undefined'&&S&&S.week)||1)-1)/6)%4];   // six weeks to a season
+  if(se==='spooky'&&v.noHw)se='summer';
+  return se;
+}
+const hwLook=()=>effSeason()==='spooky';   // dead trees, gravestones and pumpkins, fog and bats
+function seasonize(T,nat,se){
+  const m=lerpCol;
+  const P={
+    spring:{rim:'#cfe3b0',ground:'#cde6a2',patch:['rgba(150,210,110,','rgba(245,190,210,'],grass:['rgba(110,185,90,','rgba(240,170,200,','rgba(150,205,100,'],water:'#8ed2ec',trees:[['#8fd36a','#b5ea8e'],['#f2a8c3','#ffd0e0'],['#7fc15a','#a8e07f']],treeSh:'rgba(50,90,40,.2)'},
+    summer:{rim:'#bfdc94',ground:'#b2d77f',patch:['rgba(80,170,70,','rgba(214,200,100,'],grass:['rgba(60,140,50,','rgba(200,185,80,','rgba(40,120,50,'],water:'#58bfe6',trees:[['#3f9a45','#5cb85f'],['#378c3f','#52ad57'],['#4aa84f','#66c46a']],treeSh:'rgba(20,70,25,.25)'},
+    autumn:{rim:'#e2c58c',ground:'#d8b072',patch:['rgba(190,110,50,','rgba(150,90,40,'],grass:['rgba(180,100,40,','rgba(150,110,50,','rgba(200,140,60,'],water:'#78a9b9',trees:[['#e0752c','#f39a4c'],['#c4452b','#e66a4c'],['#e3b030','#f5cf5e']],treeSh:'rgba(90,50,20,.25)'},
+    winter:{rim:'#f1f6fa',ground:'#e9f1f6',patch:['rgba(200,220,235,','rgba(255,255,255,'],grass:['rgba(170,195,215,','rgba(230,240,248,','rgba(150,175,200,'],water:'#9cc4de',trees:[['#2f5d4a','#46806a'],['#35684f','#4f8a73'],['#2a5443','#3f7a63']],treeSh:'rgba(60,80,100,.22)',snow:true}
+  }[se];
+  if(!P)return T;
+  const f=nat?1:.62,o={};
+  o.rim=m(T.rim,P.rim,f);o.ground=m(T.ground,P.ground,f);o.water=m(T.water,P.water,f);
+  o.patch=[m(T.patch[0],P.patch[0],.7),m(T.patch[1],P.patch[1],.7)];
+  o.grass=[m(T.grass[0],P.grass[0],.75),m(T.grass[1],P.grass[1],.75),m(T.grass[2],P.grass[2],.75)];
+  o.trees=P.trees;o.treeSh=P.treeSh;o.snow=!!P.snow;
+  if(se==='winter')o.shore=[[.3,'rgba(235,245,252,.55)'],[.1,'#ffffff']];
+  return Object.assign({},T,o);
+}
 function applyTheme(){
   applyPal();
   const n=themeName(),st=document.body.style,t=Math.max(0,Math.min(100,Settings.v.lum))/100;
   if(n==='contrast'){for(const k of UI_VARS)st.removeProperty('--'+k);}   // the High contrast sheet in the page CSS takes over
   else{const v=themeVars(t);for(const k of UI_VARS)st.setProperty('--'+k,v[k]);}
   TH=Settings.v.mapNatural?THEMES.natural:(n==='contrast'?THEMES.contrast:mapPalette(t));
-  if(!Settings.v.noHw&&TH!==THEMES.contrast)TH=spookify(TH,TH===THEMES.natural);   // with 'natural map' on, only the menus use the theme
+  if(TH!==THEMES.contrast){const se=effSeason(),nat=TH===THEMES.natural;seasonSeen=se;TH=se==='spooky'?spookify(TH,nat):seasonize(TH,nat,se);}   // with 'natural map' on, only the menus use the theme
   document.body.dataset.theme=n;GC.dirty=true;gfxVer++;
 }
 
@@ -1849,6 +1876,7 @@ function step(dt){
     else b.over=Math.max(0,b.over-dt*2);
   }
   updateStall(dt);ratingTick(dt);Snd.tick(dt);
+  if(Settings.v.season==='auto'&&effSeason()!==seasonSeen)applyTheme();
   if(D.clock&&!S.demo&&!S.tut){const nm=rushName();if(nm!==S.rushNm){S.rushNm=nm;if(time>3)toast(nm?nm+': traffic is building':'Rush hour is over: traffic is easing off');}}
   S.fireClock+=dt;if(S.fireClock>=60){S.fireClock-=60;if(D.fireChance&&Math.random()<D.fireChance)igniteRandom();}   // a chance of a house fire every minute
   for(const b of blds.slice())if(b.fire)tickFire(b,dt);
@@ -3273,13 +3301,14 @@ function drawGround(){
   for(const t of trees){
     if(t.x<vx0-1||t.x>vx1+1||t.y<vy0-1||t.y>vy1+1)continue;
     const c=cells[cellIdx(Math.floor(t.x),Math.floor(t.y))];if(c.e||c.f||c.bld)continue;
-    if(Settings.v.noHw){const cols=TH.trees[t.s];
+    if(!hwLook()){const cols=TH.trees[t.s];
       ctx.fillStyle=TH.treeSh;ctx.beginPath();ctx.ellipse(t.x+.07,t.y+.11,t.r*1.05,t.r*.78,0,0,7);ctx.fill();
       ctx.fillStyle=cols[0];ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,7);ctx.fill();
-      ctx.fillStyle=cols[1];ctx.beginPath();ctx.arc(t.x-t.r*.25,t.y-t.r*.3,t.r*.58,0,7);ctx.fill();}
+      ctx.fillStyle=cols[1];ctx.beginPath();ctx.arc(t.x-t.r*.25,t.y-t.r*.3,t.r*.58,0,7);ctx.fill();
+      if(TH.snow){ctx.fillStyle='rgba(255,255,255,.92)';ctx.beginPath();ctx.arc(t.x-t.r*.2,t.y-t.r*.38,t.r*.4,0,7);ctx.fill();ctx.beginPath();ctx.arc(t.x+t.r*.35,t.y+t.r*.1,t.r*.22,0,7);ctx.fill();}}
     else drawDeadTree(t);
   }
-  if(!Settings.v.noHw)for(const q of props){
+  if(hwLook())for(const q of props){
     if(q.x<vx0-1||q.x>vx1+1||q.y<vy0-1||q.y>vy1+1)continue;
     const c=cells[cellIdx(Math.floor(q.x),Math.floor(q.y))];if(c.water||c.e||c.f||c.bld)continue;
     drawProp(q);
@@ -3505,6 +3534,43 @@ function locTick(){   // noticing: hovering over it for a moment, or connecting 
     if(v.locHover&&hover&&cells[cellIdx(hover[0],hover[1])].bld===b){b.hoverT=(b.hoverT||0)+dt;if(b.hoverT>=.6)b.seen=true;}else b.hoverT=0;
   }
 }
+/* ---------- weather (for effect only): rain, storms, snow, falling leaves and fog; green rain in the Halloween look ---------- */
+let wxFlash=0,wxOff=false;
+function wxNow(){   // what is falling right now, and how strongly (null for clear)
+  const v=Settings.v;if(!v.fx||v.weather==='off')return null;
+  const amt=Math.max(.1,(v.wxAmt||60)/100);
+  if(v.weather!=='auto')return v.weather==='clear'?null:{kind:v.weather,amt};
+  const se=effSeason(),seg=Math.floor(time/120),ph=(time%120)/120;
+  const pool={spooky:['rain','fog','clear','rain','clear'],spring:['rain','clear','rain','clear','clear'],summer:['clear','clear','storm','clear','rain'],autumn:['leaves','rain','fog','clear','leaves'],winter:['snow','snow','clear','snow','fog']}[se]||['clear'];
+  const kind=pool[Math.floor(hash1(seg,7)*pool.length)];if(kind==='clear')return null;
+  return {kind,amt:amt*Math.max(0,Math.min(1,ph/.12,(1-ph)/.12))};
+}
+function drawWeather(){
+  if(wxOff)return;const w=wxNow();if(!w||w.amt<=.01||mode==='tut')return;
+  const c2=mainCtx,T=performance.now()/1000,W2=cw,H2=ch,green=hwLook()&&w.kind!=='fog'&&w.kind!=='snow';
+  c2.save();c2.setTransform(dpr,0,0,dpr,0,0);
+  if(w.kind==='rain'||w.kind==='storm'){
+    const storm=w.kind==='storm',n=Math.round((storm?420:260)*w.amt),sp=storm?1100:760,wind=storm?-.34:-.16;
+    c2.fillStyle=green?'rgba(20,50,25,'+(.1*w.amt)+')':'rgba(15,25,50,'+((storm?.2:.1)*w.amt)+')';c2.fillRect(0,0,W2,H2);   // the light dims
+    c2.strokeStyle=green?'rgba(130,255,100,.55)':'rgba(190,210,240,.5)';c2.lineWidth=1.2;c2.beginPath();
+    for(let i=0;i<n;i++){const x=((hash1(i,1)*(W2+300)+T*sp*-wind)%(W2+300))-150,y=((hash1(i,2)*(H2+80)+T*sp*(.8+hash1(i,3)*.5))%(H2+80))-40,l=14+hash1(i,4)*14;c2.moveTo(x,y);c2.lineTo(x+l*wind*-1,y+l);}
+    c2.stroke();
+    if(storm){const f=(T*.45)%1,k=Math.floor(T*.45);if(hash1(k,9)>.7&&f<.14)wxFlash=Math.max(wxFlash,.35*(1-f/.14));}
+  } else if(w.kind==='snow'){
+    const n=Math.round(220*w.amt);c2.fillStyle='rgba(255,255,255,.85)';
+    for(let i=0;i<n;i++){const r=1+hash1(i,5)*2.2,x=((hash1(i,1)*W2+Math.sin(T*.8+i)*22+T*14*(hash1(i,6)-.3))%W2+W2)%W2,y=(hash1(i,2)*H2+T*(40+hash1(i,3)*50))%H2;c2.beginPath();c2.arc(x,y,r,0,7);c2.fill();}
+    c2.fillStyle='rgba(235,245,255,'+(.07*w.amt)+')';c2.fillRect(0,0,W2,H2);
+  } else if(w.kind==='leaves'){
+    const n=Math.round(90*w.amt),cols=['#e0752c','#c4452b','#e3b030','#a8561f'];
+    for(let i=0;i<n;i++){const x=((hash1(i,1)*W2+Math.sin(T*.9+i*1.7)*60+T*28)%W2+W2)%W2,y=(hash1(i,2)*H2+T*(34+hash1(i,3)*30))%H2;c2.save();c2.translate(x,y);c2.rotate(T*(1+hash1(i,4))+i);c2.fillStyle=cols[i%4];c2.beginPath();c2.ellipse(0,0,6,3,0,0,7);c2.fill();c2.restore();}
+  } else if(w.kind==='fog'){
+    const g=glowImg('rgba(225,230,240,');c2.globalAlpha=.34*w.amt;
+    for(let i=0;i<14;i++){const r=220+hash1(i,3)*260,x=((hash1(i,1)*(W2+600)+T*(8+hash1(i,4)*14))%(W2+600))-300,y=hash1(i,2)*H2;c2.drawImage(g,x-r,y-r*.55,r*2,r*1.1);}
+    c2.globalAlpha=1;
+  }
+  if(wxFlash>.01){c2.fillStyle='rgba(235,240,255,'+wxFlash+')';c2.fillRect(0,0,W2,H2);wxFlash*=.86;}
+  c2.restore();
+}
 function drawLocators(){
   if(S.demo||S.tut||mode!=='play'||!Settings.v.loc)return;
   locTick();
@@ -3605,7 +3671,7 @@ function draw(){
   for(const c of cars){if(c.dead||!isPark(c.ph))continue;const q=parkPose(c);if(q.x<vx0-2||q.x>vx1+2||q.y<vy0-2||q.y>vy1+2)continue;drawCar(c,q);}
   drawTutorial();
   drawAmbient(poses);
-  if(!Settings.v.noHw&&Settings.v.fx&&mode!=='tut'){drawFog();drawBats();}
+  if(hwLook()&&Settings.v.fx&&mode!=='tut'){drawFog();drawBats();}
   drawLocators();
   if(D.notify&&!S.demo&&!S.tut&&mode==='play'&&Settings.v.n_mark)for(const b of blds)drawAlert(b);
   if(Settings.v.fx)for(const p of particles){ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();}
@@ -3613,6 +3679,7 @@ function draw(){
   drawAI();
   drawGhost();
   ctx.restore();
+  drawWeather();
   drawLocatorEdges();
 }
 
@@ -3842,6 +3909,9 @@ const SCREENS={
       ${sec('Display',
         row('Theme','Standard follows the brightness slider below; High contrast ignores it',seg('theme',[['dark','Standard'],['contrast','High contrast']]))
         +tog('mapNatural','Don\u2019t apply the theme to the map','The map keeps natural, realistic colours with green grass (and still gets dark at night); only the menus and buttons use the theme')
+        +row('Season','What the ground, water and trees look like. Halloween is the spooky look; Auto goes through the four seasons, six weeks each',seg('season',[['spooky','Halloween'],['spring','Spring'],['summer','Summer'],['autumn','Autumn'],['winter','Winter'],['auto','Auto']]))
+        +row('Weather','Rain, storms, snow, falling leaves and fog, for effect only. Auto follows the season (green rain in the Halloween look). Needs Visual effects on',seg('weather',[['auto','Auto'],['off','Off'],['rain','Rain'],['storm','Storm'],['snow','Snow'],['leaves','Leaves'],['fog','Fog']]))
+        +sld('wxAmt','Weather strength','How heavy it comes down',15,100,5,'pct')
         +tog('noHw','No Halloween theme','Turns the spooky look off: the original colours and houses, green trees and grass, no cobwebs, fog or bats. Dual destinations stay')
         +sld('lum','Theme brightness','Slide from black to white: the colours of the menus and the map',0,100,1,'pct')
         +tog('cycle','Day and night cycle','The light fades to night and back as the game runs. Not used in High contrast.')
