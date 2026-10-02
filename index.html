@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.20.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.20.3';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -743,6 +743,16 @@ function rebuild(){
     if(c.f)for(let d=0;d<8;d++){const e=c.f[d];if(!e||e.ow<0)continue;const bi=nbIdx(i,d),a=bnode[i];link(a,d,bnode[bi],e.k===1?1+(hgt[i]+hgt[bi])/2:1,1);if(e.ghost){egh[a*8+d]=1;hasGhost=true;}}
   }
   for(let i=0;i<W*H;i++){const c=cells[i];if(!c.sg)continue;for(let sd=0;sd<8;sd++)if(c.sg&&c.sg[sd]&&!(c.e&&c.e[sd])){inv.stop+=headsOf(c.sg[sd]);setSign(i,sd,false);}}
+  if(D.id!=='tutorial')for(const b of blds){   // a house with no road at its driveway, but a road right beside it, turns its driveway to that road
+    if(b.dest||(b.port>=0&&roadish(b.port)))continue;
+    let pick=-1;
+    for(let i=1;i<8&&pick<0;i++){
+      const d=(b.dir+i)%8;if(!dirValid(b,d))continue;const pt=bldGeom(b,d).port;if(pt<0||!roadish(pt))continue;
+      if(D.crash){const c=cells[pt];if(c.e&&signSides(c).length>=2)continue;if(blds.concat(depts).some(o=>o!==b&&o.port===pt))continue;}   // (where cars wreck, never onto a junction or another driveway)
+      pick=d;
+    }
+    if(pick>=0)setDir(b,pick);
+  }
   for(const b of blds.concat(depts)){
     b.retry=0;   // any road change: houses re-check for a route right away
     b.linked=false;
@@ -1732,7 +1742,7 @@ function ratingTick(dt){
     const lf=drv?items.late.length/drv:0;if(lf>RT.lt&&items.late.length>3)L.push(['Cars running late',(lf-RT.lt)*RT.k,'late']);
     items.near=blds.filter(b=>b.dest&&b.jam>=D.dcap-1);if(items.near.length)L.push(['Destinations backed up',Math.min(3,items.near.length)*.15,'near']);
     items.cut=[];for(let c=0;c<6;c++)if((S.stallT[c]||0)>0)items.cut.push(c);if(items.cut.length)L.push(['A colour cut off',items.cut.length*.3,'cut']);
-    items.lone=blds.filter(b=>!b.linked&&time-b.born>30);if(items.lone.length)L.push(['Buildings not connected',Math.min(5,items.lone.length)*.08,'lone']);
+    items.lone=blds.filter(b=>!b.linked&&time-b.born>30);if(items.lone.length)L.push([items.lone.length+(items.lone.length===1?' building has':' buildings have')+' no road at the driveway',Math.min(5,items.lone.length)*.08,'lone']);
     items.fire=blds.filter(b=>b.fire);if(items.fire.length)L.push(['Houses on fire',Math.min(5,items.fire.length)*.1,'fire']);
     S.ratItems=items;S.ratShare={wait:waiting,late:lf,houses:n,drv};
     L.forEach(x=>x[1]*=k);L.sort((a,b)=>b[1]-a[1]);
@@ -3064,7 +3074,7 @@ const RAT_WHY={
   late:['Cars running late','These cars have been driving more than twice as long as the clear road needs. Look for a jam, a tangle of junctions, or a long way round.'],
   near:['Destinations backed up','Too many late cars are heading for this destination. Fix the roads into it or give it a second way in.'],
   cut:['A colour cut off','Most houses of this colour cannot get anywhere. Reconnect them: the countdown to losing is running.'],
-  lone:['Buildings not connected','These have had no road for over 30 seconds. Link their driveway to the network.'],
+  lone:['No road at the driveway','A road beside a building is not enough: it has to reach the red dotted circle at the end of its driveway. Houses turn to face a road next to them; a destination or fire station needs a road drawn to its circle.'],
   fire:['Houses on fire','A house is burning. A linked fire station puts it out. Build one, or link it to a road.']};
 function updateRatLegend(){
   const el=$('ratLegend');if(!el)return;
