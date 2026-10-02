@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.17.1 — Two spooky songs
+- Two new songs: Halloween Day 1 joins the daytime playlist and Halloween Night 1 the night one
+
 ## 1.17.0 — Post to the daily leaderboard with no account
 - No GitHub account and no sign-in: type a name on the Daily challenge screen and press Post. The game sends your score and its trail of checkpoints to a small free relay, which runs the same checks as before (edited or invented numbers, impossible rates, wrong day) and writes the leaderboard file itself, with a key only the relay holds. You get your rank straight away, or the reason a score was refused
 - One row per player per day (the best score), tied to an anonymous id kept in your settings, which Reset settings keeps. Names are limited to 16 letters, numbers, spaces, dots, dashes and underscores
