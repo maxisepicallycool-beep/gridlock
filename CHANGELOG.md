@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.17.0 — Post to the daily leaderboard with no account
+- No GitHub account and no sign-in: type a name on the Daily challenge screen and press Post. The game sends your score and its trail of checkpoints to a small free relay, which runs the same checks as before (edited or invented numbers, impossible rates, wrong day) and writes the leaderboard file itself, with a key only the relay holds. You get your rank straight away, or the reason a score was refused
+- One row per player per day (the best score), tied to an anonymous id kept in your settings, which Reset settings keeps. Names are limited to 16 letters, numbers, spaces, dots, dashes and underscores
+- The GitHub sign-in code is gone. The relay needs deploying once (relay/ in the repository); until then the Post button says the leaderboard is not switched on yet
+
 ## 1.16.0 — A verified daily leaderboard
 - No more honour system. While you play the daily level the game records a trail of checkpoints (game time, week, trips, houses, cars and the real clock every 20 seconds). When you post a score, that trail goes with it, and a GitHub Action on the repository checks it automatically: edited or typed-in numbers, trips the houses could not have delivered, weeks or game speed that don't add up, a run that wasn't played on that day, or a score posted long after it was played are all rejected with a reason. Only scores that pass appear on the leaderboard, which is now a small verified file (daily/DATE.json) that the game reads
 - Scores are posted from your own GitHub account. Where the app can, it signs you in to GitHub from inside the game (a short code you confirm on github.com, with no password in the game) and posts for you; otherwise it opens the prefilled GitHub issue and you press Submit. Either way the same checks apply

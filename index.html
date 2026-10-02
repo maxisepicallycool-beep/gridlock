@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.16.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.17.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -401,7 +401,7 @@ let D=DIFFS[2],mode='menu',mapSeed=1;
 const SET_DEF={theme:'dark',mapNatural:false,noHw:false,tlOn:true,tlEvery:8,season:'spooky',weather:'auto',wxAmt:60,aiInfo:true,loc:true,locMode:'until',locTime:15,locHover:true,locConnect:true,locEdge:true,locSize:1,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
   tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:15,n_toastTime:4,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
-  music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
+  music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false,pname:'',iid:''};
 const Settings={v:Object.assign({},SET_DEF),
   load(){
     // two copies exist: the one the app injected when it started (can be stale after an in-app update) and the browser's own,
@@ -425,7 +425,7 @@ const Settings={v:Object.assign({},SET_DEF),
   },
   vol(){return this.v.mute?0:this.v.sfx/100*.85},
   set(k,val){this.v[k]=val;this.save();this.react(k);},
-  reset(){this.v=Object.assign({},SET_DEF);this.save();for(const k of ['theme','mapNatural','noHw','season','lum','sfx','horns','mute','aiDiff','updateQuiet'])this.react(k);},
+  reset(){const keep={pname:this.v.pname,iid:this.v.iid};this.v=Object.assign({},SET_DEF,keep);this.save();for(const k of ['theme','mapNatural','noHw','season','lum','sfx','horns','mute','aiDiff','updateQuiet'])this.react(k);},
   react(k){
     if(k==='updateQuiet'){   // tell the app (Mac or Windows) so it installs updates without asking
       try{const h=window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.gridlock;if(h)h.postMessage({op:'updatepref',quiet:!!this.v.updateQuiet});}catch(e){}
@@ -2299,19 +2299,21 @@ function drawSbHover(){
     ctx.fillStyle=ok?(t==='fire'?'rgba(216,56,47,.3)':PAL[sbColor].c+'66'):'rgba(229,72,77,.35)';ctx.strokeStyle=ok?'rgba(35,39,51,.5)':'#e5484d';ctx.lineWidth=.05;rr(x+.04,y+.04,w-.08,w-.08,.15);ctx.fill();ctx.stroke();}
   ctx.restore();
 }
-/* ---------- the daily leaderboard: a score is a GitHub issue carrying a trail of checkpoints recorded while you played; a GitHub Action verifies it and publishes daily/DATE.json (needs an internet connection) ---------- */
+/* ---------- the daily leaderboard: the game sends the score with a trail of checkpoints recorded while you played to a small relay, which checks it and updates daily/DATE.json on GitHub. No accounts. Needs an internet connection. ---------- */
 const DAILY_SALT='gridlock-daily-v1';
-const GH_CLIENT_ID='';   // the client id of the Gridlock GitHub App (sign-in without leaving the game); empty until it is set up
+const DAILY_RELAY='';   // the address of the score relay (relay/worker.js on Cloudflare); empty until it is deployed
 let DBOARD={date:'',status:'idle',rows:[],msg:'',ts:0};
 const gFnv=str=>{let h=2166136261;for(const ch of str){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return (h>>>0).toString(16);};
-const gChecksum=o=>gFnv(JSON.stringify([o.d,o.s,o.w,o.t,o.v,o.h,o.p,o.r])+DAILY_SALT);
+const gChecksum=o=>{const a=[o.d,o.s,o.w,o.t,o.v,o.h,o.p,o.r];if(o.n!==undefined||o.i!==undefined)a.push(o.n,o.i);return gFnv(JSON.stringify(a)+DAILY_SALT);};
+function installId(){let i=Settings.v.iid;if(!/^[a-z0-9]{8,32}$/.test(i||'')){i='';const a=new Uint8Array(12);try{crypto.getRandomValues(a);}catch(e){for(let k=0;k<12;k++)a[k]=Math.random()*256;}for(const b of a)i+=(b%36).toString(36);Settings.v.iid=i;Settings.save();}return i;}
+const nameOk=n=>/^[A-Za-z0-9][A-Za-z0-9 _.\-]{0,15}$/.test(n||'');
 function pfPush(){   // a checkpoint of the run (game time, week, trips, houses, cars) with the real clock beside it
   S.pf=S.pf||{p:[],r:[]};const last=S.pf.p[S.pf.p.length-1];if(last&&Math.round(time)<=last[0])return;
   S.pf.p.push([Math.round(time),S.week,S.score,blds.filter(b=>!b.dest).length,cars.length]);S.pf.r.push(Math.round(Date.now()/1000));
 }
 function dailyProof(e,date,maxPts){   // what gets posted: the score, its checkpoints (thinned if long) and a checksum
   const pf=e.pf||{p:[],r:[]},n=pf.p.length,keep=n<=maxPts?pf.p.map((_,i)=>i):Array.from({length:maxPts},(_,k)=>Math.round(k*(n-1)/(maxPts-1)));
-  const o={d:date,s:e.score,w:e.week,t:e.t,v:GAME_VERSION,h:e.h,p:keep.map(i=>pf.p[i]),r:keep.map(i=>pf.r[i])};o.k=gChecksum(o);return o;
+  const o={d:date,s:e.score,w:e.week,t:e.t,v:GAME_VERSION,h:e.h,p:keep.map(i=>pf.p[i]),r:keep.map(i=>pf.r[i]),n:Settings.v.pname.trim(),i:installId()};o.k=gChecksum(o);return o;
 }
 async function fetchBoardFile(date){
   const R=REPORT_REPO,path='daily/'+date+'.json',bases=[
@@ -2337,68 +2339,29 @@ async function fetchBoard(force){
   catch(e){DBOARD={date,status:'error',rows:[],msg:e&&e.limited?'GitHub is limiting requests right now. Try again in a minute.':'The leaderboard needs an internet connection.',ts:Date.now()};}
   if(MS.screen==='daily'&&mode==='menu')Menu.show('daily');
 }
-/* signing in to GitHub from the app (device flow through the app's own helper), then posting the score for you */
-const GH={token:null,login:null,flow:null};
-function ghLoad(){
-  try{const j=JSON.parse(localStorage.getItem('gridlock.gh')||'null');if(j&&j.token){GH.token=j.token;GH.login=j.login;}}catch(e){}
-  if(!GH.token&&window.AppBridge)AppBridge.call('readfile',{name:'gh.json'}).then(t=>{try{const j=JSON.parse(t);if(j&&j.token){GH.token=j.token;GH.login=j.login;}}catch(e){}}).catch(()=>{});
-}
-function ghSave(){const t=JSON.stringify({token:GH.token,login:GH.login});try{localStorage.setItem('gridlock.gh',t);}catch(e){}if(window.AppBridge)AppBridge.call('writefile',{name:'gh.json',text:t});}
-function ghOut(){GH.token=null;GH.login=null;GH.flow=null;try{localStorage.removeItem('gridlock.gh');}catch(e){}if(window.AppBridge)AppBridge.call('writefile',{name:'gh.json',text:''});if(MS.screen==='daily')Menu.show('daily');}
 const bridgeCall=(op,p,ms)=>window.AppBridge?Promise.race([AppBridge.call(op,p),new Promise(r=>setTimeout(()=>r(null),ms||9000))]):Promise.resolve(null);
 const openLink=u=>{if(window.AppBridge)AppBridge.call('openurl',{url:u});else window.open(u,'_blank');};
-async function ghSignIn(){   // returns true when signed in, 'unsupported' when this app cannot do it, false when it did not finish
-  if(!GH_CLIENT_ID||!window.AppBridge)return 'unsupported';
-  const d=await bridgeCall('ghdevice',{client_id:GH_CLIENT_ID},9000);
-  if(!d)return 'unsupported';
-  if(!d.device_code){toast('Could not reach GitHub to sign in',true);return false;}
-  GH.flow={code:d.user_code,uri:d.verification_uri};if(MS.screen==='daily')Menu.show('daily');
-  openLink(d.verification_uri);
-  const end=Date.now()+(d.expires_in||900)*1000;let wait=(d.interval||5)*1000;
-  while(GH.flow&&Date.now()<end){
-    await new Promise(r=>setTimeout(r,wait));if(!GH.flow)return false;
-    const r=await bridgeCall('ghpoll',{client_id:GH_CLIENT_ID,device_code:d.device_code},12000);
-    if(r&&r.access_token){
-      GH.token=r.access_token;GH.login='you';
-      try{const u=await (await fetch('https://api.github.com/user',{headers:{Authorization:'Bearer '+GH.token,Accept:'application/vnd.github+json'}})).json();if(u&&u.login)GH.login=u.login;}catch(e){}
-      GH.flow=null;ghSave();if(MS.screen==='daily')Menu.show('daily');return true;
-    }
-    if(r&&r.error==='slow_down')wait+=5000;else if(r&&r.error&&r.error!=='authorization_pending')break;
-  }
-  GH.flow=null;if(MS.screen==='daily')Menu.show('daily');toast('GitHub sign-in did not finish',true);return false;
-}
-function dailyBody(e,date,o){
-  const info=dailyInfo();
-  return '**Daily challenge '+date+'** · '+(e.terrain||info.terrainName)+' · '+(e.mods||info.mods.map(m=>m.label).join(' + '))+'\n\nScore: **'+e.score+' trips** · reached week '+e.week+' · '+Math.floor(e.t/60)+':'+String(e.t%60).padStart(2,'0')+' · game '+GAME_VERSION+'\n\nThis score is checked automatically from the checkpoints below. Please leave them as they are.\n<!-- gridlock-daily '+JSON.stringify(o)+' -->';
-}
-async function ghPostScore(date){
-  const e=(Store.meta.daily||{})[date];if(!e)return false;
-  const o=dailyProof(e,date,240);
-  try{
-    const r=await fetch('https://api.github.com/repos/'+REPORT_REPO+'/issues',{method:'POST',headers:{Authorization:'Bearer '+GH.token,Accept:'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({title:'[daily] '+date+' · '+e.score,body:dailyBody(e,date,o)})});
-    if(r.status===401||r.status===403&&!(await r.clone().text()).includes('rate')){ghOut();toast('Your GitHub sign-in expired. Sign in again.',true);return false;}
-    if(!r.ok){toast('GitHub did not accept the post ('+r.status+')',true);return false;}
-    toast('Posted as '+GH.login+'. It shows on the leaderboard once it is verified (about a minute): press Refresh.',true);return true;
-  }catch(err){toast('Could not reach GitHub. Check your connection.',true);return false;}
-}
-function dailySubmitUrl(e,date){   // the fallback: a prefilled issue the player submits themselves
-  const o=dailyProof(e,date,40);
-  return 'https://github.com/'+REPORT_REPO+'/issues/new?title='+encodeURIComponent('[daily] '+date+' · '+e.score)+'&body='+encodeURIComponent(dailyBody(e,date,o));
-}
+let DPOST=false;
 async function dailySubmit(date){
-  const e=(Store.meta.daily||{})[date];if(!e){toast('Play today’s level first',true);return;}
-  if(!e.pf||!e.pf.p||e.pf.p.length<2){toast('Scores are checked from a trail recorded while you play. Play today’s level again to post one.',true);return;}
-  if(GH.token){if(await ghPostScore(date))return;if(!GH.token&&GH_CLIENT_ID)return dailySubmit(date);return;}
-  if(GH_CLIENT_ID&&window.AppBridge){const r=await ghSignIn();if(r===true){await ghPostScore(date);return;}if(r===false)return;}
-  openLink(dailySubmitUrl(e,date));
-  toast('GitHub is opening. Press “Submit new issue” there. Your score is then checked automatically (you need a GitHub account).',true);
+  const e=(Store.meta.daily||{})[date];if(!e){toast('Play today\u2019s level first',true);return;}
+  if(!DAILY_RELAY){toast('The leaderboard is not switched on yet.',true);return;}
+  if(!e.pf||!e.pf.p||e.pf.p.length<2){toast('Scores are checked from a trail recorded while you play. Play today\u2019s level again to post one.',true);return;}
+  const nm=(Settings.v.pname||'').trim();
+  if(!nameOk(nm)){toast('Type a name first (1 to 16 letters, numbers, spaces, dots, dashes or underscores).',true);const f=document.getElementById('pname');if(f)f.focus();else if(mode==='menu'||S.over){const m=document.getElementById('modal');m.className='hidden';enterMenu();Menu.show('daily');}return;}
+  if(DPOST)return;DPOST=true;
+  try{
+    const r=await fetch(DAILY_RELAY.replace(/\/$/,'')+'/score',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(dailyProof(e,date,240))});
+    let j=null;try{j=await r.json();}catch(x){}
+    if(j&&j.ok){toast(j.improved===false?'You already have a better or equal score on the board (rank #'+j.rank+').':'Posted! You are #'+j.rank+' of '+j.total+' today.',true);DBOARD.ts=0;fetchBoard(true);}
+    else toast('Score not accepted: '+((j&&j.reason)||('error '+r.status)),true);
+  }catch(err){toast('Could not reach the leaderboard. Check your connection.',true);}
+  DPOST=false;
 }
 function dailyCopy(date){
   const e=((Store.meta.daily||{})[date]);if(!e)return;
   const txt='Gridlock daily '+date+' ('+(e.terrain||'')+'): '+e.score+' trips, week '+e.week;
   try{navigator.clipboard.writeText(txt).then(()=>toast('Score copied',true),()=>toast('Couldn’t copy',true));}catch(x){toast('Couldn’t copy',true);}
 }
-ghLoad();
 /* ---------- bug reports: opened as a prefilled GitHub issue, or copied ---------- */
 const REPORT_REPO='maxisepicallycool-beep/gridlock';
 function bugDetails(){
@@ -2407,7 +2370,7 @@ function bugDetails(){
   lines.push('- Screen: '+innerWidth+'\u00d7'+innerHeight+' \u00b7 '+(navigator.platform||'')+' \u00b7 '+String(navigator.userAgent).replace(/^Mozilla\/5.0 /,'').slice(0,110));
   if(S&&mode==='play')lines.push('- City: '+D.name+' \u00b7 week '+S.week+' \u00b7 '+blds.filter(b=>!b.dest).length+' houses, '+blds.filter(b=>b.dest).length+' destinations, '+depts.length+' stations \u00b7 '+cars.length+' cars \u00b7 score '+S.score+(S.tut?' \u00b7 tutorial step '+(TUT?TUT.i+1:'?'):''));
   else lines.push('- In the menu');
-  const off=[];for(const k in SET_DEF)if(JSON.stringify(v[k])!==JSON.stringify(SET_DEF[k])&&k!=='keys')off.push(k+'='+v[k]);
+  const off=[];for(const k in SET_DEF)if(JSON.stringify(v[k])!==JSON.stringify(SET_DEF[k])&&k!=='keys'&&k!=='iid'&&k!=='pname')off.push(k+'='+v[k]);
   lines.push('- Settings changed from default: '+(off.join(', ')||'none'));
   lines.push('- Recent errors: '+(ERRLOG.length?'\n  - '+ERRLOG.join('\n  - '):'none'));
   return lines.join('\n');
@@ -4269,16 +4232,16 @@ const SCREENS={
   daily(){
     const info=dailyInfo(),date=info.date,my=(Store.meta.daily||{})[date],B=DBOARD.date===date?DBOARD:{status:'idle',rows:[],msg:''};
     const left=Math.max(0,Date.UTC(+date.slice(0,4),+date.slice(5,7)-1,+date.slice(8,10)+1)-Date.now()),hh=Math.floor(left/3.6e6),mm=Math.floor(left%3.6e6/6e4);
-    const rows=B.status==='loading'?'<div class="tiny" style="padding:14px 4px">Loading the leaderboard\u2026</div>':B.status==='error'?`<div class="tiny" style="padding:14px 4px">${esc(B.msg)}</div>`:B.status==='ok'?(B.rows.length?B.rows.slice(0,15).map((r,i)=>`<div class="best"><b style="min-width:30px">#${i+1}</b><b style="font-weight:800">${esc(r.login)}</b><div class="sc">${r.score} trips<small>${r.week?'week '+r.week:''}</small></div></div>`).join(''):'<div class="tiny" style="padding:14px 4px">No scores yet today. Be the first!</div>'):'<div class="tiny" style="padding:14px 4px">Tap Refresh to load the leaderboard.</div>';
+    const rows=B.status==='loading'?'<div class="tiny" style="padding:14px 4px">Loading the leaderboard\u2026</div>':B.status==='error'?`<div class="tiny" style="padding:14px 4px">${esc(B.msg)}</div>`:B.status==='ok'?(B.rows.length?B.rows.slice(0,15).map((r,i)=>`<div class="best"><b style="min-width:30px">#${i+1}</b><b style="font-weight:800">${esc(r.name||r.login||'?')}</b><div class="sc">${r.score} trips<small>${r.week?'week '+r.week:''}</small></div></div>`).join(''):'<div class="tiny" style="padding:14px 4px">No scores yet today. Be the first!</div>'):'<div class="tiny" style="padding:14px 4px">Tap Refresh to load the leaderboard.</div>';
     return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Daily challenge</h2></div><div class="pbody">
       <div class="dcard sel" style="--dc:#f0b429;cursor:default;margin-bottom:12px"><h4>${esc(info.terrainName)}</h4><div class="dt">${date} \u00b7 a new level in ${hh} h ${mm} min</div>
         <ul><li>${esc(info.terrainDesc)}</li>${info.mods.map(m=>`<li><b>${esc(m.label)}</b>: ${esc(m.desc)}</li>`).join('')}<li>Everyone gets the same land and rules today</li></ul></div>
       <div class="row" style="margin:0 0 6px"><button class="go" data-act="dailyplay">${my?'Play today\u2019s level again':'Play today\u2019s level'}</button></div>
       <div class="tiny" style="margin:6px 0 12px">${my?'Your best today: <b>'+my.score+' trips</b> (week '+my.week+'). ':'You have not played today yet. '}Your score is the trips you deliver before the city is lost.</div>
       ${my?'<div class="row" style="margin:0 0 8px;gap:8px"><button class="sbtn" data-act="dailysubmit">Post my score to the leaderboard</button><button class="sbtn ghost" data-act="dailycopy">Copy my score</button></div>':''}
-      ${GH.flow?`<div class="dcard" style="--dc:#4c9be8;cursor:default;margin:6px 0 10px"><h4 style="margin:0 0 4px">Sign in to GitHub</h4><div class="dt">Enter this code on the page that just opened (github.com/login/device):</div><div style="font-size:26px;font-weight:900;letter-spacing:3px;margin:4px 0">${esc(GH.flow.code)}</div><div class="tiny">Waiting for you to finish\u2026 <span data-act="ghcancel" style="color:var(--accent);cursor:pointer;text-decoration:underline">cancel</span></div></div>`:(GH.token?`<div class="tiny" style="margin:0 0 10px">Posting as <b>${esc(GH.login||'you')}</b> on GitHub \u00b7 <span data-act="ghout" style="color:var(--accent);cursor:pointer;text-decoration:underline">sign out</span></div>`:'')}
+      ${my?`<div class="row" style="margin:0 0 8px;gap:8px;align-items:center"><label class="tiny" for="pname" style="white-space:nowrap">Your name</label><input id="pname" maxlength="16" placeholder="shown on the board" value="${esc(Settings.v.pname)}"></div>`:''}
       <h3 style="margin:10px 0 4px">Leaderboard \u00b7 ${date} <button class="sbtn ghost" style="float:right;padding:3px 10px" data-act="dailyrefresh">Refresh</button></h3>${rows}
-      <div class="tiny" style="margin-top:12px;line-height:1.5">The leaderboard lives on GitHub, so it needs an internet connection (the level itself works offline). Every score is posted from your GitHub account and checked automatically against a trail of checkpoints the game records while you play, so numbers that were typed in or edited, or that the houses could not have delivered, are rejected.</div></div></div>`;
+      <div class="tiny" style="margin-top:12px;line-height:1.5">The leaderboard lives on GitHub, so it needs an internet connection (the level itself works offline). Every score is checked automatically against a trail of checkpoints the game records while you play, so numbers that were typed in or edited, or that the houses could not have delivered, are rejected.</div></div></div>`;
   },
   realism(){
     const cards=DIFFS.filter(d=>d.real).map(d=>`<button class="dcard ${MS.diff===d.id?'sel':''}" style="--dc:${d.col}" data-act="diff" data-id="${d.id}">
@@ -4442,7 +4405,7 @@ const Menu={
 const SFMT={sec:v=>Math.round(v)+' s',pct:v=>Math.round(v)+'%',x:v=>(+v).toFixed(1)+'\u00d7',num:v=>String(Math.round(v))};
 function refreshSettings(){const pb=menuEl.querySelector('.pbody'),st=pb?pb.scrollTop:0;Menu.show('settings');const nb=menuEl.querySelector('.pbody');if(nb)nb.scrollTop=st;}
 menuEl.addEventListener('input',e=>{
-  if(e.target.id==='cityname')MS.name=e.target.value;if(e.target.id==='seedin')MS.seed=e.target.value;
+  if(e.target.id==='cityname')MS.name=e.target.value;if(e.target.id==='seedin')MS.seed=e.target.value;if(e.target.id==='pname'){Settings.v.pname=e.target.value.replace(/[^A-Za-z0-9 _.\-]/g,'');Settings.save();}
   const k=e.target.dataset&&e.target.dataset.rng;
   if(k){Settings.set(k,+e.target.value);const sp=document.getElementById('rv-'+k);if(sp)sp.textContent=SFMT[e.target.dataset.fmt](+e.target.value);}
 });
@@ -4481,8 +4444,6 @@ function act(a,d){
     case 'dailyplay':startDaily();break;
     case 'dailyrefresh':fetchBoard(true);break;
     case 'dailysubmit':dailySubmit(todayUTC());break;
-    case 'ghout':ghOut();break;
-    case 'ghcancel':GH.flow=null;Menu.show('daily');break;
     case 'dailycopy':dailyCopy(todayUTC());break;
     case 'load':MS.confirm=null;Menu.show('load');break;
     case 'howto':Menu.show('howto');break;

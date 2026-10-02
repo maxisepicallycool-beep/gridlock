@@ -198,16 +198,6 @@ ipcMain.handle('bridge', async (e, op, p) => {
   const files = path.join(data(), 'files'), safe = n => /^[A-Za-z0-9._-]{1,80}$/.test(n || '') ? n : null;
   if (op === 'info') return { platform: 'windows', appBuild, appVersion: app.getVersion(), gameVersion: runningVersion(), code: currentCode() };
   if (op === 'checkupdate') { checkForUpdates(false); maintenance(); return true; }
-  if (op === 'ghdevice' || op === 'ghpoll') {   // GitHub sign-in (device flow): these endpoints cannot be called from a web page, so the app does it
-    const base = process.env.GRIDLOCK_GH_BASE || 'https://github.com';
-    if (!/^[A-Za-z0-9._-]{4,64}$/.test(p.client_id || '')) return null;
-    const url = base + (op === 'ghdevice' ? '/login/device/code' : '/login/oauth/access_token');
-    const body = op === 'ghdevice' ? { client_id: p.client_id } : { client_id: p.client_id, device_code: String(p.device_code || ''), grant_type: 'urn:ietf:params:oauth:grant-type:device_code' };
-    try {
-      const r = await fetch(url, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'User-Agent': 'Gridlock-Windows' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
-      return await r.json();
-    } catch (e2) { return { error: 'network' }; }
-  }
   if (op === 'savefile') {   // the game saves a time-lapse clip or picture: into Downloads\Gridlock, then shown in Explorer
     const n = safe(p.name); if (!n || typeof p.b64 !== 'string') return false;
     try {
