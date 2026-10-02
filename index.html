@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.20.3';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.21.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -2328,7 +2328,7 @@ function drawSbHover(){
 }
 /* ---------- the daily leaderboard: the game sends the score with a trail of checkpoints recorded while you played to a small relay, which checks it and updates daily/DATE.json on GitHub. No accounts. Needs an internet connection. ---------- */
 const DAILY_SALT='gridlock-daily-v1';
-const DAILY_RELAY='';   // the address of the score relay (relay/worker.js on Cloudflare); empty until it is deployed
+const DAILY_RELAY='https://gridlock-daily.maxisepicallycool.workers.dev';   // the address of the score relay (relay/worker.js on Cloudflare); empty until it is deployed
 let DBOARD={date:'',status:'idle',rows:[],msg:'',ts:0};
 const gFnv=str=>{let h=2166136261;for(const ch of str){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return (h>>>0).toString(16);};
 const gChecksum=o=>{const a=[o.d,o.s,o.w,o.t,o.v,o.h,o.p,o.r];if(o.n!==undefined||o.i!==undefined)a.push(o.n,o.i);return gFnv(JSON.stringify(a)+DAILY_SALT);};

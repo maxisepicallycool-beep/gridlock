@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.21.0 — The daily leaderboard is on
+- The daily challenge leaderboard now works: finish a run of today's level, type a name on the Daily challenge screen and press Post. No account is needed. The score and the checkpoints recorded while you played are checked automatically, and you see your rank straight away or the reason it was refused. It needs an internet connection (the level itself works offline)
+
 ## 1.20.3 — Houses face the road beside them
 - A house with no road at the end of its driveway, but a road right next to it, now turns its driveway to that road by itself, so a house standing beside your road is connected
 - The \u201cBuildings not connected\u201d warning now says what is actually wrong: how many buildings have no road at their driveway, and that the road has to reach the red dotted circle at its end (a road beside the building does not count)
