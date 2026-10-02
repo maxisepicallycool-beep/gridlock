@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.20.2 — A tidier main menu
+- The AI's game info panel on the main menu is now off until you switch it on (Settings > Show the AI\u2019s pieces and stats), and it is much more compact: the stats sit in four columns and the pieces in one row
+- The right-hand column of the main menu shrinks to fit the window, so it never needs scrolling
+
 ## 1.20.1 — Roundabouts find the junction
 - The roundabout tool now picks the junction nearest to where you press (within one cell), instead of insisting on the exact cell. A finger on a touch screen, or a slightly early click, no longer gets \u201cClick a junction\u201d while a junction is right there. The preview shows the one it will use
 
