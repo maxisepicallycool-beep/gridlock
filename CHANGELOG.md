@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.21.1 — Honest \u201ccut off\u201d messages, and a fairer leaderboard rule
+- When a colour is \u201ccut off\u201d the alert and the game-over screen now say why: no road at the end of a driveway, no route to a destination (and what to check), or houses stuck waiting because cars are not getting through
+- A daily score is no longer refused for being posted long after it was played. The only time rule left is that the level must still be that day\u2019s: once the daily changes, scores for the old level are refused
+
 ## 1.21.0 — The daily leaderboard is on
 - The daily challenge leaderboard now works: finish a run of today's level, type a name on the Daily challenge screen and press Post. No account is needed. The score and the checkpoints recorded while you played are checked automatically, and you see your rank straight away or the reason it was refused. It needs an internet connection (the level itself works offline)
 

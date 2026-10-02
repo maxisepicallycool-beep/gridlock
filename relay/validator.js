@@ -13,7 +13,7 @@ const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i 
 const no = reason => ({ ok: false, reason });
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 _.\-]{0,15}$/, ID_RE = /^[a-z0-9]{8,32}$/;
 
-// opts: { nowSec } the time to judge "posted long after it was played" against; { skipDay } and { requireIdentity }
+// opts: { nowSec } the time to judge which day a run was played on; { skipDay } and { requireIdentity }
 function validateProof(j, opts) {
   opts = opts || {};
   if (!j || typeof j !== 'object') return no('there is no score data');
@@ -49,9 +49,8 @@ function validateProof(j, opts) {
   if (j.s < last[2] || j.s - last[2] > RATE * Math.max(j.h, last[3]) * (j.t - last[0]) + 4) return no('the final score does not follow from the trail');
   if (j.w < last[1] || j.h < last[3]) return no('the final week or houses do not follow from the trail');
   if (j.h > 6 + 6 * j.w) return no('too many houses for that week');
-  if (Number.isFinite(opts.nowSec)) {   // the trail has to end around when it was posted, on the day it is for
+  if (Number.isFinite(opts.nowSec)) {   // the run has to have been played on the day it is for (how long ago it was played does not matter)
     const lastReal = j.r[n - 1];
-    if (Math.abs(opts.nowSec - lastReal) > 20 * 60) return no('the score was posted long after it was played');
     const day = Date.parse(j.d + 'T00:00:00Z') / 1000;
     if (!opts.skipDay && (lastReal < day - 3600 || lastReal > day + 86400 + 3600)) return no('this run was not played on that day');
   }

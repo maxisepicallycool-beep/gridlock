@@ -55,8 +55,8 @@ export default {
     let raw;
     try { raw = await req.text(); if (raw.length > 70000) return json({ ok: false, reason: 'that is too big' }, 413); } catch (e) { return json({ ok: false, reason: 'bad request' }, 400); }
     let j; try { j = JSON.parse(raw); } catch (e) { return json({ ok: false, reason: 'that is not valid data' }, 400); }
-    const today = todayUTC(now), yesterday = todayUTC(now - 86400000);
-    if (!(j && (j.d === today || (j.d === yesterday && now % 86400000 < 2 * 3600 * 1000)))) return json({ ok: false, reason: 'that is not today’s level' }, 400);
+    const today = todayUTC(now);
+    if (!(j && j.d === today)) return json({ ok: false, reason: j && typeof j.d === 'string' && j.d < today ? 'the daily level has changed since this run: a score only counts on the day of its level' : 'that is not today’s level' }, 400);   // the only time-based rule: the level must still be today’s
     const v = V.validateProof(j, { nowSec: now / 1000, requireIdentity: true });
     if (!v.ok) return json({ ok: false, reason: v.reason }, 422);
     if (await limited(env, req.headers.get('CF-Connecting-IP') || 'x', now)) return json({ ok: false, reason: 'too many scores from here today' }, 429);

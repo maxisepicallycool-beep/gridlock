@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.21.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.21.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1700,7 +1700,7 @@ function checkAlerts(){
       else if(b.jam>=D.dcap-1&&b.loadT>=v.n_delayLoad)Notes.push('load'+b.id,'warn','!',nm+' destination getting backed up',b.jam+' cars are running late \u2014 check the roads into it',b);
     }
   }
-  for(let c=0;c<6;c++)if(S.stallT[c]>=Math.max(.5,v.n_delayCut)){const d=blds.find(x=>acc(x,c));Notes.push('cut'+c,'crit','!',PAL[c].n+' trips cut off','Reconnect them — '+Math.max(1,Math.ceil(D.stall-S.stallT[c]))+'s left',d);}
+  for(let c=0;c<6;c++)if(S.stallT[c]>=Math.max(.5,v.n_delayCut)){const d=blds.find(x=>acc(x,c));Notes.push('cut'+c,'crit','!',PAL[c].n+' trips cut off',stallReason(c).replace(/^./,m=>m.toUpperCase())+' — '+Math.max(1,Math.ceil(D.stall-S.stallT[c]))+'s left',d);}
 }
 function drawAlert(b){   // big bobbing marker that stands out above anything that is getting backed up
   const lv=alertLevel(b);if(!lv)return;
@@ -1756,6 +1756,16 @@ function ratingTick(dt){
     if(S.rating<28)Notes.push('rating2','crit','!','City rating is critical',S.ratWhy+': fix it or the city is lost ('+Math.round(S.rating)+'%)');
   }
 }
+function stallReason(c){   // what is actually wrong with a colour that is "cut off"
+  const g=S.stall&&S.stall[c],nm=PAL[c].n.toLowerCase();if(!g)return '';
+  const dests=blds.filter(d=>d.dest&&acc(d,c));
+  if(!dests.length)return 'there is no '+nm+' destination yet';
+  if(dests.every(d=>!d.linked))return 'the '+nm+' destination has no road at its driveway (a road beside it is not enough: the road has to reach its red dotted circle)';
+  const top=['nl','nr','sl'].sort((a,b)=>(g[b]||0)-(g[a]||0))[0],n=g[top]||0;
+  if(top==='nl')return n+' '+nm+(n===1?' house has':' houses have')+' no road at the end of their driveway';
+  if(top==='nr')return n+' '+nm+(n===1?' house cannot':' houses cannot')+' find a route to a '+nm+' destination (do the roads join up, and do the one-way roads point the right way?)';
+  return n+' '+nm+(n===1?' house is':' houses are')+' stuck waiting: cars are not getting through (a traffic jam, or the destination is full)';
+}
 function ratingHit(n,why){if(D.rate&&!D.noFail&&S.rating!==undefined){S.rating=Math.max(0,S.rating-n*D.rate);(S.ratEvents||(S.ratEvents=[])).push({t:time,why:why||'A hit',n:+(n*D.rate).toFixed(1)});if(S.ratEvents.length>6)S.ratEvents.shift();}}
 function updateStall(dt){
   if(D.noFail)return;
@@ -1766,9 +1776,9 @@ function updateStall(dt){
       if(b.dest)continue;
       const g=by[b.color]||(by[b.color]={n:0,bad:0});g.n++;
       let R;if(D.anyDest&&!needAll()){R=reach[b.color]||(reach[b.color]=reachTo(b.color));}
-      else{const a=needAll()?tripDest(b):assignedDest(b);if(!a){b.stalled=true;g.bad++;continue;}const key='a'+a.id;if(!reach[key]){const gs=new Uint8Array(N);gs[a.an*2]=1;reach[key]=reachTo(b.color,gs);}R=reach[key];}
+      else{const a=needAll()?tripDest(b):assignedDest(b);if(!a){b.stalled=true;g.bad++;g.nr=(g.nr||0)+1;continue;}const key='a'+a.id;if(!reach[key]){const gs=new Uint8Array(N);gs[a.an*2]=1;reach[key]=reachTo(b.color,gs);}R=reach[key];}
       b.stalled=!b.linked||!R[b.an*2]||(b.demand>0&&time-b.lastProg>STALL_IDLE&&!(b.rt&&b.rt.length));   // a car resting at home is not a stall
-      if(b.stalled)g.bad++;
+      if(b.stalled){g.bad++;const w=!b.linked?'nl':!R[b.an*2]?'nr':'sl';g[w]=(g[w]||0)+1;}   // why: no road at its driveway, no route to a destination, or waiting too long
     }
     S.stall=by;
   }
@@ -1949,7 +1959,7 @@ function step(dt){
   for(const b of blds.slice())if(b.fire)tickFire(b,dt);
   for(const d of depts)if(!d.told&&time>=d.readyAt){d.told=true;Notes.push('ready'+d.id,'good','✓','Fire station ready','Trucks can now respond'+(d.linked?'':' — link its driveway to a road'),d);}
   S.alertClock=(S.alertClock||0)-dt;if(S.alertClock<=0){S.alertClock=.5;checkAlerts();}
-  for(let c=0;c<6;c++)if(S.stallT[c]>=D.stall&&!S.over&&!D.noFail){gameOver('Most of the '+PAL[c].n+' trips were cut off for too long.');return;}
+  for(let c=0;c<6;c++)if(S.stallT[c]>=D.stall&&!S.over&&!D.noFail){gameOver('Most of the '+PAL[c].n+' trips were cut off for too long: '+stallReason(c)+'.');return;}
   for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;p.life-=dt;}
   particles=particles.filter(p=>p.life>0);
   if(!S.mid&&S.weekT>S.weekLen*.5){S.mid=true;if(S.week>1)spawnBld(pick(activeColors()),false);}
