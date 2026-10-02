@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.18.3';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.18.4';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -3911,7 +3911,7 @@ const WXFADE={wet:14,snow:28,leaves:22},WXLEAF=['#e0752c','#c4452b','#e3b030','#
 function wxLayer(k){let L=WXL[k];if(!L){const cv=document.createElement('canvas');cv.width=W*WXPX;cv.height=H*WXPX;L=WXL[k]={cv,g:cv.getContext('2d'),m:0,n:0};}return L;}
 function wxDeposit(k,x,y){   // one more bit of snow, leaf or wetness lands on the ground
   const L=wxLayer(k),g=L.g;
-  if(k==='snow'){if(L.n>70000)return;g.fillStyle='rgba(248,250,255,.2)';g.beginPath();g.arc(x*WXPX,y*WXPX,(.22+Math.random()*.2)*WXPX,0,7);g.fill();}
+  if(k==='snow'){if(L.n>150000)return;g.fillStyle='#f8faff';g.beginPath();g.arc(x*WXPX,y*WXPX,(.11+Math.random()*.1)*WXPX,0,7);g.fill();}
   else if(k==='wet'){if(L.n>60000)return;g.fillStyle='rgba(12,22,50,.04)';g.beginPath();g.arc(x*WXPX,y*WXPX,(.15+Math.random()*.15)*WXPX,0,7);g.fill();}
   else{if(L.n>9000)return;g.fillStyle=WXLEAF[(Math.random()*4)|0];g.beginPath();g.ellipse(x*WXPX,y*WXPX,.13*WXPX,.07*WXPX,Math.random()*3.14,0,7);g.fill();}
   L.n++;
@@ -3929,7 +3929,7 @@ function wxStep(dt,w,poses){
   const pr=WX.p,storm=w&&w.kind==='storm',area=(RX1-RX0)*(RY1-RY0),inView=(x,y)=>x>vx0-1&&x<vx1+1&&y>vy0-1&&y<vy1+1;
   let cnt=0;for(const p of pr)if(p.k===kind)cnt++;
   if(kind){
-    const dens=kind==='rain'?(storm?.2:.12):kind==='snow'?.5:.06,want=Math.min(2600,Math.round(dens*area*amt)),add=Math.min(want-cnt,cnt?150:want);
+    const dens=kind==='rain'?(storm?.2:.12):kind==='snow'?.9:.06,want=Math.min(3600,Math.round(dens*area*amt)),add=Math.min(want-cnt,cnt?150:want);
     for(let i=0;i<add;i++){
       const p={k:kind,x:RX0+Math.random()*(RX1-RX0),y:RY0+Math.random()*(RY1-RY0),s:Math.random()*6.28,r:Math.random()};
       if(kind==='rain'){p.z=Math.random()*6;p.vz=-(storm?13:10)-p.r*3;p.vx=storm?-3.6:-1.6;p.vy=0;}
@@ -3968,7 +3968,7 @@ function wxStep(dt,w,poses){
   }
 }
 function drawWxGround(){   // the snow, leaves and wet that have gathered (under the cars, so the tracks show)
-  const base={wet:.55,snow:.93,leaves:1};
+  const base={wet:.55,snow:1,leaves:1};
   for(const k in WXL){const L=WXL[k];if(L.m<=.01)continue;
     ctx.globalAlpha=L.m*base[k];ctx.drawImage(L.cv,vx0*WXPX,vy0*WXPX,(vx1-vx0)*WXPX,(vy1-vy0)*WXPX,vx0,vy0,vx1-vx0,vy1-vy0);}
   ctx.globalAlpha=1;

@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.18.4 — Crisper snow
+- Snow on the ground is built from smaller, fully white specks (half the size, no see-through), so the cover looks sharper. It falls a bit heavier to make up for the smaller specks
+
 ## 1.18.3 — Street lamps unchanged in fog
 - Fog no longer adds halos to street lamps. In fog only car headlights and tail lights get the soft cones and bloom
 
