@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.18.3 — Street lamps unchanged in fog
+- Fog no longer adds halos to street lamps. In fog only car headlights and tail lights get the soft cones and bloom
+
 ## 1.18.2 — Everything on the ground fell there
 - Snow, leaves and rain are now simulated over the whole map, and every flake, leaf and drop that lands is the one you saw fall: nothing appears on the ground by itself any more. Snowfall and leaf-fall are denser so the ground still fills up
 - Fog no longer changes how buildings are lit (only headlights, tail lights and street lamps bloom in it)

@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.18.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.18.3';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -4015,12 +4015,10 @@ function fogBeam(){if(fogBeamImg)return fogBeamImg;const c=document.createElemen
   g.globalCompositeOperation='destination-in';const m=g.createLinearGradient(0,0,0,128);m.addColorStop(0,'rgba(0,0,0,.35)');m.addColorStop(.5,'rgba(0,0,0,1)');m.addColorStop(1,'rgba(0,0,0,.35)');g.fillStyle=m;g.fillRect(0,0,256,128);
   return fogBeamImg=c;}
 function fogAmt(w){let f=w&&w.kind==='fog'?w.amt:0;if(hwLook()&&Settings.v.fx&&mode!=='tut')f=Math.max(f,.55);return Math.min(1,f);}
-function drawFogLights(poses,f){   // in the mist every light blooms: headlights throw long soft cones, lamps get halos
+function drawFogLights(poses,f){   // in the mist every light blooms: headlights throw long soft cones and bloom
   const am=ambient(),k=f*(.6+.4*am.n);if(k<=.02)return;
   ctx.save();ctx.globalCompositeOperation='lighter';
-  const warm=glowImg('rgba(255,214,120,'),red=glowImg('rgba(255,90,70,'),lamp=glowImg('rgba(255,226,150,'),fb=fogBeam();
-  for(const l of lamps()){if(l.x<vx0-3||l.x>vx1+3||l.y<vy0-3||l.y>vy1+3)continue;
-    const r=l.canopy?1.1:1.5;ctx.globalAlpha=k*.55;ctx.drawImage(lamp,l.hx-r,l.hy-r,r*2,r*2);ctx.globalAlpha=k*.5;ctx.drawImage(lamp,l.hx-r*.4,l.hy-r*.4,r*.8,r*.8);}
+  const warm=glowImg('rgba(255,214,120,'),red=glowImg('rgba(255,90,70,'),fb=fogBeam();
   for(const [c,q] of poses){
     if(q.br)continue;const co=Math.cos(q.a),si=Math.sin(q.a),fx=q.x+co*.2,fy=q.y+si*.2;
     ctx.globalAlpha=k*.62;ctx.save();ctx.translate(fx,fy);ctx.rotate(q.a);ctx.drawImage(fb,0,-.7,2.8,1.4);ctx.restore();   // the cone, shining a long way through the haze
