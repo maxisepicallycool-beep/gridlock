@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.13.0 — Roundabout tool and Straight road tool
+- Roundabout (key 8): click a junction and it turns into a one-way ring round the old crossing. It costs 8 one-way road pieces, the crossing roads come up and their pieces come back, and cars on them finish their trip first. The preview shows the ring and what comes up, or why it can't be built there
+- Straight road (key Q): click where a road starts and where it ends (or drag it out) and the road is laid between them in one go, diagonal first and then straight. The preview shows the cost and warns about new junctions, tight angles onto an existing road, and ends that touch nothing. Esc or right-click cancels
+- Both go in the dock after the pieces (not in the tutorial) and can be undone in one step
+
 ## 1.12.0 — Seasons and weather
 - Four seasons for the map, in Settings under Display: Spring (fresh green, blossom trees), Summer (rich greens, bright water), Autumn (orange and gold, falling leaves) and Winter (snow-covered ground, icy water, snowy trees), next to the Halloween look that was already there. Auto goes through the four seasons, six weeks each, as the game runs. Houses, colours and everything else keep their look; the No Halloween theme switch still turns the spooky houses and colours off (and makes the Halloween season look like summer)
 - Weather, for effect only, also in Settings: Auto (follows the season: rain and blossom in spring, the odd summer storm with lightning, leaves and fog in autumn, snow in winter, and green rain in the Halloween look), Off, or pick Rain, Storm, Snow, Leaves or Fog yourself, with a Weather strength slider. It comes and goes in spells, and it follows the Visual effects switch

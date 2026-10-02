@@ -322,7 +322,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.12.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.13.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -432,10 +432,10 @@ const Settings={v:Object.assign({},SET_DEF),
 Settings.load();
 /* ---------- key bindings ---------- */
 const KEYDEF={panL:['arrowleft','a'],panR:['arrowright','d'],panU:['arrowup','w'],panD:['arrowdown','s'],zoomIn:['+','='],zoomOut:['-','_'],fit:['0'],
-  t1:['1'],t2:['2'],t3:['3'],t4:['4'],t5:['5'],t6:['6'],t7:['7'],t8:['8'],erase:['9','e','x'],undo:['z'],pause:[' '],layers:['l'],horns:['m']};
+  t1:['1'],t2:['2'],t3:['3'],t4:['4'],t5:['5'],t6:['6'],t7:['7'],ring:['8'],line:['q'],erase:['9','e','x'],undo:['z'],pause:[' '],layers:['l'],horns:['m']};
 const KEYACT=[['panL','Pan left'],['panR','Pan right'],['panU','Pan up'],['panD','Pan down'],['zoomIn','Zoom in'],['zoomOut','Zoom out'],['fit','Fit the map'],
   ...PIECES.map((p,i)=>['t'+(i+1),'Piece '+(i+1)]),
-  ['erase','Erase tool'],['undo','Undo'],['pause','Pause the game'],['layers','Cycle layers'],['horns','Mute all sound']];
+  ['ring','Roundabout tool'],['line','Straight road tool'],['erase','Erase tool'],['undo','Undo'],['pause','Pause the game'],['layers','Cycle layers'],['horns','Mute all sound']];
 let KEYMAP={};
 function keyOverrides(){try{return JSON.parse(Settings.v.keys||'{}')||{};}catch(e){return {};}}
 function keysOf(a){const ov=keyOverrides();return ov[a]||KEYDEF[a]||[];}
@@ -568,6 +568,8 @@ const IC={
   erase:`<circle cx="24" cy="24" r="17" fill="#f6dcdc" stroke="#d9534f" stroke-width="3"/><path d="M17 17l14 14M31 17L17 31" stroke="#d9534f" stroke-width="3.6" stroke-linecap="round"/>`,
   undo:`<circle cx="24" cy="24" r="17" fill="#e4ebf5" stroke="#5b7aa6" stroke-width="3"/><path d="M17 22h11a6 6 0 010 12h-5" stroke="#5b7aa6" stroke-width="3.4" fill="none" stroke-linecap="round"/><path d="M21 16l-5 6 5 6" stroke="#5b7aa6" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
 };
+IC.ring=`<circle cx="24" cy="24" r="13" fill="none" stroke="#4d535f" stroke-width="9"/><circle cx="24" cy="24" r="13" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="1.8" stroke-dasharray="4 4"/><path d="M20 7.5l6 4-6 4" stroke="#ffd23a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="24" r="5" fill="#8fbf6a"/>`;
+IC.line=`<g transform="rotate(-28 24 24)"><rect x="3" y="20.5" width="42" height="7" rx="3.5" fill="#4d535f"/><path d="M7 24h34" stroke="#fff" stroke-opacity=".8" stroke-width="1.8" stroke-dasharray="4 3"/></g><circle cx="9" cy="34" r="4.5" fill="#3cc48b" stroke="#fff" stroke-width="1.6"/><circle cx="39" cy="14" r="4.5" fill="#e5484d" stroke="#fff" stroke-width="1.6"/>`;
 IC.coord=`<rect x="17" y="3" width="14" height="33" rx="5" fill="#1b1f2a"/><circle cx="24" cy="11" r="4.3" fill="#ef4444"/><circle cx="24" cy="20" r="4.3" fill="#fbbf24"/><circle cx="24" cy="29" r="4.3" fill="#34d399"/><rect x="22.5" y="36" width="3" height="9" fill="#555b68"/><rect x="15" y="44" width="18" height="3" rx="1.5" fill="#555b68"/>`;
 const icon=(k,s)=>`<svg viewBox="0 0 48 48"${s?` style="width:${s}px;height:${s}px"`:''}>${IC[k==='stop'&&D&&D.coord?'coord':k]}</svg>`;
 const pieceLabel=p=>p.k==='stop'&&D.coord?'Traffic coordinator':p.label;
@@ -1916,6 +1918,7 @@ function placeEdge(p,ai,d){
 }
 function undoRec(r){
   if(r.sign){if(r.old!==undefined){setSign(r.ai,r.s,r.old);inv.stop+=headsOf(r.neu)-headsOf(r.old);}else{setSign(r.ai,r.s,r.was);inv.stop+=r.was?-1:1;}if(inv.stop<0)inv.stop=0;}
+  else if(r.unerase){setEdge(r.layer,r.ai,r.d,r.old.k,r.old.ow);inv[r.spend]=Math.max(0,inv[r.spend]-1);}
   else{
     if(r.old)setEdge(r.layer,r.ai,r.d,r.old.k,r.old.ow);else setEdge(r.layer,r.ai,r.d,-1,0);
     inv[r.key]++;if(r.refund)inv[r.refund]=Math.max(0,inv[r.refund]-1);
@@ -2499,6 +2502,7 @@ cv.addEventListener('pointerdown',e=>{
   if(locEdgeHits.length){const r=cv.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;const h=locEdgeHits.find(q=>Math.hypot(q.x-px,q.y-py)<20);if(h&&blds.includes(h.b)){focusOn(h.b);return;}}   // an edge arrow: jump to that buildingtry{cv.setPointerCapture(e.pointerId);}catch(_){}
   const [fx,fy]=worldPos(e),x=Math.floor(fx),y=Math.floor(fy);if(!inB(x,y))return;
   if(isSb()&&tool.startsWith('sb:')&&e.button===0){sbPaint=true;sbAct(fx,fy,true);return;}
+  if(e.button===2&&lineA!==null){lineA=null;lineDrag=false;return;}
   if(layerMode==='routes'&&e.button===0&&tool!=='erase'&&!(isSb()&&tool.startsWith('sb:'))){probeAt(fx,fy);return;}   // in the Routes view a click inspects a road instead of building
   if(e.button===2&&!Settings.v.rightErase)return;
   if(e.button===2||tool==='erase'){erasing=true;eraseAtPointer(fx,fy);return;}
@@ -2507,6 +2511,8 @@ cv.addEventListener('pointerdown',e=>{
   if(c.bld){if(c.bld.dest&&D.id!=='sandbox')toast('Destinations can\u2019t be rotated');else if(c.bld.dept)toast('Fire stations face the road they were built on');else{if(c.bld.dest)for(const q of cars)if(!q.dead&&q.lotB===c.bld)killCar(q,'rot');rotateBld(c.bld,e.shiftKey?-1:1);}return;}
   if(tool==='stop'){placeStop(ci,fx,fy,e.shiftKey);return;}
   if(tool==='fire'){placeDept(fx,fy);return;}
+  if(tool==='ring'){buildRoundabout(ci);return;}
+  if(tool==='line'){if(lineA===null){lineA=ci;lineDrag=true;}else{lineCommit(lineA,ci);lineA=null;}return;}
   if(PK[tool])startStroke(ci);
 });
 cv.addEventListener('pointermove',e=>{
@@ -2518,7 +2524,9 @@ cv.addEventListener('pointermove',e=>{
   if(sbPaint&&tool.startsWith('sb:')){sbAct(fx,fy,false);return;}
   if(stroke)advance(fx,fy);
 });
-addEventListener('pointerup',()=>{erasing=false;if(sbPaint){sbPaint=false;sbFinish();}finishStroke();});
+addEventListener('pointerup',()=>{erasing=false;if(sbPaint){sbPaint=false;sbFinish();}finishStroke();
+  if(lineA!==null&&lineDrag){lineDrag=false;const hc=hover?cellIdx(hover[0],hover[1]):-1;if(hc>=0&&hc!==lineA){lineCommit(lineA,hc);lineA=null;}}else lineDrag=false;   // dragging out a straight road works too
+});
 cv.addEventListener('pointerleave',()=>{hover=null;hoverF=null;});
 addEventListener('keydown',e=>{
   const typing=e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA');
@@ -2527,7 +2535,7 @@ addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(mode==='menu'){if(MS.screen!=='main')act('back');return;}
     if(S.modal==='pause'){if(MS.screen==='pause')closePause();else act('back');return;}
-    if(!S.modal){if(stroke){const st=stroke;stroke=null;for(let i=st.steps.length-1;i>=0;i--)if(st.steps[i])undoRec(st.steps[i]);erasing=false;}else openPause();}
+    if(!S.modal){if(lineA!==null){lineA=null;lineDrag=false;}else if(stroke){const st=stroke;stroke=null;for(let i=st.steps.length-1;i>=0;i--)if(st.steps[i])undoRec(st.steps[i]);erasing=false;}else openPause();}
     return;
   }
   if(mode==='menu')return;
@@ -2547,6 +2555,8 @@ addEventListener('keydown',e=>{
     case 'zoomOut':setZoom(zoomZ/1.25,cw/2,ch/2);break;
     case 'fit':fitView();break;
     case 'erase':selectTool('erase');break;
+    case 'ring':if(D.id!=='tutorial')selectTool('ring');break;
+    case 'line':if(D.id!=='tutorial')selectTool('line');break;
     case 'undo':undoLast();break;
     case 'horns':Snd.init();Settings.set('mute',!Settings.v.mute);break;
     case 'layers':{const vis=LAYERS.filter(l=>l[0]!=='rating'||D.rate),i=vis.findIndex(l=>l[0]===layerMode);setLayer(vis[(i+1)%vis.length][0]);break;}
@@ -2586,7 +2596,7 @@ function buildDock(){
   const d=document.getElementById('dock');
   const btn=(k,label,i,cnt)=>`<button class="tool${tool===k?' sel':''}" data-k="${k}">
     <span class="k">${i}</span>${cnt?`<span class="n" data-n="${k}">0</span>`:''}${icon(k)}<span class="lb">${label}</span></button>`;
-  d.innerHTML=PIECES.map((p,i)=>btn(p.k,pieceLabel(p),i+1,true)).join('')+`<div class="sep"></div>`+btn('erase','Erase',9,false)+btn('undo','Undo',"Z",false);
+  d.innerHTML=PIECES.map((p,i)=>btn(p.k,pieceLabel(p),i+1,true)).join('')+(D.id==='tutorial'?'':`<div class="sep"></div>`+btn('ring','Roundabout',8,false)+btn('line','Straight road','Q',false))+`<div class="sep"></div>`+btn('erase','Erase',9,false)+btn('undo','Undo',"Z",false);
   d.querySelectorAll('.tool').forEach(b=>b.onclick=()=>{b.dataset.k==='undo'?undoLast():selectTool(b.dataset.k);});
   refreshDock();buildCoordBar();
 }
@@ -2599,7 +2609,7 @@ function refreshDock(){
 }
 function selectTool(k){
   if(k==='stop'&&tool==='stop'&&D.coord&&mode==='play'){const i=COORD.findIndex(t=>t[0]===coordType);coordType=COORD[(i+1)%COORD.length][0];}   // pressing the key again cycles through the coordinator types
-  tool=k;if(tool!=='stop')closeTlEditor();refreshDock();buildSbBar();buildCoordBar();
+  tool=k;lineA=null;lineDrag=false;if(tool!=='stop')closeTlEditor();refreshDock();buildSbBar();buildCoordBar();
 }
 let hudCache={};
 function hud(force){
@@ -3224,6 +3234,116 @@ function drawCar(c,q){
   ctx.drawImage(sprite('c'+c.color,.6,.36,300,()=>paintCar(p)),-.3,-.18,.6,.36);
   ctx.restore();
 }
+/* ---------- the roundabout tool and the straight road tool ---------- */
+const RING8=[[0,-1],[-1,-1],[-1,0],[-1,1],[0,1],[1,1],[1,0],[1,-1]];   // round a junction, anticlockwise on the map
+function roundaboutPlan(ci){
+  const c=cells[ci];
+  if(!c||!c.e||c.water||c.bld)return {ok:false,why:'Click a junction (3 or more roads meeting)'};
+  let arms=0;for(let d=0;d<8;d++){const e=c.e[d];if(!e)continue;if(e.k!==0||e.ow!==0||e.ghost)return {ok:false,why:'Only plain two-way roads can become a roundabout'};arms++;}
+  if(arms<3)return {ok:false,why:'Click a junction (3 or more roads meeting)'};
+  const x=ci%W,y=(ci/W)|0;if(x<RX0+1||x>=RX1-1||y<RY0+1||y>=RY1-1)return {ok:false,why:'Too close to the edge of the map'};
+  for(const b of blds.concat(depts))if(b.port===ci)return {ok:false,why:'A driveway ends here: a roundabout would cut it off'};
+  const nodes=RING8.map(([dx,dy])=>cellIdx(x+dx,y+dy));
+  for(const n of nodes){if(cells[n].bld)return {ok:false,why:'A building is in the way'};if(cells[n].water)return {ok:false,why:'Water is in the way'};}
+  const edges=[];
+  for(let k=0;k<8;k++){const a=nodes[k],q=RING8[k],b=RING8[(k+1)%8],d=DTAB[(b[1]-q[1]+1)*3+(b[0]-q[0])+1];if(getEdge(a,d,'g'))return {ok:false,why:'Roads already run round this junction'};edges.push({a,d});}
+  const spokes=[];for(let d=0;d<8;d++)if(c.e[d])spokes.push({a:ci,d});
+  return {ok:true,edges,spokes,nodes,arms};
+}
+function buildRoundabout(ci){
+  const pl=roundaboutPlan(ci);if(!pl.ok){toast(pl.why,true);return false;}
+  if(inv.road1<8){toast('A roundabout needs 8 one-way road pieces (you have '+inv.road1+')',true);return false;}
+  const recs=[];
+  for(const e of pl.edges){
+    const r=placeEdge(PK.road1,e.a,e.d);
+    if(r.res==='ok'&&r.rec)recs.push(r.rec);
+    else if(r.res!=='same'){for(let i=recs.length-1;i>=0;i--)undoRec(recs[i]);toast('That did not fit',true);return false;}
+  }
+  const c=cells[ci];
+  for(const sp of pl.spokes){   // the crossing roads come up (they fade out if cars are still on them)
+    const arr=arrOf(cells[sp.a],'g'),e=arr&&arr[sp.d];if(!e)continue;
+    if(edgeInUse('g',sp.a,sp.d)){const bi=nbIdx(sp.a,sp.d),B=arrOf(cells[bi],'g')[opp(sp.d)];e.ghost=true;e.refunded=true;if(B){B.ghost=true;B.refunded=true;}inv.road++;}
+    else{recs.push({unerase:true,layer:'g',ai:sp.a,d:sp.d,old:{k:e.k,ow:e.ow},spend:'road'});removeEdge('g',sp.a,sp.d,e);}
+  }
+  if(c.sg){for(let sd=0;sd<8;sd++)inv.stop+=headsOf(c.sg[sd]);c.sg=null;c.tl=null;GC.dirty=true;}
+  rebuild();refreshDock();if(recs.length){undoStack.push(recs);if(undoStack.length>40)undoStack.shift();}
+  toast('Roundabout built',true);return true;
+}
+let lineA=null,lineDrag=false;
+function linePlan(a,b){
+  const bx=b%W,by=(b/W)|0;let x=a%W,y=(a/W)|0;
+  const res={ok:true,why:'',edges:[],fresh:0,warn:[]};
+  if(a===b){res.ok=false;res.why='Pick a different spot for the other end';return res;}
+  while(x!==bx||y!==by){
+    const sx=Math.sign(bx-x),sy=Math.sign(by-y),d=DTAB[(sy+1)*3+sx+1],nx=x+sx,ny=y+sy;
+    if(!inB(nx,ny)){res.ok=false;res.why='That runs off the map';break;}
+    const u=cellIdx(x,y),v=cellIdx(nx,ny);
+    if(cells[u].bld||cells[v].bld){res.ok=false;res.why='A building is in the way';break;}
+    if(cells[u].water||cells[v].water){res.ok=false;res.why='Water is in the way: use a bridge';break;}
+    if(d&1){const P=cellIdx(x+DIR[d][0],y),dd=DTAB[(DIR[d][1]+1)*3+(-DIR[d][0]+1)];if(getEdge(P,dd,'g')){res.ok=false;res.why='A diagonal here would cross another diagonal road';break;}}
+    const ex=getEdge(u,d,'g');
+    if(ex&&(ex.k!==0||ex.ow!==0||ex.ghost)){res.ok=false;res.why='A one-way road or a fading road is in the way';break;}
+    res.edges.push({a:u,d,fresh:!ex});if(!ex)res.fresh++;
+    x=nx;y=ny;
+  }
+  if(res.ok){
+    if(res.fresh===0){res.ok=false;res.why='A road already runs all the way';return res;}
+    if(res.fresh>inv.road){res.ok=false;res.why='Not enough roads: it needs '+res.fresh+', you have '+inv.road;}
+    const ports=new Set();for(const o of blds.concat(depts))if(o.port>=0)ports.add(o.port);
+    const touches=ci=>(cells[ci].e&&signSides(cells[ci]).length>0)||ports.has(ci);
+    if(!touches(a)&&!touches(b))res.warn.push('Neither end touches a road or a driveway yet');
+    // junctions this makes
+    const add=new Map();for(const e of res.edges){if(!e.fresh)continue;const bi=nbIdx(e.a,e.d);add.set(e.a,(add.get(e.a)||0)+1);add.set(bi,(add.get(bi)||0)+1);}
+    let nj=0;for(const [ci,n] of add){const had=cells[ci].e?signSides(cells[ci]).length:0;if(had>0&&had+n>=3&&had<3)nj++;}
+    if(nj)res.warn.push('Makes '+nj+' new junction'+(nj>1?'s':''));
+    // arriving at a tight angle onto a road that is already there
+    const last=res.edges[res.edges.length-1],first=res.edges[0];
+    const sharp=(ci,fromSide)=>{const c=cells[ci];if(!c.e)return false;for(let e=0;e<8;e++)if(c.e[e]&&e!==fromSide){const k=(e-fromSide)&7;if(k===1||k===7)return true;}return false;};
+    if(sharp(nbIdx(last.a,last.d),opp(last.d))||sharp(first.a,first.d))res.warn.push('Joins an existing road at a tight angle');
+  }
+  return res;
+}
+function lineCommit(a,b){
+  const pl=linePlan(a,b);if(!pl.ok){toast(pl.why,true);return false;}
+  const recs=[];
+  for(const e of pl.edges){
+    if(!e.fresh)continue;
+    const r=placeEdge(PK.road,e.a,e.d);
+    if(r.res==='ok'&&r.rec)recs.push(r.rec);
+    else if(r.res==='empty'){toast('Out of roads',true);break;}
+    else if(r.res==='blocked'){toast('Something got in the way',true);break;}
+  }
+  rebuild();refreshDock();
+  if(recs.length){undoStack.push(recs);if(undoStack.length>40)undoStack.shift();}
+  if(pl.warn.length)toast(pl.warn[0],true);
+  return true;
+}
+function drawToolGhost(){   // the previews for the roundabout and straight road tools
+  const t=(txt,x,y,col)=>{ctx.save();ctx.font='800 .26px -apple-system,Helvetica,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=.07;ctx.strokeStyle='rgba(20,24,34,.85)';ctx.strokeText(txt,x,y);ctx.fillStyle=col||'#fff';ctx.fillText(txt,x,y);ctx.restore();};
+  if(tool==='ring'&&hover){
+    const ci=cellIdx(hover[0],hover[1]),pl=roundaboutPlan(ci);
+    if(!pl.ok){if(cells[ci].e&&cells[ci].e.some(Boolean))t(pl.why,hover[0]+.5,hover[1]-.6,'#ff9a9a');return;}
+    const ok=inv.road1>=8,col=ok?'#3ddc97':'#ff6b6b',C=ctr(ci);
+    ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.strokeStyle=col;ctx.globalAlpha=.55;ctx.lineWidth=.5;ctx.beginPath();pl.nodes.forEach((n,i)=>{const q=ctr(n);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.closePath();ctx.stroke();
+    ctx.globalAlpha=1;ctx.strokeStyle='#fff';ctx.lineWidth=.06;ctx.setLineDash([.14,.1]);ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle='rgba(255,90,90,.9)';ctx.lineWidth=.12;for(const sp of pl.spokes){const a=ctr(sp.a),b=ctr(nbIdx(sp.a,sp.d));ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}   // these come up
+    ctx.restore();
+    t(ok?'Roundabout: 8 one-way pieces, '+pl.spokes.length+' roads come up':'Needs 8 one-way road pieces (you have '+inv.road1+')',C[0],C[1]-1.7,ok?'#c8ffe6':'#ffb3b3');
+  } else if(tool==='line'){
+    const hc=hover?cellIdx(hover[0],hover[1]):-1;
+    if(lineA===null){if(hc>=0){const C=ctr(hc);ctx.save();ctx.strokeStyle='rgba(76,155,232,.9)';ctx.lineWidth=.07;ctx.beginPath();ctx.arc(C[0],C[1],.32,0,7);ctx.stroke();ctx.restore();t('Click where the road starts',C[0],C[1]-.7,'#cfe6ff');}return;}
+    const A=ctr(lineA);
+    ctx.save();ctx.fillStyle='#3cc48b';ctx.strokeStyle='#fff';ctx.lineWidth=.05;ctx.beginPath();ctx.arc(A[0],A[1],.2,0,7);ctx.fill();ctx.stroke();ctx.restore();
+    if(hc<0||hc===lineA){t('Click where it ends (Esc cancels)',A[0],A[1]-.7,'#cfe6ff');return;}
+    const pl=linePlan(lineA,hc),col=pl.ok?'#3ddc97':'#ff6b6b',B=ctr(hc);
+    ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+    if(pl.edges.length){ctx.strokeStyle=col;ctx.globalAlpha=.55;ctx.lineWidth=.5;ctx.beginPath();pl.edges.forEach((e,i)=>{const a=ctr(e.a),b=ctr(nbIdx(e.a,e.d));if(!i)ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);});ctx.stroke();ctx.globalAlpha=1;ctx.strokeStyle='#fff';ctx.lineWidth=.05;ctx.setLineDash([.14,.1]);ctx.stroke();ctx.setLineDash([]);}
+    ctx.fillStyle='#e5484d';ctx.strokeStyle='#fff';ctx.lineWidth=.05;ctx.beginPath();ctx.arc(B[0],B[1],.2,0,7);ctx.fill();ctx.stroke();ctx.restore();
+    const lines=[pl.ok?pl.fresh+' piece'+(pl.fresh>1?'s':'')+' of road':pl.why].concat(pl.warn.slice(0,2));
+    lines.forEach((l,i)=>t(l,B[0],B[1]-.75-i*.34,i===0?(pl.ok?'#c8ffe6':'#ffb3b3'):'#ffe08a'));
+  }
+}
 function drawGhost(){
   if(S.modal)return;
   if(tool==='erase'){
@@ -3233,6 +3353,7 @@ function drawGhost(){
     else{const a=ctr(t.ci),b=ctr(t.bi);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();}
     ctx.restore();return;
   }
+  if(tool==='ring'||tool==='line'){drawToolGhost();return;}
   if(tool.startsWith('sb:')&&hoverF&&isSb()){drawSbHover();return;}
   if(tool==='stop'){
     if(hover&&hoverF){const ci=cellIdx(hover[0],hover[1]),sides=signSides(cells[ci]);
@@ -3886,6 +4007,7 @@ const SCREENS={
       [bldSvg(1),'Link the colours','Every building has a driveway. <b>Click a house to rotate it</b>, then join it to a road. Houses go to the destination of their own colour.'],
       [icon('stop',40),'Junctions','Cars drive on the right and wait for a clear junction. <b>Stop signs</b> go on one approach (<b>Shift-click</b> for all-way): those cars stop and yield.'],
       [icon('hwy',40),'Highways & bridges','Bridges cross water. <b>Highways</b> are elevated and twice as fast: they fly over roads but must <b>start and end on the side of a road</b>, on a <b>loose road end</b>, or on <b>another highway</b>.'],
+      [icon('ring',40),'Roundabout and straight road tools','The <b>Roundabout</b> tool (key 8): click a junction and it becomes a one-way ring (8 one-way pieces; the crossing roads come up and you get them back). The <b>Straight road</b> tool (key Q): click where a road starts and where it ends, or drag it out, and it lays the road between them, showing the cost and warning you about new junctions, tight angles and loose ends first. Both can be undone.'],
       [icon('coord',40),'Traffic coordinators (Gridlock and Realism)','On Gridlock and the Realism difficulties the stop sign piece becomes a <b>traffic coordinator</b> (key '+kn('stop')+'): click a junction to place a <b>yield sign</b>, a <b>stop sign</b>, or a <b>straight</b>, <b>left-turn</b> or <b>right-turn light</b> on the road you click next to (press the key again to cycle). Lights run on a signal plan per intersection: pick <b>Signal timing</b> and click the junction to set each phase, its green time, the all-red gap and the start delay, and to read its level of service. <b>Realism</b> also has a 24-hour clock with morning and evening rush hours.'],
       [icon('fire',40),'Fires','Houses can catch fire. Place a <b>fire station</b> (key '+kn('fire')+'), link its driveway to a road, and a truck races out with sirens: cars pull over, and it puts the fire out.'],
       [icon('bridge',40),'Weekly cards','Every week ends with <b>3 cards</b> of random pieces. Pick one. One-way roads follow your drag direction.'],
