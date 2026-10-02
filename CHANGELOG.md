@@ -1,5 +1,11 @@
 # Gridlock changelog
 
+## 1.18.0 — Weather that belongs to the map
+- Rain, ripples, snow, falling leaves and fog now live on the map: they pan and zoom with the land instead of sitting on the screen
+- Snow and leaves land and stay: flakes and leaves fall to the ground and settle, and the ground slowly turns white or fills with leaves. Rain leaves the ground wet and dark. Everything on the ground fades away some time after the weather changes
+- Car tyres wipe the snow, leaves and wet away, so every car leaves two tracks behind it (they slowly fill in again while it keeps falling)
+- Fog lights: in fog (the Halloween look, or foggy weather) headlights throw long soft cones through the haze and bloom, tail lights glow red, and street lamps, windows, destinations and fire stations get halos
+
 ## 1.17.3 — Rain that lands
 - Rain is no longer just lines sliding across the screen. Drops now fall onto the ground and splash: a flat ripple spreads out where each one lands and a few droplets spray up and fall back, with a few faint long streaks in front. Storms are heavier and faster. It is green in the Halloween look
 

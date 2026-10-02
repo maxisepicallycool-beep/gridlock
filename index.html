@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.17.3';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.18.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -3904,48 +3904,138 @@ function wxNow(){   // what is falling right now, and how strongly (null for cle
   const kind=pool[Math.floor(hash1(seg,7)*pool.length)];if(kind==='clear')return null;
   return {kind,amt:amt*Math.max(0,Math.min(1,ph/.12,(1-ph)/.12))};
 }
-function drawWeather(){
-  if(wxOff)return;const w=wxNow();if(!w||w.amt<=.01||mode==='tut')return;
-  const c2=mainCtx,T=performance.now()/1000,W2=cw,H2=ch,green=hwLook()&&w.kind!=='fog'&&w.kind!=='snow';
-  c2.save();c2.setTransform(dpr,0,0,dpr,0,0);
-  if(w.kind==='rain'||w.kind==='storm'){
-    const storm=w.kind==='storm',n=Math.round((storm?420:260)*w.amt),sp=storm?1100:760,wind=storm?-.34:-.16;
-    c2.fillStyle=green?'rgba(20,50,25,'+(.1*w.amt)+')':'rgba(15,25,50,'+((storm?.2:.1)*w.amt)+')';c2.fillRect(0,0,W2,H2);   // the light dims
-    const col=green?'130,255,100':'190,210,240';
-    c2.strokeStyle='rgba('+col+',.3)';c2.lineWidth=1;c2.beginPath();   // a few long, faint streaks far in front
-    for(let i=0;i<Math.round(n*.35);i++){const x=((hash1(i,1)*(W2+300)+T*sp*-wind)%(W2+300))-150,y=((hash1(i,2)*(H2+80)+T*sp*(.8+hash1(i,3)*.5))%(H2+80))-40,l=18+hash1(i,4)*16;c2.moveTo(x,y);c2.lineTo(x+l*wind*-1,y+l);}
-    c2.stroke();
-    // drops that land: each falls onto a spot of ground, then splashes: a flat ripple spreads and a few droplets spray up and fall back
-    const drops=Math.round(n*.55),fall=storm?170:130;
-    c2.lineCap='round';
-    for(let i=0;i<drops;i++){
-      const P=(storm?.55:.8)+hash1(i,21)*.5,q=T/P+hash1(i,22),k=Math.floor(q),u=q-k,sx=hash1(i*131+k,11)*(W2+120)-60,gy=hash1(i*131+k,12)*H2;
-      if(u<.5){   // in the air
-        const f=u/.5,y=gy-fall*(1-f),x=sx-wind*-fall*(1-f)*-.6,l=11+hash1(i,23)*8;
-        c2.strokeStyle='rgba('+col+','+(.35+.4*f)+')';c2.lineWidth=1.4;c2.beginPath();c2.moveTo(x,y);c2.lineTo(x+l*wind*-1,y+l);c2.stroke();
-      } else {
-        const t=(u-.5)/.5,fade=1-t;
-        c2.strokeStyle='rgba('+col+','+(.55*fade)+')';c2.lineWidth=1.3;c2.beginPath();c2.ellipse(sx,gy,2+t*(storm?11:9),(2+t*(storm?11:9))*.42,0,0,7);c2.stroke();
-        if(t<.7){c2.fillStyle='rgba('+col+','+(.8*(1-t/.7))+')';
-          for(let j=0;j<4;j++){const ang=(hash1(i*131+k,30+j)-.5)*2.4,v=14+hash1(i*131+k,40+j)*14,tt=t*.5;c2.beginPath();c2.arc(sx+Math.sin(ang)*v*tt*2.2,gy-(v*3.2*tt-40*tt*tt*1.6)*1,1.1,0,7);c2.fill();}}
-      }
+/* the weather lives on the map: drops, flakes, leaves and fog are in world space (they pan and zoom with the land), snow, leaves and
+   rain collect on the ground in layers that fade when the weather ends, and cars wipe them away along their tyres */
+const WXPX=10,WXL={},WX={S:null,p:[],rip:[],sp:[],last:0,acc:0};
+const WXFADE={wet:14,snow:28,leaves:22},WXLEAF=['#e0752c','#c4452b','#e3b030','#a8561f'];
+function wxLayer(k){let L=WXL[k];if(!L){const cv=document.createElement('canvas');cv.width=W*WXPX;cv.height=H*WXPX;L=WXL[k]={cv,g:cv.getContext('2d'),m:0,n:0};}return L;}
+function wxDeposit(k,x,y){   // one more bit of snow, leaf or wetness lands on the ground
+  const L=wxLayer(k),g=L.g;
+  if(k==='snow'){if(L.n>70000)return;g.fillStyle='rgba(248,250,255,.16)';g.beginPath();g.arc(x*WXPX,y*WXPX,(.22+Math.random()*.2)*WXPX,0,7);g.fill();}
+  else if(k==='wet'){if(L.n>60000)return;g.fillStyle='rgba(12,22,50,.04)';g.beginPath();g.arc(x*WXPX,y*WXPX,(.15+Math.random()*.15)*WXPX,0,7);g.fill();}
+  else{if(L.n>9000)return;g.fillStyle=WXLEAF[(Math.random()*4)|0];g.beginPath();g.ellipse(x*WXPX,y*WXPX,.1*WXPX,.05*WXPX,Math.random()*3.14,0,7);g.fill();}
+  L.n++;
+}
+const wxLand=(x,y)=>{const cx=Math.floor(x),cy=Math.floor(y);return inB(cx,cy)&&!cells[cellIdx(cx,cy)].water;};
+function wxStep(dt,w,poses){
+  const T=performance.now()/1000;
+  if(WX.S!==S){WX.S=S;WX.p.length=WX.rip.length=WX.sp.length=0;for(const k in WXL){const L=WXL[k];L.g.clearRect(0,0,L.cv.width,L.cv.height);L.m=0;L.n=0;}}
+  const kind=w&&w.amt>.03?(w.kind==='storm'?'rain':w.kind):null,amt=kind?w.amt:0,lk=kind==='rain'?'wet':kind==='snow'?'snow':kind==='leaves'?'leaves':null;
+  for(const k in WXL){const L=WXL[k];
+    if(k===lk)L.m=Math.min(1,L.m+dt*.8);else L.m=Math.max(0,L.m-dt/WXFADE[k]);
+    if(L.m<=0&&L.n>0){L.g.clearRect(0,0,L.cv.width,L.cv.height);L.n=0;}}
+  if(lk){   // it settles everywhere, seen or not
+    wxLayer(lk);const per={wet:1500,snow:1100,leaves:600}[lk]*amt;WX.acc+=per*dt;const n=Math.min(400,WX.acc|0);WX.acc-=n;
+    for(let i=0;i<n;i++){const x=RX0+Math.random()*(RX1-RX0),y=RY0+Math.random()*(RY1-RY0);if(wxLand(x,y))wxDeposit(lk,x,y);}
+  }
+  // what is in the air
+  const pr=WX.p,storm=w&&w.kind==='storm',area=(vx1-vx0)*(vy1-vy0);
+  let cnt=0;for(const p of pr)if(p.k===kind)cnt++;
+  if(kind){
+    const dens=kind==='rain'?(storm?.09:.055):kind==='snow'?.07:.014,want=Math.min(1500,Math.round(dens*area*amt)),add=Math.min(want-cnt,cnt?90:want);
+    for(let i=0;i<add;i++){
+      const p={k:kind,x:vx0+Math.random()*(vx1-vx0),y:vy0+Math.random()*(vy1-vy0+5),s:Math.random()*6.28,r:Math.random()};
+      if(kind==='rain'){p.z=Math.random()*6;p.vz=-(storm?13:10)-p.r*3;p.vx=storm?-3.6:-1.6;p.vy=0;}
+      else if(kind==='snow'){p.z=Math.random()*4.5;p.vz=-(.8+p.r*.5);p.vx=-.25;p.vy=0;}
+      else{p.z=Math.random()*3.5;p.vz=-(.5+p.r*.5);p.vx=.6+p.r*.6;p.vy=0;p.rot=Math.random()*6;p.vr=1+p.r*2;p.c=WXLEAF[(Math.random()*4)|0];}
+      pr.push(p);
     }
-    c2.lineCap='butt';
-    if(storm){const f=(T*.45)%1,k=Math.floor(T*.45);if(hash1(k,9)>.7&&f<.14)wxFlash=Math.max(wxFlash,.35*(1-f/.14));}
-  } else if(w.kind==='snow'){
-    const n=Math.round(220*w.amt);c2.fillStyle='rgba(255,255,255,.85)';
-    for(let i=0;i<n;i++){const r=1+hash1(i,5)*2.2,x=((hash1(i,1)*W2+Math.sin(T*.8+i)*22+T*14*(hash1(i,6)-.3))%W2+W2)%W2,y=(hash1(i,2)*H2+T*(40+hash1(i,3)*50))%H2;c2.beginPath();c2.arc(x,y,r,0,7);c2.fill();}
-    c2.fillStyle='rgba(235,245,255,'+(.07*w.amt)+')';c2.fillRect(0,0,W2,H2);
-  } else if(w.kind==='leaves'){
-    const n=Math.round(90*w.amt),cols=['#e0752c','#c4452b','#e3b030','#a8561f'];
-    for(let i=0;i<n;i++){const x=((hash1(i,1)*W2+Math.sin(T*.9+i*1.7)*60+T*28)%W2+W2)%W2,y=(hash1(i,2)*H2+T*(34+hash1(i,3)*30))%H2;c2.save();c2.translate(x,y);c2.rotate(T*(1+hash1(i,4))+i);c2.fillStyle=cols[i%4];c2.beginPath();c2.ellipse(0,0,6,3,0,0,7);c2.fill();c2.restore();}
-  } else if(w.kind==='fog'){
-    const g=glowImg('rgba(225,230,240,');c2.globalAlpha=.34*w.amt;
-    for(let i=0;i<14;i++){const r=220+hash1(i,3)*260,x=((hash1(i,1)*(W2+600)+T*(8+hash1(i,4)*14))%(W2+600))-300,y=hash1(i,2)*H2;c2.drawImage(g,x-r,y-r*.55,r*2,r*1.1);}
-    c2.globalAlpha=1;
+  }
+  for(let i=pr.length-1;i>=0;i--){
+    const p=pr[i];p.z+=p.vz*dt;p.x+=p.vx*dt;
+    if(p.k!=='rain')p.x+=Math.sin(T*2+p.s)*dt*(p.k==='leaves'?.8:.35);
+    if(p.rot!==undefined)p.rot+=p.vr*dt;
+    let dead=false;
+    if(p.z<=0){dead=true;
+      if(wxLand(p.x,p.y)||p.k==='rain'){
+        if(p.k==='rain'){
+          if(!(inB(Math.floor(p.x),Math.floor(p.y))&&cells[cellIdx(Math.floor(p.x),Math.floor(p.y))].bld)){
+            if(WX.rip.length<420)WX.rip.push({x:p.x,y:p.y,t:0});
+            if(WX.sp.length<900)for(let j=0;j<3;j++)WX.sp.push({x:p.x,y:p.y,z:.02,vx:(Math.random()-.5)*1.2,vy:(Math.random()-.5)*.5,vz:1.6+Math.random()*1.6});
+            if(wxLand(p.x,p.y))wxDeposit('wet',p.x,p.y);}
+        } else wxDeposit(p.k,p.x,p.y);
+      }
+    } else if(p.x<vx0-4||p.x>vx1+4||p.y<vy0-2||p.y>vy1+8)dead=true;
+    if(dead){pr[i]=pr[pr.length-1];pr.pop();}
+  }
+  for(let i=WX.rip.length-1;i>=0;i--){const r=WX.rip[i];r.t+=dt/.55;if(r.t>=1){WX.rip[i]=WX.rip[WX.rip.length-1];WX.rip.pop();}}
+  for(let i=WX.sp.length-1;i>=0;i--){const d=WX.sp[i];d.vz-=9*dt;d.z+=d.vz*dt;d.x+=d.vx*dt;d.y+=d.vy*dt;if(d.z<=0){WX.sp[i]=WX.sp[WX.sp.length-1];WX.sp.pop();}}
+  // tyres wipe the ground clean: two tracks behind every car on the road
+  const act=[];for(const k in WXL)if(WXL[k].m>.02)act.push(WXL[k]);
+  for(const [c,q] of poses){
+    if(q.br)continue;const pv=c._wq;c._wq=[q.x,q.y,q.a];
+    if(!act.length||!pv||Math.hypot(q.x-pv[0],q.y-pv[1])>1.2||(q.x===pv[0]&&q.y===pv[1]))continue;
+    for(const L of act){const g=L.g;g.save();g.globalCompositeOperation='destination-out';g.strokeStyle='#000';g.lineWidth=.06*WXPX;g.lineCap='round';g.beginPath();
+      for(const sd of [-1,1]){const o=.1*sd;g.moveTo((pv[0]-Math.sin(pv[2])*o)*WXPX,(pv[1]+Math.cos(pv[2])*o)*WXPX);g.lineTo((q.x-Math.sin(q.a)*o)*WXPX,(q.y+Math.cos(q.a)*o)*WXPX);}
+      g.stroke();g.restore();}
+  }
+}
+function drawWxGround(){   // the snow, leaves and wet that have gathered (under the cars, so the tracks show)
+  const base={wet:.55,snow:.93,leaves:1};
+  for(const k in WXL){const L=WXL[k];if(L.m<=.01)continue;
+    ctx.globalAlpha=L.m*base[k];ctx.drawImage(L.cv,vx0*WXPX,vy0*WXPX,(vx1-vx0)*WXPX,(vy1-vy0)*WXPX,vx0,vy0,vx1-vx0,vy1-vy0);}
+  ctx.globalAlpha=1;
+}
+function drawWxAir(w){   // falling rain, snow and leaves, ripples and splashes
+  const pr=WX.p;ctx.save();
+  if(WX.sp.length||WX.rip.length||pr.length){
+    const green=hwLook(),col=green?'130,255,100':'200,220,245';
+    // rain: slanted streaks
+    ctx.strokeStyle='rgba('+col+',.55)';ctx.lineWidth=Math.max(.03,1.1/cs);ctx.lineCap='round';ctx.beginPath();
+    for(const p of pr)if(p.k==='rain'){const sy=p.y-p.z,l=.5,ex=p.vx/-p.vz*l*.6;ctx.moveTo(p.x,sy);ctx.lineTo(p.x+ex,sy+l*.9);}
+    ctx.stroke();
+    // snow
+    ctx.fillStyle='rgba(255,255,255,.92)';ctx.beginPath();
+    for(const p of pr)if(p.k==='snow'){const r=Math.max(.03,.9/cs)*(.8+p.r*.9),sy=p.y-p.z;ctx.moveTo(p.x+r,sy);ctx.arc(p.x,sy,r,0,7);}
+    ctx.fill();
+    // leaves, one colour at a time
+    for(const c of WXLEAF){ctx.fillStyle=c;ctx.beginPath();for(const p of pr)if(p.k==='leaves'&&p.c===c){const sy=p.y-p.z,sq=.5+.5*Math.abs(Math.sin(p.rot*1.7));ctx.moveTo(p.x+.1,sy);ctx.ellipse(p.x,sy,.1,.05*sq+.01,p.rot,0,7);}ctx.fill();}
+    // ripples spreading where drops landed, and droplets thrown up
+    ctx.lineWidth=Math.max(.02,1/cs);
+    for(const r of WX.rip){const R=.06+r.t*.3;ctx.strokeStyle='rgba('+col+','+(.6*(1-r.t))+')';ctx.beginPath();ctx.ellipse(r.x,r.y,R,R*.45,0,0,7);ctx.stroke();}
+    ctx.fillStyle='rgba('+col+',.8)';ctx.beginPath();
+    for(const d of WX.sp){const rr2=Math.max(.018,.6/cs);ctx.moveTo(d.x+rr2,d.y-d.z*.6);ctx.arc(d.x,d.y-d.z*.6,rr2,0,7);}
+    ctx.fill();
+  }
+  ctx.restore();
+}
+function drawWeather(){   // what stays on the screen: the dimming light and the lightning
+  if(wxOff||mode==='tut')return;const w=wxNow();
+  const c2=mainCtx,W2=cw,H2=ch;c2.save();c2.setTransform(dpr,0,0,dpr,0,0);
+  if(w&&w.amt>.01){
+    const green=hwLook();
+    if(w.kind==='rain'||w.kind==='storm'){const storm=w.kind==='storm';c2.fillStyle=green?'rgba(20,50,25,'+(.1*w.amt)+')':'rgba(15,25,50,'+((storm?.2:.1)*w.amt)+')';c2.fillRect(0,0,W2,H2);
+      if(storm){const T=performance.now()/1000,f=(T*.45)%1,k=Math.floor(T*.45);if(hash1(k,9)>.7&&f<.14)wxFlash=Math.max(wxFlash,.35*(1-f/.14));}}
+    else if(w.kind==='snow'){c2.fillStyle='rgba(235,245,255,'+(.07*w.amt)+')';c2.fillRect(0,0,W2,H2);}
   }
   if(wxFlash>.01){c2.fillStyle='rgba(235,240,255,'+wxFlash+')';c2.fillRect(0,0,W2,H2);wxFlash*=.86;}
   c2.restore();
+}
+let fogBeamImg=null;
+function fogBeam(){if(fogBeamImg)return fogBeamImg;const c=document.createElement('canvas');c.width=256;c.height=128;const g=c.getContext('2d');
+  const r=g.createRadialGradient(0,64,0,0,64,256);r.addColorStop(0,'rgba(255,240,190,.9)');r.addColorStop(.3,'rgba(255,235,175,.4)');r.addColorStop(1,'rgba(255,230,160,0)');
+  g.fillStyle=r;g.beginPath();g.moveTo(0,54);g.lineTo(256,0);g.lineTo(256,128);g.lineTo(0,74);g.closePath();g.fill();
+  g.globalCompositeOperation='destination-in';const m=g.createLinearGradient(0,0,0,128);m.addColorStop(0,'rgba(0,0,0,.35)');m.addColorStop(.5,'rgba(0,0,0,1)');m.addColorStop(1,'rgba(0,0,0,.35)');g.fillStyle=m;g.fillRect(0,0,256,128);
+  return fogBeamImg=c;}
+function fogAmt(w){let f=w&&w.kind==='fog'?w.amt:0;if(hwLook()&&Settings.v.fx&&mode!=='tut')f=Math.max(f,.55);return Math.min(1,f);}
+function drawFogLights(poses,f){   // in the mist every light blooms: headlights throw long soft cones, lamps and windows get halos
+  const am=ambient(),k=f*(.6+.4*am.n);if(k<=.02)return;
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  const warm=glowImg('rgba(255,214,120,'),red=glowImg('rgba(255,90,70,'),lamp=glowImg('rgba(255,226,150,'),fb=fogBeam();
+  for(const l of lamps()){if(l.x<vx0-3||l.x>vx1+3||l.y<vy0-3||l.y>vy1+3)continue;
+    const r=l.canopy?1.1:1.5;ctx.globalAlpha=k*.55;ctx.drawImage(lamp,l.hx-r,l.hy-r,r*2,r*2);ctx.globalAlpha=k*.5;ctx.drawImage(lamp,l.hx-r*.4,l.hy-r*.4,r*.8,r*.8);}
+  for(const b of blds){if(b.x<vx0-3||b.x>vx1+3||b.y<vy0-3||b.y>vy1+3)continue;
+    if(b.dest){const cg=colorGlow(b.color),cx=b.x+b.w/2,cy=b.y+b.w/2;ctx.globalAlpha=k*.4;ctx.drawImage(cg,cx-1.7,cy-1.7,3.4,3.4);if(b.color2>=0){ctx.globalAlpha=k*.25;ctx.drawImage(colorGlow(b.color2),cx-1.4,cy-1.4,2.8,2.8);}continue;}
+    if(b.fire){ctx.globalAlpha=k*.7;ctx.drawImage(red,b.x+.5-1.6,b.y+.5-1.6,3.2,3.2);continue;}
+    if((b.id*7)%5!==0){ctx.globalAlpha=k*(.18+.4*am.n);for(const wx of [.305,.705])ctx.drawImage(warm,b.x+wx-.6,b.y+.625-.6,1.2,1.2);}}
+  for(const d of depts){if(d.x<vx0-3||d.x>vx1+3||d.y<vy0-3||d.y>vy1+3)continue;ctx.globalAlpha=k*.6;ctx.drawImage(red,d.x+1-1.6,d.y+1-1.6,3.2,3.2);}
+  for(const [c,q] of poses){
+    if(q.br)continue;const co=Math.cos(q.a),si=Math.sin(q.a),fx=q.x+co*.2,fy=q.y+si*.2;
+    ctx.globalAlpha=k*.62;ctx.save();ctx.translate(fx,fy);ctx.rotate(q.a);ctx.drawImage(fb,0,-.7,2.8,1.4);ctx.restore();   // the cone, shining a long way through the haze
+    ctx.globalAlpha=k*.85;for(const sd of [-1,1])ctx.drawImage(warm,fx+si*.07*sd-.32,fy-co*.07*sd-.32,.64,.64);   // the bloom around each lamp
+    if(!c.truck){ctx.globalAlpha=k*.65;for(const sd of [-1,1])ctx.drawImage(red,q.x-co*.2-si*.07*sd-.26,q.y-si*.2+co*.07*sd-.26,.52,.52);}
+  }
+  ctx.restore();
 }
 function drawLocators(){
   if(S.demo||S.tut||mode!=='play'||!Settings.v.loc)return;
@@ -3994,14 +4084,14 @@ function drawLocatorEdges(){
   }
   c2.restore();
 }
-function drawFog(){   // slow drifting mist that belongs to the map (it stays put when you pan and zoom), a bit thicker after dark
+function drawFog(alpha,salt,rm){   // slow drifting mist that belongs to the map (it stays put when you pan and zoom), a bit thicker after dark
   if(!fogImg){fogImg=glowImg('rgba(205,210,235,');}
-  const T=performance.now()/1000,am=ambient(),ww=RX1-RX0+20,wh=RY1-RY0,n=Math.min(260,Math.ceil((RX1-RX0)*wh/55));
+  const T=performance.now()/1000,am=ambient(),ww=RX1-RX0+20,wh=RY1-RY0,n=Math.min(260,Math.ceil((RX1-RX0)*wh/55));salt=salt||0;rm=rm||1;if(alpha===undefined)alpha=.16+.12*am.n;
   ctx.save();
   for(let i=0;i<n;i++){
-    const r=3.5+hash1(i,3)*5,sp=.1+hash1(i,4)*.18,px=RX0-10+((hash1(i,1)*ww+T*sp)%ww),py=RY0+hash1(i,2)*wh+Math.sin(T*.15+i)*.8;
+    const r=(3.5+hash1(i+salt,3)*5)*rm,sp=.1+hash1(i+salt,4)*.18,px=RX0-10+((hash1(i+salt,1)*ww+T*sp)%ww),py=RY0+hash1(i+salt,2)*wh+Math.sin(T*.15+i)*.8;
     if(px+r<vx0||px-r>vx1||py+r<vy0||py-r>vy1)continue;
-    ctx.globalAlpha=.16+.12*am.n;ctx.drawImage(fogImg,px-r,py-r*.55,r*2,r*1.1);
+    ctx.globalAlpha=alpha;ctx.drawImage(fogImg,px-r,py-r*.55,r*2,r*1.1);
   }
   ctx.restore();
 }
@@ -4030,6 +4120,8 @@ function draw(){
   if(hasGhost)drawGhostEdges();
   const poses=[];
   for(const c of cars){if(c.ph==='dwell'||isPark(c.ph))continue;const q=pose(c);if(q.x<vx0-2||q.x>vx1+2||q.y<vy0-2||q.y>vy1+2)continue;poses.push([c,q]);}
+  const wxw=(mode==='tut'||wxOff)?null:wxNow(),nowT=performance.now(),wdt=Math.min(.1,Math.max(0,(nowT-(WX.last||nowT))/1000));WX.last=nowT;
+  wxStep(wdt,wxw,poses);drawWxGround();
   for(const [c,q] of poses)if(!q.br)drawCar(c,q);
   if(!hasElev||layerMode==='roads'){}else if(useCache)stampLayer(GC.elev);else drawElevated();
   if(layerMode!=='roads')for(const [c,q] of poses)if(q.br)drawCar(c,q);
@@ -4047,7 +4139,10 @@ function draw(){
   for(const c of cars){if(c.dead||!isPark(c.ph))continue;const q=parkPose(c);if(q.x<vx0-2||q.x>vx1+2||q.y<vy0-2||q.y>vy1+2)continue;drawCar(c,q);}
   drawTutorial();
   drawAmbient(poses);
+  drawWxAir(wxw);
   if(hwLook()&&Settings.v.fx&&mode!=='tut'){drawFog();drawBats();}
+  if(wxw&&wxw.kind==='fog'&&wxw.amt>.02)drawFog(.3*wxw.amt,977,1.4);
+  drawFogLights(poses,fogAmt(wxw));
   drawLocators();
   if(D.notify&&!S.demo&&!S.tut&&mode==='play'&&Settings.v.n_mark)for(const b of blds)drawAlert(b);
   if(Settings.v.fx)for(const p of particles){ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();}
