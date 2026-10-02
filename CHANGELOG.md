@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.18.2 — Everything on the ground fell there
+- Snow, leaves and rain are now simulated over the whole map, and every flake, leaf and drop that lands is the one you saw fall: nothing appears on the ground by itself any more. Snowfall and leaf-fall are denser so the ground still fills up
+- Fog no longer changes how buildings are lit (only headlights, tail lights and street lamps bloom in it)
+
 ## 1.18.1 — Softer building lights
 - The glow from windows, doorsteps, destinations and fire stations at night (and in fog) is much fainter and smaller. Street lamps, headlights and burning houses are unchanged
 
