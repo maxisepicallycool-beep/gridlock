@@ -198,6 +198,15 @@ ipcMain.handle('bridge', async (e, op, p) => {
   const files = path.join(data(), 'files'), safe = n => /^[A-Za-z0-9._-]{1,80}$/.test(n || '') ? n : null;
   if (op === 'info') return { platform: 'windows', appBuild, appVersion: app.getVersion(), gameVersion: runningVersion(), code: currentCode() };
   if (op === 'checkupdate') { checkForUpdates(false); maintenance(); return true; }
+  if (op === 'savefile') {   // the game saves a time-lapse clip or picture: into Downloads\Gridlock, then shown in Explorer
+    const n = safe(p.name); if (!n || typeof p.b64 !== 'string') return false;
+    try {
+      const dir = path.join(app.getPath('downloads'), 'Gridlock'); fs.mkdirSync(dir, { recursive: true });
+      const ext = path.extname(n), stem = path.basename(n, ext); let f = path.join(dir, n), i = 1;
+      while (fs.existsSync(f)) f = path.join(dir, stem + '-' + (++i) + ext);
+      fs.writeFileSync(f, Buffer.from(p.b64, 'base64')); shell.showItemInFolder(f); return f;
+    } catch (e2) { return false; }
+  }
   if (op === 'openurl') { if (/^https?:\/\//i.test(p.url || '')) { shell.openExternal(p.url); return true; } return false; }
   if (op === 'quit') { app.quit(); return true; }
   if (op === 'relaunch') { app.relaunch(); app.quit(); return true; }

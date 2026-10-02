@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.15.0 — Time-lapse
+- The game now records a time-lapse of your city: a map-style picture of the whole land every few seconds of game time (4, 8, 15 or 30, in Settings under Time-lapse; it can be turned off), independent of where your camera is. Open it from the pause menu (Time-lapse) or on the game-over screen (Watch your city grow): play it at four speeds, scrub through it, and see the week, trips and clock on every picture
+- Save it as a video clip (MP4 or WebM, whichever your window can record), as the current picture, or as a contact sheet of 12 pictures through the city. Footage is kept with each saved city and goes when the city is deleted. In the Windows app files go to Downloads\Gridlock and are shown in Explorer; the Mac app needs its next build for that (until then, and in a browser, the file downloads in the usual way)
+
 ## 1.14.0 — The daily challenge and a GitHub leaderboard
 - New on the main menu: Daily challenge. Every day (by UTC date) there is one level, the same for everyone: its own land (Archipelago with a moat to bridge, River country, or Lake district with about a third of the start area under water) plus two rule changes picked from Short weeks, Lean pieces, Arson, Heavy traffic, Rush hours, Reckless drivers (wrecks, with traffic coordinators) and Fragile rating. It uses the city rating, and every destination needs a road. A countdown shows when the next one arrives
 - The leaderboard lives on GitHub, so it needs an internet connection (the level itself plays offline): the screen shows today's top 15 by best score. Press Post my score (also on the game-over screen) and GitHub opens a prefilled issue titled "[daily] DATE · SCORE": press Submit new issue there (it needs a GitHub account). It is an honour system. Your best score for each day is kept on your computer

@@ -61,6 +61,12 @@ body.app #hud{padding-left:92px;padding-top:10px}
 body.inmenu #sbBar{display:none!important}
 #coordBar{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);display:none;gap:6px;padding:8px 10px;border-radius:20px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:94vw;z-index:7}
 body.inmenu #coordBar,body.inmenu #tlEd,body.inmenu #ratLegend{display:none!important}
+#tlView{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(94vw,880px);max-height:94vh;overflow:auto;display:none;border-radius:24px;padding:16px 18px 14px;z-index:60}
+#tlView h3{margin:0;font-size:18px}#tlView .tvh{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;padding-right:34px}#tlView .tvh span{color:var(--muted);font-weight:650;font-size:12.5px}
+#tlView .tx{position:absolute;right:14px;top:12px;border:0;background:var(--soft);color:var(--ink);width:28px;height:28px;border-radius:50%;cursor:pointer;font-weight:800}
+#tlView .tvstage{background:#0b0e14;border-radius:14px;overflow:hidden;line-height:0}#tlView .tvstage img{width:100%;height:auto;display:block}
+#tlView .tvctl{display:flex;align-items:center;gap:10px;margin:10px 0 6px}#tlView .tvctl input[type=range]{flex:1}#tlView .tvctl select{background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:4px 6px;font:inherit}
+#tlView .tvbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}#tlView .tvmsg{font-size:12px;color:var(--muted);margin-top:6px;font-weight:600;min-height:16px}
 #ratLegend{position:fixed;left:14px;top:150px;width:318px;max-height:calc(100vh - 300px);overflow:auto;display:none;border-radius:20px;padding:14px 16px;z-index:8;font-size:12.5px}
 #ratLegend h3{margin:0 0 3px;font-size:15px;display:flex;justify-content:space-between;align-items:baseline}#ratLegend .rsub{color:var(--muted);font-weight:650;font-size:11.5px;margin-bottom:8px}
 #ratLegend .rb{height:7px;border-radius:5px;background:var(--soft);overflow:hidden;margin:2px 0 10px}#ratLegend .rb i{display:block;height:100%}
@@ -311,6 +317,7 @@ body.inmenu #coach{display:none!important}
 <div id="sbBar" class="glass"></div>
 <div id="coordBar" class="glass"></div>
 <div id="tlEd" class="glass"></div>
+<div id="tlView" class="glass"></div>
 <div id="ratLegend" class="glass"></div>
 <div id="coach" class="glass"></div>
 <div id="dock" class="glass"></div>
@@ -322,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.14.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.15.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -391,7 +398,7 @@ const DIFFS=[
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
-const SET_DEF={theme:'dark',mapNatural:false,noHw:false,season:'spooky',weather:'auto',wxAmt:60,aiInfo:true,loc:true,locMode:'until',locTime:15,locHover:true,locConnect:true,locEdge:true,locSize:1,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
+const SET_DEF={theme:'dark',mapNatural:false,noHw:false,tlOn:true,tlEvery:8,season:'spooky',weather:'auto',wxAmt:60,aiInfo:true,loc:true,locMode:'until',locTime:15,locHover:true,locConnect:true,locEdge:true,locSize:1,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
   tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:15,n_toastTime:4,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false};
@@ -1001,14 +1008,16 @@ function chooseCard(o){
 function gameOver(why){
   if(D.noFail||S.over)return;
   if(S.demo){S.over=true;AI.restartAt=performance.now()+4500;return;}
-  S.over=true;S.modal='over';noteBest();
+  S.over=true;S.modal='over';noteBest();try{tlCapture();}catch(e){}
   Cities.del(S.runId);   // a lost city can't be continued
   const best=Store.meta.best[D.id],m=document.getElementById('modal');m.className='';
   m.innerHTML=`<div class="sheet glass"><h2>Run over</h2><p>${why||'Cars couldn\u2019t get to a destination in time.'}</p>
     <div class="big">${S.score}</div><p class="tiny" style="margin-top:2px">TRIPS COMPLETED</p>
     <div class="stats"><div><b>${S.week}</b><small>Weeks</small></div><div><b>${best?best.score:S.score}</b><small>Best (${D.name})</small></div><div><b>${esc(S.name||'City')}</b><small>City</small></div></div>
     ${D.id==='daily'?`<div class="tiny" style="margin:10px 0 4px">Daily challenge ${D.date} \u00b7 ${esc(D.terrainName)}: ${((Store.meta.daily||{})[D.date]||{score:S.score}).score} trips is your best today</div><div class="row" style="margin:6px 0;gap:8px;justify-content:center"><button class="go alt" data-a="dsubmit">Post to the leaderboard</button><button class="go alt" data-a="dboard">Leaderboard</button></div>`:''}
+    ${TL.frames.length>=2?'<div class="row" style="margin:8px 0 2px"><button class="go alt" data-a="tlapse">Watch your city grow</button></div>':''}
     <div class="row"><button class="go" data-a="retry">Try again</button><button class="go alt" data-a="menu">Main menu</button></div></div>`;
+  const tb=m.querySelector('[data-a=tlapse]');if(tb)tb.onclick=()=>openTimelapse();
   m.querySelector('[data-a=retry]').onclick=()=>D.id==='daily'?startDaily():startGameWith(D.id,null,S.name);
   const ds=m.querySelector('[data-a=dsubmit]');if(ds)ds.onclick=()=>dailySubmit(D.date);
   const db=m.querySelector('[data-a=dboard]');if(db)db.onclick=()=>{m.className='hidden';enterMenu();Menu.show('daily');fetchBoard(true);};
@@ -1921,6 +1930,7 @@ function step(dt){
     else b.over=Math.max(0,b.over-dt*2);
   }
   updateStall(dt);ratingTick(dt);Snd.tick(dt);
+  if(Settings.v.tlOn&&!S.demo&&!S.tut&&!S.over){S.tlClock=(S.tlClock||0)+dt;if(S.tlClock>=Settings.v.tlEvery*(TL.mult||1)){S.tlClock=0;tlDue=true;}}
   if(Settings.v.season==='auto'&&effSeason()!==seasonSeen)applyTheme();
   if(D.clock&&!S.demo&&!S.tut){const nm=rushName();if(nm!==S.rushNm){S.rushNm=nm;if(time>3)toast(nm?nm+': traffic is building':'Rush hour is over: traffic is easing off');}}
   S.fireClock+=dt;if(S.fireClock>=60){S.fireClock-=60;if(D.fireChance&&Math.random()<D.fireChance)igniteRandom();}   // a chance of a house fire every minute
@@ -3727,6 +3737,126 @@ function drawRipples(){   // the only animated scenery: drifting ripples on the 
 }
 let fogImg=null,batT=0;
 const hash1=(i,k)=>{const v=Math.sin(i*127.1+k*311.7)*43758.5453;return v-Math.floor(v);};
+/* ---------- time-lapse: a map-style picture of the whole city every few seconds, played back or saved as a clip or pictures ---------- */
+let TL={runId:'',frames:[],mult:1,dirty:false,lastSave:0},tlDue=false;
+const TLS=11;   // pixels per cell in a frame
+const TLDB={db:undefined,
+  open(){if(this.db!==undefined)return Promise.resolve(this.db);return new Promise(res=>{try{const r=indexedDB.open('gridlock-timelapse',1);r.onupgradeneeded=()=>r.result.createObjectStore('r');r.onsuccess=()=>{this.db=r.result;res(this.db);};r.onerror=()=>{this.db=null;res(null);};}catch(e){this.db=null;res(null);}});},
+  async get(k){const db=await this.open();if(!db)return null;return new Promise(res=>{try{const q=db.transaction('r').objectStore('r').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}});},
+  async put(k,v){const db=await this.open();if(!db)return;try{db.transaction('r','readwrite').objectStore('r').put(v,k);}catch(e){}},
+  async del(k){const db=await this.open();if(!db)return;try{db.transaction('r','readwrite').objectStore('r').delete(k);}catch(e){}}
+};
+function tlRender(g){
+  const w=W*TLS,h=H*TLS,pc=i=>[(i%W+.5)*TLS,(((i/W)|0)+.5)*TLS];
+  g.fillStyle=TH.rim||'#222';g.fillRect(0,0,w,h);
+  g.fillStyle=TH.ground;g.fillRect(RX0*TLS,RY0*TLS,(RX1-RX0)*TLS,(RY1-RY0)*TLS);
+  g.fillStyle=TH.water;for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(cells[y*W+x].water)g.fillRect(x*TLS,y*TLS,TLS+.6,TLS+.6);
+  g.fillStyle='rgba(8,10,16,.4)';g.fillRect(0,0,w,RY0*TLS);g.fillRect(0,RY1*TLS,w,h-RY1*TLS);g.fillRect(0,RY0*TLS,RX0*TLS,(RY1-RY0)*TLS);g.fillRect(RX1*TLS,RY0*TLS,w-RX1*TLS,(RY1-RY0)*TLS);
+  g.lineCap='round';g.lineJoin='round';
+  const lay=(layer,pred,col,lw)=>{g.strokeStyle=col;g.lineWidth=lw;g.beginPath();for(let i=0;i<W*H;i++){const arr=arrOf(cells[i],layer);if(!arr)continue;for(let d=0;d<8;d++){const e=arr[d];if(!e||e.ghost||!pred(e))continue;const bi=nbIdx(i,d);if(bi<i)continue;const a=pc(i),b=pc(bi);g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);}}g.stroke();};
+  lay('g',e=>true,'#3d424d',TLS*.62);lay('g',e=>true,'#7c8394',TLS*.42);
+  lay('f',e=>e.k===2,'#e8dfc6',TLS*.5);lay('f',e=>e.k===1,'#ff9d1c',TLS*.4);
+  for(const b of blds){
+    const x=b.x*TLS,y=b.y*TLS,c=PAL[b.color];
+    if(!b.dest){g.fillStyle='#fff';g.fillRect(x+.5,y+.5,TLS-1,TLS-1);g.fillStyle=c.c;g.fillRect(x+1.8,y+1.8,TLS-3.6,TLS-3.6);if(b.fire){g.fillStyle='#ff6b2c';g.beginPath();g.arc(x+TLS/2,y+TLS/2,TLS*.4,0,7);g.fill();}}
+    else{const sz=2*TLS;g.fillStyle='#fff';g.fillRect(x+.5,y+.5,sz-1,sz-1);g.fillStyle=c.c;g.fillRect(x+2,y+2,sz-4,sz-4);if(b.color2>=0){g.fillStyle=PAL[b.color2].c;g.fillRect(x+sz/2,y+2,sz/2-2,sz-4);}g.fillStyle='rgba(20,24,34,.55)';g.fillRect(x+sz*.3,y+sz*.3,sz*.4,sz*.4);}
+  }
+  for(const d of depts){g.fillStyle='#fff';g.fillRect(d.x*TLS+.5,d.y*TLS+.5,2*TLS-1,2*TLS-1);g.fillStyle='#d8382f';g.fillRect(d.x*TLS+2,d.y*TLS+2,2*TLS-4,2*TLS-4);}
+  g.font='800 '+Math.round(TLS*1.5)+'px -apple-system,Helvetica,sans-serif';g.textBaseline='bottom';g.textAlign='left';
+  const cap='Week '+S.week+'  \u00b7  '+S.score+' trips'+(D.clock?'  \u00b7  '+clockText():'');
+  g.lineWidth=4;g.strokeStyle='rgba(10,12,18,.85)';g.strokeText(cap,TLS,h-TLS*.6);g.fillStyle='#fff';g.fillText(cap,TLS,h-TLS*.6);
+}
+function tlCapture(){
+  if(!Settings.v.tlOn||mode!=='play'||!S||S.demo||S.tut)return;
+  if(!TL.cvs){TL.cvs=document.createElement('canvas');TL.cvs.width=W*TLS;TL.cvs.height=H*TLS;}
+  tlRender(TL.cvs.getContext('2d'));
+  TL.frames.push({u:TL.cvs.toDataURL('image/jpeg',.72),w:S.week,s:S.score,t:Math.round(time)});
+  if(TL.frames.length>400){const n=TL.frames.length;TL.frames=TL.frames.filter((f,i)=>i%2===0||i===n-1);TL.mult=(TL.mult||1)*2;}
+  TL.dirty=true;
+}
+function tlEnsure(){   // called when a city opens: pick up its footage
+  if(!S||S.demo||S.tut)return;
+  if(TL.runId===S.runId)return;
+  const rid=S.runId;TL={runId:rid,frames:[],mult:1,dirty:false,lastSave:Date.now()};tlDue=true;
+  TLDB.get(rid).then(rec=>{if(rec&&TL.runId===rid&&rec.frames&&rec.frames.length){TL.frames=rec.frames.concat(TL.frames);TL.mult=rec.mult||1;}});
+}
+function tlPersist(force){
+  if(!TL.dirty||!TL.runId||!TL.frames.length)return;
+  if(!force&&Date.now()-TL.lastSave<45000)return;
+  TL.lastSave=Date.now();TL.dirty=false;TLDB.put(TL.runId,{frames:TL.frames,mult:TL.mult});
+}
+/* the viewer */
+let TV=null;
+const tlSleep=ms=>new Promise(r=>setTimeout(r,ms));
+const tlImg=u=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=u;});
+function openTimelapse(){
+  if(!TL.frames||TL.frames.length<2){toast('Not enough footage yet: play a little longer',true);return;}
+  const el=$('tlView');TV={i:TL.frames.length-1,playing:false,speed:4,timer:0,wasPaused:S&&S.paused,busy:false};
+  if(S&&mode==='play'&&!S.over)S.paused=true;
+  el.innerHTML=`<button class="tx" data-a="close">\u00d7</button><div class="tvh"><h3>Time-lapse</h3><span>${esc((S&&S.name)||'City')} \u00b7 ${TL.frames.length} pictures</span></div>
+    <div class="tvstage"><img id="tvimg" alt=""></div>
+    <div class="tvctl"><button class="btn" id="tvplay" data-a="play">Play</button><input type="range" id="tvscrub" min="0" max="${TL.frames.length-1}" value="${TL.frames.length-1}"><span id="tvlbl" class="tiny"></span>
+      <select id="tvspeed"><option value="1">Slow</option><option value="2">Normal</option><option value="4" selected>Fast</option><option value="8">Faster</option></select></div>
+    <div class="tvbtns"><button class="btn" data-a="clip">Save clip</button><button class="btn" data-a="photo">Save this picture</button><button class="btn" data-a="sheet">Save a contact sheet</button></div>
+    <div class="tvmsg" id="tvmsg"></div>`;
+  el.style.display='block';tlShow(TV.i);
+}
+function tlShow(i){
+  if(!TV)return;TV.i=Math.max(0,Math.min(TL.frames.length-1,i));const f=TL.frames[TV.i];
+  const im=$('tvimg');if(im)im.src=f.u;const sc=$('tvscrub');if(sc)sc.value=TV.i;const lb=$('tvlbl');if(lb)lb.textContent='Week '+f.w+' \u00b7 '+f.s+' trips';
+}
+function tlPlay(on){
+  if(!TV)return;TV.playing=on;clearInterval(TV.timer);const b=$('tvplay');if(b)b.textContent=on?'Pause':'Play';
+  if(!on)return;if(TV.i>=TL.frames.length-1)TV.i=0;
+  TV.timer=setInterval(()=>{if(!TV||TV.busy)return;if(TV.i>=TL.frames.length-1){tlPlay(false);return;}tlShow(TV.i+1);},1000/(5*TV.speed));
+}
+function closeTimelapse(){
+  if(!TV)return;clearInterval(TV.timer);const wp=TV.wasPaused;TV=null;$('tlView').style.display='none';
+  if(S&&mode==='play'&&!S.over&&S.modal!=='pause')S.paused=!!wp;
+}
+function tlMsg(t){const e=$('tvmsg');if(e)e.textContent=t||'';}
+async function saveBlob(name,blob){   // the apps can write to the Downloads folder; a browser just downloads it
+  name=String(name).replace(/[^A-Za-z0-9._-]+/g,'-').slice(0,80);
+  if(window.AppBridge){
+    try{
+      const b64=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(String(fr.result).split(',')[1]);fr.readAsDataURL(blob);});
+      const res=await Promise.race([AppBridge.call('savefile',{name,b64}),tlSleep(5000).then(()=>'timeout')]);
+      if(res&&res!=='timeout'){toast('Saved to your Downloads: '+name,true);return true;}
+    }catch(e){}
+  }
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},5000);toast('Saving '+name+'. Check your Downloads folder.',true);return true;}
+  catch(e){toast('Could not save the file',true);return false;}
+}
+const tlName=()=>String((S&&S.name)||'city').replace(/[^A-Za-z0-9]+/g,'-').toLowerCase();
+async function tlSavePhoto(){const f=TL.frames[TV?TV.i:TL.frames.length-1];const b=await (await fetch(f.u)).blob();saveBlob('gridlock-'+tlName()+'-week'+f.w+'.jpg',b);}
+async function tlSaveSheet(){
+  const F=TL.frames,n=Math.min(12,F.length),cols=4,rows=Math.ceil(n/cols),cw2=480,ch2=Math.round(480*H/W),sheet=document.createElement('canvas');sheet.width=cols*cw2;sheet.height=rows*ch2;const g=sheet.getContext('2d');g.fillStyle='#10141c';g.fillRect(0,0,sheet.width,sheet.height);
+  for(let k=0;k<n;k++){const f=F[n===1?0:Math.round(k*(F.length-1)/(n-1))];try{g.drawImage(await tlImg(f.u),(k%cols)*cw2,Math.floor(k/cols)*ch2,cw2,ch2);}catch(e){}}
+  sheet.toBlob(b=>b&&saveBlob('gridlock-'+tlName()+'-sheet.png',b),'image/png');
+}
+async function tlSaveClip(){
+  if(!TV||TV.busy)return;
+  const mimes=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  const mime=window.MediaRecorder&&HTMLCanvasElement.prototype.captureStream?mimes.find(m=>MediaRecorder.isTypeSupported(m)):null;
+  if(!mime){tlMsg('This window cannot record video. Use Save this picture or Save a contact sheet instead.');return;}
+  TV.busy=true;tlPlay(false);
+  try{
+    const F=TL.frames,fps=Math.max(6,Math.min(24,Math.round(F.length/12))),first=await tlImg(F[0].u),cvs=document.createElement('canvas');cvs.width=first.width;cvs.height=first.height;const c=cvs.getContext('2d');
+    c.drawImage(first,0,0);const rec=new MediaRecorder(cvs.captureStream(30),{mimeType:mime,videoBitsPerSecond:3e6}),chunks=[];
+    rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};const done=new Promise(r=>{rec.onstop=r;});
+    rec.start(250);
+    for(let i=0;i<F.length;i++){c.drawImage(await tlImg(F[i].u),0,0);tlMsg('Recording the clip: '+Math.round(100*i/F.length)+'%');await tlSleep(1000/fps);}
+    await tlSleep(1400);rec.stop();await done;
+    const blob=new Blob(chunks,{type:mime.split(';')[0]});tlMsg('');
+    await saveBlob('gridlock-'+tlName()+'-timelapse.'+(mime.indexOf('mp4')>=0?'mp4':'webm'),blob);
+  }catch(e){tlMsg('Could not make the clip here. Try Save a contact sheet.');}
+  TV&&(TV.busy=false);
+}
+$('tlView').addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b||!TV)return;const a=b.dataset.a;
+  if(a==='close')closeTimelapse();else if(a==='play')tlPlay(!TV.playing);else if(a==='clip')tlSaveClip();else if(a==='photo')tlSavePhoto();else if(a==='sheet')tlSaveSheet();
+});
+$('tlView').addEventListener('input',e=>{if(!TV)return;if(e.target.id==='tvscrub'){tlPlay(false);tlShow(+e.target.value);}else if(e.target.id==='tvspeed'){TV.speed=+e.target.value;if(TV.playing)tlPlay(true);}});
 /* ---------- locator pins: a pin in the building's colour marks every new house and destination until you interact with it (or for a set time) ---------- */
 let locLast=0;
 function locAck(b){if(b)b.seen=true;}
@@ -3944,11 +4074,13 @@ const Cities={list:[],recs:{},ready:false,backend:'local',
     try{return this.recs[id]=JSON.parse(t);}catch(e){return null;}
   },
   del(id){
+    TLDB.del(id);
     this.list=this.list.filter(c=>c.id!==id);delete this.recs[id];
     if(this.backend==='files')this.wr('city-'+id+'.json','');else try{localStorage.removeItem('gridlock.city-'+id+'.json');}catch(e){}
     return this.writeIndex();
   },
   delAll(){   // every city goes (the files are blanked, the list emptied)
+    for(const c of this.list)TLDB.del(c.id);
     for(const c of this.list){delete this.recs[c.id];if(this.backend==='files')this.wr('city-'+c.id+'.json','');else try{localStorage.removeItem('gridlock.city-'+c.id+'.json');}catch(e){}}
     this.list=[];return this.writeIndex();
   },
@@ -4024,7 +4156,7 @@ function saveCity(){
   const p=Cities.put({ts:Date.now(),name:S.name||'City',diff:D.id,week:S.week,score:S.score,runId:S.runId,thumb:thumbURL(),state:serialize()});
   noteBest();return p;
 }
-function autosave(){if(mode!=='play'||S.over||S.demo||S.tut)return;saveCity();}
+function autosave(){if(mode!=='play'||S.over||S.demo||S.tut)return;saveCity();tlPersist();}
 async function loadCity(id){const rec=await Cities.get(id);if(rec)loadSave(rec);else toast('That city could not be opened',true);}
 
 /* ---------- menus ---------- */
@@ -4175,6 +4307,9 @@ const SCREENS={
         +tog('locEdge','Edge arrows','A building that still has a pin but is off the screen gets an arrow on the edge of the screen, pointing its way')
         +row('Pin size','',seg('locSize',[[0.8,'Small'],[1,'Normal'],[1.35,'Large']]))
         +row('Mark all as seen','Clear every pin right now (during a game)','<button class="sbtn" data-act="locseen">Mark all</button>'))}
+      ${sec('Time-lapse',
+        tog('tlOn','Record a time-lapse','Takes a picture of your whole city every few seconds so you can watch it grow (in the pause menu, or when a game ends) and save it as a clip or as pictures')
+        +row('A picture every','How much game time passes between pictures',seg('tlEvery',[[4,'4 s'],[8,'8 s'],[15,'15 s'],[30,'30 s']])))}
       ${sec('Notifications',
         tog('n_crit','Critical alerts','Destinations backed up by late cars and trips cut off')
         +tog('n_fire','Fire alerts','Houses on fire and fire station news')
@@ -4224,6 +4359,7 @@ const SCREENS={
         <div class="mbtns" style="max-width:none">
           <button class="mbtn primary" data-act="resume"><b>Resume</b><small>Back to your city</small></button>
           <button class="mbtn" data-act="psave"><b>Save now</b><small>Your city is also saved automatically</small></button>
+          ${TL.frames.length>=2?'<button class="mbtn" data-act="tlapse"><b>Time-lapse</b><small>Watch your city grow, save it as a clip or pictures</small></button>':''}
           <button class="mbtn" data-act="pload"><b>Your cities</b><small>Switch to another city</small></button>
           <button class="mbtn" data-act="settings"><b>Settings</b><small>Theme, sound, day and night, controls</small></button>
           <button class="mbtn" data-act="bug"><b>Report a bug</b><small>Tell Max what went wrong</small></button>
@@ -4266,8 +4402,8 @@ menuEl.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');if(a)act(a.dataset.act,a.dataset);
 });
 
-function setPlay(){mode='play';document.body.classList.remove('inmenu');fitView();if(tool.startsWith('sb:')&&D.id!=='sandbox')tool='road';buildSbBar();buildCoordBar();}
-function enterMenu(){mode='menu';document.body.classList.add('inmenu');startDemo();MS.confirm=null;Menu.show('main');}
+function setPlay(){mode='play';tlEnsure();document.body.classList.remove('inmenu');fitView();if(tool.startsWith('sb:')&&D.id!=='sandbox')tool='road';buildSbBar();buildCoordBar();}
+function enterMenu(){if(S&&!S.demo&&TL.runId===S.runId)tlPersist(true);closeTimelapse();mode='menu';document.body.classList.add('inmenu');startDemo();MS.confirm=null;Menu.show('main');}
 function startGameWith(diffId,seed,name){newGame(diffId,seed);S.name=name||pick(NAMES);Menu.hide();document.getElementById('modal').className='hidden';setPlay();autosave();}
 function startNew(){
   const seed=MS.seed.trim()?hashSeed(MS.seed.trim()):null;
@@ -4317,6 +4453,7 @@ function act(a,d){
       if(MS.confirm!=='d'+d.id){MS.confirm='d'+d.id;Menu.show('load');return;}
       MS.confirm=null;Cities.del(d.id);Menu.show('load');break;}
     case 'resume':closePause();break;
+    case 'tlapse':openTimelapse();break;
     case 'psave':saveCity().then(()=>toast('City saved',true));break;
     case 'pload':MS.confirm=null;Menu.show('load');break;
     case 'quit':autosave();enterMenu();break;
@@ -4839,6 +4976,7 @@ function frame(now){
     }
     if(!(mode==='play'&&S.modal&&now-lastDrawAt<220)){draw();lastDrawAt=now;}
     if(mode==='play')hud();
+    if(tlDue&&mode==='play'&&!S.demo){tlDue=false;try{tlCapture();}catch(e){}}
   }
   requestAnimationFrame(frame);
 }
