@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.19.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.19.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -3925,14 +3925,19 @@ function wxNow(){   // what is falling right now, and how strongly (null for cle
 const WXPX=26,WXL={},WX={S:null,p:[],rip:[],sp:[],last:0,acc:0};
 const WXCL=Array.from({length:16},()=>Array.from({length:4},()=>[(Math.random()-.5)*.6,(Math.random()-.5)*.6])),WXFADE={wet:14,snow:28,leaves:22},WXLEAF=['#e0752c','#c4452b','#e3b030','#a8561f'];
 function wxLayer(k){let L=WXL[k];if(!L){const cv=document.createElement('canvas');cv.width=W*WXPX;cv.height=H*WXPX;L=WXL[k]={cv,g:cv.getContext('2d'),m:0,n:0};}return L;}
-let wxObs=null,wxObsKey='',wxObsT=null;
+let wxObs=null,wxObsKey='',wxObsT=null,wxSegs=new Map();
 function wxBlocked(x,y,rad){   // trees and props stand above the ground cover: nothing settles over them
-  const key=trees.length+':'+props.length+':'+hwLook();
-  if(key!==wxObsKey||wxObsT!==trees){wxObsKey=key;wxObsT=trees;wxObs=new Map();
+  const key=trees.length+':'+props.length+':'+hwLook()+':'+blds.length+':'+gfxVer;
+  if(key!==wxObsKey||wxObsT!==trees){wxObsKey=key;wxObsT=trees;wxObs=new Map();wxSegs=new Map();
+    for(const b of blds){   // driveways stay clear: every one is a short line from the building to the road
+      if(b.port<0)continue;const A=ctr(b.an),P=ctr(b.port),seg={ax:A[0],ay:A[1],bx:P[0],by:P[1]};
+      const x0=Math.floor(Math.min(A[0],P[0])),x1=Math.floor(Math.max(A[0],P[0])),y0=Math.floor(Math.min(A[1],P[1])),y1=Math.floor(Math.max(A[1],P[1]));
+      for(let y=y0-1;y<=y1+1;y++)for(let x=x0-1;x<=x1+1;x++){const k=y*W+x,a=wxSegs.get(k);if(a)a.push(seg);else wxSegs.set(k,[seg]);}}
     const add=(ox,oy,r)=>{const c=cells[cellIdx(Math.floor(ox),Math.floor(oy))];if(!c||c.e||c.f||c.bld||(c.water))return;const k=Math.floor(oy)*W+Math.floor(ox),a=wxObs.get(k);const o={x:ox,y:oy,r};if(a)a.push(o);else wxObs.set(k,[o]);};
     for(const t of trees)add(t.x,t.y,t.r*1.1);
     if(hwLook())for(const q of props)add(q.x,q.y,.2);}
-  const cx=Math.floor(x),cy=Math.floor(y);
+  const cx=Math.floor(x),cy=Math.floor(y),sg=wxSegs.get(cy*W+cx);
+  if(sg)for(const g of sg){const vx=g.bx-g.ax,vy=g.by-g.ay,t=Math.max(0,Math.min(1,((x-g.ax)*vx+(y-g.ay)*vy)/(vx*vx+vy*vy||1)));if(Math.hypot(x-(g.ax+vx*t),y-(g.ay+vy*t))<.42+rad)return true;}
   for(let j=cy-1;j<=cy+1;j++)for(let i=cx-1;i<=cx+1;i++){const a=wxObs.get(j*W+i);if(a)for(const o of a)if(Math.hypot(o.x-x,o.y-y)<o.r+rad)return true;}
   return false;
 }
