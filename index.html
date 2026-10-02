@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.18.6';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.18.7';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -3906,7 +3906,7 @@ function wxNow(){   // what is falling right now, and how strongly (null for cle
 }
 /* the weather lives on the map: drops, flakes, leaves and fog are in world space (they pan and zoom with the land), snow, leaves and
    rain collect on the ground in layers that fade when the weather ends, and cars wipe them away along their tyres */
-const WXPX=10,WXL={},WX={S:null,p:[],rip:[],sp:[],last:0,acc:0};
+const WXPX=26,WXL={},WX={S:null,p:[],rip:[],sp:[],last:0,acc:0};
 const WXFADE={wet:14,snow:28,leaves:22},WXLEAF=['#e0752c','#c4452b','#e3b030','#a8561f'];
 function wxLayer(k){let L=WXL[k];if(!L){const cv=document.createElement('canvas');cv.width=W*WXPX;cv.height=H*WXPX;L=WXL[k]={cv,g:cv.getContext('2d'),m:0,n:0};}return L;}
 let wxObs=null,wxObsKey='',wxObsT=null;
@@ -3982,7 +3982,7 @@ function wxStep(dt,w,poses){
 function drawWxGround(){   // the snow, leaves and wet that have gathered (under the cars, so the tracks show)
   const base={wet:.55,snow:1,leaves:1};
   for(const k in WXL){const L=WXL[k];if(L.m<=.01)continue;
-    ctx.globalAlpha=L.m*base[k];ctx.drawImage(L.cv,vx0*WXPX,vy0*WXPX,(vx1-vx0)*WXPX,(vy1-vy0)*WXPX,vx0,vy0,vx1-vx0,vy1-vy0);}
+    ctx.globalAlpha=L.m*base[k];ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(L.cv,vx0*WXPX,vy0*WXPX,(vx1-vx0)*WXPX,(vy1-vy0)*WXPX,vx0,vy0,vx1-vx0,vy1-vy0);}
   ctx.globalAlpha=1;
 }
 function drawWxAir(w){   // falling rain, snow and leaves, ripples and splashes

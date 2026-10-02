@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.18.7 — Smoother snow
+- The snow, leaves and wet on the ground are drawn at 2.6 times the detail, so up close they are no longer blocky or pixelated
+
 ## 1.18.6 — The grass stays green
 - The grass no longer turns white when it snows (snow settles on the ground, roads and all, as before and tyres still wipe tracks through it)
 
