@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.17.3 — Rain that lands
+- Rain is no longer just lines sliding across the screen. Drops now fall onto the ground and splash: a flat ripple spreads out where each one lands and a few droplets spray up and fall back, with a few faint long streaks in front. Storms are heavier and faster. It is green in the Halloween look
+
 ## 1.17.2 — Halloween songs only in the Halloween look
 - The two Halloween songs are now 35% quieter than the others (the music volume slider still scales them), play only with the Halloween look, and are the only songs then. Turn the look off (or pick another season) and the original songs return
 

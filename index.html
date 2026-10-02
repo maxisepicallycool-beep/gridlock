@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.17.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.17.3';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -3911,9 +3911,26 @@ function drawWeather(){
   if(w.kind==='rain'||w.kind==='storm'){
     const storm=w.kind==='storm',n=Math.round((storm?420:260)*w.amt),sp=storm?1100:760,wind=storm?-.34:-.16;
     c2.fillStyle=green?'rgba(20,50,25,'+(.1*w.amt)+')':'rgba(15,25,50,'+((storm?.2:.1)*w.amt)+')';c2.fillRect(0,0,W2,H2);   // the light dims
-    c2.strokeStyle=green?'rgba(130,255,100,.55)':'rgba(190,210,240,.5)';c2.lineWidth=1.2;c2.beginPath();
-    for(let i=0;i<n;i++){const x=((hash1(i,1)*(W2+300)+T*sp*-wind)%(W2+300))-150,y=((hash1(i,2)*(H2+80)+T*sp*(.8+hash1(i,3)*.5))%(H2+80))-40,l=14+hash1(i,4)*14;c2.moveTo(x,y);c2.lineTo(x+l*wind*-1,y+l);}
+    const col=green?'130,255,100':'190,210,240';
+    c2.strokeStyle='rgba('+col+',.3)';c2.lineWidth=1;c2.beginPath();   // a few long, faint streaks far in front
+    for(let i=0;i<Math.round(n*.35);i++){const x=((hash1(i,1)*(W2+300)+T*sp*-wind)%(W2+300))-150,y=((hash1(i,2)*(H2+80)+T*sp*(.8+hash1(i,3)*.5))%(H2+80))-40,l=18+hash1(i,4)*16;c2.moveTo(x,y);c2.lineTo(x+l*wind*-1,y+l);}
     c2.stroke();
+    // drops that land: each falls onto a spot of ground, then splashes: a flat ripple spreads and a few droplets spray up and fall back
+    const drops=Math.round(n*.55),fall=storm?170:130;
+    c2.lineCap='round';
+    for(let i=0;i<drops;i++){
+      const P=(storm?.55:.8)+hash1(i,21)*.5,q=T/P+hash1(i,22),k=Math.floor(q),u=q-k,sx=hash1(i*131+k,11)*(W2+120)-60,gy=hash1(i*131+k,12)*H2;
+      if(u<.5){   // in the air
+        const f=u/.5,y=gy-fall*(1-f),x=sx-wind*-fall*(1-f)*-.6,l=11+hash1(i,23)*8;
+        c2.strokeStyle='rgba('+col+','+(.35+.4*f)+')';c2.lineWidth=1.4;c2.beginPath();c2.moveTo(x,y);c2.lineTo(x+l*wind*-1,y+l);c2.stroke();
+      } else {
+        const t=(u-.5)/.5,fade=1-t;
+        c2.strokeStyle='rgba('+col+','+(.55*fade)+')';c2.lineWidth=1.3;c2.beginPath();c2.ellipse(sx,gy,2+t*(storm?11:9),(2+t*(storm?11:9))*.42,0,0,7);c2.stroke();
+        if(t<.7){c2.fillStyle='rgba('+col+','+(.8*(1-t/.7))+')';
+          for(let j=0;j<4;j++){const ang=(hash1(i*131+k,30+j)-.5)*2.4,v=14+hash1(i*131+k,40+j)*14,tt=t*.5;c2.beginPath();c2.arc(sx+Math.sin(ang)*v*tt*2.2,gy-(v*3.2*tt-40*tt*tt*1.6)*1,1.1,0,7);c2.fill();}}
+      }
+    }
+    c2.lineCap='butt';
     if(storm){const f=(T*.45)%1,k=Math.floor(T*.45);if(hash1(k,9)>.7&&f<.14)wxFlash=Math.max(wxFlash,.35*(1-f/.14));}
   } else if(w.kind==='snow'){
     const n=Math.round(220*w.amt);c2.fillStyle='rgba(255,255,255,.85)';
