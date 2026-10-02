@@ -60,7 +60,13 @@ body.app #hud{padding-left:92px;padding-top:10px}
 #sbBar{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);display:none;gap:6px;padding:8px 10px;border-radius:20px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:94vw;z-index:7}
 body.inmenu #sbBar{display:none!important}
 #coordBar{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);display:none;gap:6px;padding:8px 10px;border-radius:20px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:94vw;z-index:7}
-body.inmenu #coordBar,body.inmenu #tlEd{display:none!important}
+body.inmenu #coordBar,body.inmenu #tlEd,body.inmenu #ratLegend{display:none!important}
+#ratLegend{position:fixed;left:14px;top:150px;width:318px;max-height:calc(100vh - 300px);overflow:auto;display:none;border-radius:20px;padding:14px 16px;z-index:8;font-size:12.5px}
+#ratLegend h3{margin:0 0 3px;font-size:15px;display:flex;justify-content:space-between;align-items:baseline}#ratLegend .rsub{color:var(--muted);font-weight:650;font-size:11.5px;margin-bottom:8px}
+#ratLegend .rb{height:7px;border-radius:5px;background:var(--soft);overflow:hidden;margin:2px 0 10px}#ratLegend .rb i{display:block;height:100%}
+#ratLegend .rl{display:flex;gap:9px;margin:9px 0;align-items:flex-start}#ratLegend .rl>i{flex:none;width:12px;height:12px;border-radius:50%;margin-top:3px}
+#ratLegend .rl b{display:block;font-size:13px}#ratLegend .rl span{color:var(--ink2);font-weight:700;font-size:11.5px}#ratLegend .rl small{display:block;color:var(--muted);font-weight:600;font-size:11px;margin-top:2px;line-height:1.4}
+#ratLegend .rg{color:var(--ink2);font-weight:700;margin-top:8px;font-size:12px}
 #aiInfo{border-radius:22px;padding:14px 18px 13px;display:none;font-size:12px}
 #aiInfo h4{margin:0 0 7px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:850;display:flex;justify-content:space-between;align-items:center}
 #aiInfo .ag{display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;margin-bottom:9px}
@@ -305,6 +311,7 @@ body.inmenu #coach{display:none!important}
 <div id="sbBar" class="glass"></div>
 <div id="coordBar" class="glass"></div>
 <div id="tlEd" class="glass"></div>
+<div id="ratLegend" class="glass"></div>
 <div id="coach" class="glass"></div>
 <div id="dock" class="glass"></div>
 <div id="toast" class="glass"></div>
@@ -315,7 +322,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.10.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.11.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -994,7 +1001,7 @@ function crash(nx,a,b){   // hardest difficulty: crossing paths in an unsigned j
   const px=(nx>>1)%W+.5,py=(((nx>>1)/W)|0)+.5;
   S.wrecks.push({x:px,y:py,t:time});if(S.wrecks.length>12)S.wrecks.shift();
   for(let i=0;i<22;i++)particles.push({x:px,y:py,vx:rnd(-3,3),vy:rnd(-3,3),life:rnd(.5,1.1),max:1.1,col:pick(['#ffb02e','#ff6b3d','#444','#ffe08a']),r:rnd(.04,.1)});
-  killCar(a,'crash');if(b)killCar(b,'crash');ratingHit(4);
+  killCar(a,'crash');if(b)killCar(b,'crash');ratingHit(4,'A wreck');
   if(D.crash&&S.crashes>=D.crash&&!S.over)gameOver(D.crash+' crashes — the roads are a wreck.');
 }
 function tryEnter(c,nx,d){
@@ -1073,7 +1080,7 @@ function igniteHouse(h,spread){
 }
 function igniteRandom(){const hs=blds.filter(b=>!b.dest&&!b.fire);if(hs.length)igniteHouse(pick(hs));}
 function destroyHouse(b){
-  ratingHit(6);
+  ratingHit(6,'A house burned down');
   for(const c of cars)if(!c.dead&&!c.truck&&c.home===b)killCar(c);
   for(const ci of b.cells)cells[ci].bld=null;
   blds.splice(blds.indexOf(b),1);if(b.truck){b.truck.target=null;b.truck.home.truck=b.truck.home.truck;}
@@ -1635,17 +1642,18 @@ function ratingTick(dt){
   S.ratClock-=dt;
   if(S.ratClock<=0){
     S.ratClock=.5;const k=D.rate*(1+Math.min(.8,Math.max(0,S.week-4)*.03)),L=[];   // (a bigger city is judged on shares, not head counts, so it stays possible to keep up)
-    const hs=blds.filter(b=>!b.dest),n=hs.length||1;
+    const hs=blds.filter(b=>!b.dest),n=hs.length||1,RT=window.__RT||{wt:.16,lt:.16,k:1.3},items={};
     // a house is "waiting too long" when it has gone far longer without a car than a round trip on its own route should take
-    const waiting=hs.filter(b=>b.demand>0&&b.linked&&!(b.rt&&b.rt.length)&&time-b.lastProg>(2*(b.lastEta||12)+12)*1.5+10).length/n;
-    const RT=window.__RT||{wt:.16,lt:.16,k:1.3};
-    if(waiting>RT.wt)L.push(['Houses waiting too long',(waiting-RT.wt)*RT.k]);
-    let late=0,drv=0;for(const c of cars)if(!c.dead&&c.leg===0&&c.ph==='drive'){drv++;if(lateCar(c))late++;}
-    const lf=drv?late/drv:0;if(lf>RT.lt&&late>3)L.push(['Cars running late',(lf-RT.lt)*RT.k]);
-    let near=0;for(const b of blds)if(b.dest&&b.jam>=D.dcap-1)near++;if(near)L.push(['Destinations backed up',Math.min(3,near)*.15]);
-    let cut=0;for(let c=0;c<6;c++)if((S.stallT[c]||0)>0)cut++;if(cut)L.push(['A colour cut off',cut*.3]);
-    let lone=0;for(const b of blds)if(!b.linked&&time-b.born>30)lone++;if(lone)L.push(['Buildings not connected',Math.min(5,lone)*.08]);
-    let fire=0;for(const b of blds)if(b.fire)fire++;if(fire)L.push(['Houses on fire',Math.min(5,fire)*.1]);
+    items.wait=hs.filter(b=>b.demand>0&&b.linked&&!(b.rt&&b.rt.length)&&time-b.lastProg>(2*(b.lastEta||12)+12)*1.5+10);
+    const waiting=items.wait.length/n;
+    if(waiting>RT.wt)L.push(['Houses waiting too long',(waiting-RT.wt)*RT.k,'wait']);
+    items.late=[];let drv=0;for(const c of cars)if(!c.dead&&c.leg===0&&c.ph==='drive'){drv++;if(lateCar(c))items.late.push(c);}
+    const lf=drv?items.late.length/drv:0;if(lf>RT.lt&&items.late.length>3)L.push(['Cars running late',(lf-RT.lt)*RT.k,'late']);
+    items.near=blds.filter(b=>b.dest&&b.jam>=D.dcap-1);if(items.near.length)L.push(['Destinations backed up',Math.min(3,items.near.length)*.15,'near']);
+    items.cut=[];for(let c=0;c<6;c++)if((S.stallT[c]||0)>0)items.cut.push(c);if(items.cut.length)L.push(['A colour cut off',items.cut.length*.3,'cut']);
+    items.lone=blds.filter(b=>!b.linked&&time-b.born>30);if(items.lone.length)L.push(['Buildings not connected',Math.min(5,items.lone.length)*.08,'lone']);
+    items.fire=blds.filter(b=>b.fire);if(items.fire.length)L.push(['Houses on fire',Math.min(5,items.fire.length)*.1,'fire']);
+    S.ratItems=items;S.ratShare={wait:waiting,late:lf,houses:n,drv};
     L.forEach(x=>x[1]*=k);L.sort((a,b)=>b[1]-a[1]);
     S.ratList=L;S.ratRate=L.reduce((a,x)=>a+x[1],0);S.ratWhy=L.length?L[0][0]:'';
   }
@@ -1657,7 +1665,7 @@ function ratingTick(dt){
     if(S.rating<28)Notes.push('rating2','crit','!','City rating is critical',S.ratWhy+': fix it or the city is lost ('+Math.round(S.rating)+'%)');
   }
 }
-function ratingHit(n){if(D.rate&&!D.noFail&&S.rating!==undefined)S.rating=Math.max(0,S.rating-n*D.rate);}
+function ratingHit(n,why){if(D.rate&&!D.noFail&&S.rating!==undefined){S.rating=Math.max(0,S.rating-n*D.rate);(S.ratEvents||(S.ratEvents=[])).push({t:time,why:why||'A hit',n:+(n*D.rate).toFixed(1)});if(S.ratEvents.length>6)S.ratEvents.shift();}}
 function updateStall(dt){
   if(D.noFail)return;
   S.stallClock-=dt;
@@ -2252,7 +2260,7 @@ function tutWipe(){   // a clean, flat map with one straight river (x 38-40), so
   hold.fill(null);queue.fill(null);crashUntil.fill(0);heat.fill(0);
   S.sirens=[];S.wrecks=[];S.stallT=[0,0,0,0,0,0];S.crashes=0;
   sbNoSpawn=true;colorOrder=[0,1,3,2,4,5];S.colors=3;for(const c of [0,1,3])S.colorBorn[c]=-999;
-  layerMode='normal';
+  layerMode='normal';updateRatLegend();
   rebuild();rebuildGoals();GC.dirty=true;gfxVer++;
 }
 function tutRoad(pts,piece){   // lay a road through waypoints (one grid step at a time)
@@ -2513,7 +2521,7 @@ addEventListener('keydown',e=>{
     case 'erase':selectTool('erase');break;
     case 'undo':undoLast();break;
     case 'horns':Snd.init();Settings.set('mute',!Settings.v.mute);break;
-    case 'layers':{const i=LAYERS.findIndex(l=>l[0]===layerMode);setLayer(LAYERS[(i+1)%LAYERS.length][0]);break;}
+    case 'layers':{const vis=LAYERS.filter(l=>l[0]!=='rating'||D.rate),i=vis.findIndex(l=>l[0]===layerMode);setLayer(vis[(i+1)%vis.length][0]);break;}
     case 'pause':e.preventDefault();togglePause();break;
     default:if(ka&&ka[0]==='t')selectTool(PIECES[+ka[1]-1].k);
   }
@@ -2770,12 +2778,12 @@ function drawElevated(){
 }
 /* ---------- layer view ---------- */
 let layerMode='normal';
-const LAYERS=[['normal','Normal','The city as it is','\u25CE','#80869a'],['traffic','Traffic','Where cars flow or get stuck','\u2248','#e5484d'],['roads','Roads only','Hides bridges and highways','\u2501','#4c9be8'],['elev','Bridges and highways only','Fades the ground roads','\u2B06','#ff8b3d'],['routes','Routes','Who drives where. Click a road to see its share of cars','\u2197','#4c9be8'],['speed','Speed limits','Long straights are fast, junctions slow','\u23F1','#2fb67c'],['fire','Fire cover','How fast a truck reaches each house','\u{1F525}','#d8382f']];
+const LAYERS=[['normal','Normal','The city as it is','\u25CE','#80869a'],['traffic','Traffic','Where cars flow or get stuck','\u2248','#e5484d'],['roads','Roads only','Hides bridges and highways','\u2501','#4c9be8'],['elev','Bridges and highways only','Fades the ground roads','\u2B06','#ff8b3d'],['routes','Routes','Who drives where. Click a road to see its share of cars','\u2197','#4c9be8'],['speed','Speed limits','Long straights are fast, junctions slow','\u23F1','#2fb67c'],['fire','Fire cover','How fast a truck reaches each house','\u{1F525}','#d8382f'],['rating','City rating','What is bringing it down, and why','\u2605','#e5484d']];
 const heat=new Float32Array(N);
 function buildLayerMenu(){
-  $('layerMenu').innerHTML=LAYERS.map(l=>`<div class="lrow ${layerMode===l[0]?'on':''}" data-l="${l[0]}" style="--lc:${l[4]}"><i>${l[3]}</i><div><b>${l[1]}</b><small>${l[2]}</small></div></div>`).join('');
+  $('layerMenu').innerHTML=LAYERS.filter(l=>l[0]!=='rating'||D.rate).map(l=>`<div class="lrow ${layerMode===l[0]?'on':''}" data-l="${l[0]}" style="--lc:${l[4]}"><i>${l[3]}</i><div><b>${l[1]}</b><small>${l[2]}</small></div></div>`).join('');
 }
-function setLayer(k){layerMode=k;routeProbe=null;const l=LAYERS.find(x=>x[0]===k);$('blayer').textContent=k==='normal'?'Layers':l[1];$('blayer').classList.toggle('on',k!=='normal');$('layerMenu').classList.remove('open');}
+function setLayer(k){layerMode=k;routeProbe=null;updateRatLegend();const l=LAYERS.find(x=>x[0]===k);$('blayer').textContent=k==='normal'?'Layers':l[1];$('blayer').classList.toggle('on',k!=='normal');$('layerMenu').classList.remove('open');}
 $('bsnd').onclick=()=>{Snd.init();Settings.set('mute',!Settings.v.mute);};
 $('bset').onclick=()=>{if(mode!=='play'||S.over||(S.modal&&S.modal!=='pause'))return;if(S.modal!=='pause')openPause();Menu.show('settings');};
 $('blayer').onclick=()=>{buildLayerMenu();$('layerMenu').classList.toggle('open');};
@@ -2842,8 +2850,50 @@ function updateEta(){
     h.eta=best;
   }
 }
+const RAT_COL={wait:'#f4a62a',late:'#e5484d',near:'#c13ad6',cut:'#6f5be8',lone:'#e5484d',fire:'#ff6b2c'};
+const RAT_WHY={
+  wait:['Houses waiting too long','These houses have gone far longer without a car than a round trip on their route should take. Their roads to the destinations are too long, jammed, or cut. Shorter routes, shortcuts, a highway or fewer junctions help.'],
+  late:['Cars running late','These cars have been driving more than twice as long as the clear road needs. Look for a jam, a tangle of junctions, or a long way round.'],
+  near:['Destinations backed up','Too many late cars are heading for this destination. Fix the roads into it or give it a second way in.'],
+  cut:['A colour cut off','Most houses of this colour cannot get anywhere. Reconnect them: the countdown to losing is running.'],
+  lone:['Buildings not connected','These have had no road for over 30 seconds. Link their driveway to the network.'],
+  fire:['Houses on fire','A house is burning. A linked fire station puts it out. Build one, or link it to a road.']};
+function updateRatLegend(){
+  const el=$('ratLegend');if(!el)return;
+  if(!(layerMode==='rating'&&mode==='play'&&D.rate&&!D.noFail&&S&&!S.demo)){el.style.display='none';return;}
+  const r=Math.round(S.rating),col=r>60?'#2fb67c':r>30?'#e0a020':'#e5484d',it=S.ratItems||{},sh=S.ratShare||{};
+  const rate=S.ratRate||0,rows=[];
+  for(const key of ['wait','late','near','cut','lone','fire']){
+    const list=it[key]||[];if(!list.length)continue;
+    const ent=(S.ratList||[]).find(x=>x[2]===key),drain=ent?ent[1]:0;
+    let cnt=key==='cut'?list.map(c=>PAL[c].n).join(', '):list.length+(key==='wait'?' of '+(sh.houses||'?')+' houses ('+Math.round(100*(sh.wait||0))+'%)':key==='late'?' of '+(sh.drv||'?')+' cars ('+Math.round(100*(sh.late||0))+'%)':key==='near'?' destination'+(list.length>1?'s':''):' building'+(list.length>1?'s':''));
+    const note=(key==='wait'||key==='late')&&!ent?'Not costing you yet: it counts above 16%.':'';
+    rows.push(`<div class="rl"><i style="background:${RAT_COL[key]}"></i><div><b>${RAT_WHY[key][0]}</b><span>${ent?'\u2212'+drain.toFixed(2)+' a second':'no cost yet'} \u00b7 ${cnt}</span><small>${note?note+' ':''}${RAT_WHY[key][1]}</small></div></div>`);
+  }
+  const ev=(S.ratEvents||[]).filter(e=>time-e.t<90).map(e=>`<div class="rg">\u2212${e.n} ${e.why} (${Math.round(time-e.t)} s ago)</div>`).join('');
+  el.innerHTML=`<h3><span>City rating</span><span style="color:${col}">${r}${rate>.05?' \u2193':r<99.5?' \u2191':''}</span></h3>
+    <div class="rsub">${rate>.05?'Falling '+rate.toFixed(2)+' a second':r<99.5?'Recovering':'Steady'} \u00b7 at 0 the city is lost</div>
+    <div class="rb"><i style="width:${r}%;background:${col}"></i></div>
+    ${rows.length?rows.join(''):'<div class="rg">Nothing is dragging the rating down right now.</div>'}${ev}`;
+  el.style.display='block';
+}
+setInterval(()=>{try{updateRatLegend();}catch(e){}},400);
+function drawRatingLayer(){   // what is dragging the rating down, on the map
+  const it=S.ratItems;if(!it)return;
+  const pulse=.55+.35*Math.sin(time*5);ctx.save();ctx.lineCap='round';
+  const ring=(x,y,r,col,dash)=>{ctx.strokeStyle='#fff';ctx.lineWidth=.16;ctx.globalAlpha=.8;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=.09;ctx.globalAlpha=pulse;if(dash)ctx.setLineDash([.12,.1]);ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;};
+  for(const b of it.wait){if(b.x<vx0-1||b.x>vx1||b.y<vy0-1||b.y>vy1)continue;ring(b.x+.5,b.y+.5,.78,RAT_COL.wait,true);}
+  for(const b of it.lone){if(b.x<vx0-2||b.x>vx1+1||b.y<vy0-2||b.y>vy1+1)continue;ring(b.x+b.w/2,b.y+b.w/2,b.w*.7+.3,RAT_COL.lone,true);}
+  for(const b of it.near){ring(b.x+1,b.y+1,1.45,RAT_COL.near,false);}
+  for(const b of it.fire){ring(b.x+.5,b.y+.5,.9,RAT_COL.fire,false);}
+  for(const b of blds)if(!b.dest&&it.cut.indexOf(b.color)>=0&&b.stalled){ctx.strokeStyle=RAT_COL.cut;ctx.lineWidth=.1;ctx.globalAlpha=pulse;const x=b.x+.5,y=b.y+.5;ctx.beginPath();ctx.moveTo(x-.3,y-.3);ctx.lineTo(x+.3,y+.3);ctx.moveTo(x+.3,y-.3);ctx.lineTo(x-.3,y+.3);ctx.stroke();ctx.globalAlpha=1;}
+  for(const b of blds)if(b.dest&&(it.cut.indexOf(b.color)>=0||it.cut.indexOf(b.color2)>=0))ring(b.x+1,b.y+1,1.2,RAT_COL.cut,true);
+  for(const c of it.late){if(c.dead)continue;const q=pose(c);if(q.x<vx0-1||q.x>vx1+1||q.y<vy0-1||q.y>vy1+1)continue;ring(q.x,q.y,.34,RAT_COL.late,false);}
+  ctx.restore();
+}
 function drawLayerOver(){
   if(mode!=='play')return;
+  if(layerMode==='rating'&&D.rate)drawRatingLayer();
   if(layerMode==='speed'){
     ctx.save();ctx.lineCap='round';ctx.lineWidth=.42;
     for(let u=0;u<N;u+=2){

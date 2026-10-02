@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.11.0 — A City rating view
+- New view in the Layers menu (and the L key), next to Fire cover: City rating. It circles on the map what is dragging your rating down: houses waiting too long (amber), cars running late (red rings on the cars), destinations backed up (purple), a colour cut off (blue crosses on its houses and rings on its destinations), buildings with no road (red, dashed) and houses on fire (orange). A panel lists each cause with what it costs per second, how many of them there are (and the share of the city), a line on what to do about it, and the recent instant hits like wrecks and burned-down houses. It only appears on difficulties that have a rating
+
 ## 1.10.1 — A city rating you can keep up in a big city
 - The rating was impossible to hold in a large city: in the late game every house always has more trips waiting than its cars can carry, so "trips piling up" drained it for everyone, and the stalled-house and late-car drains counted head counts, so a bigger city was punished just for being bigger. The piling-up drain is gone, houses are now judged as "waiting too long" against how long a round trip on their own route should take, and both that and late cars are measured as a share of the city (it starts to drain above about 16%). The growth of the drain after week 4 is capped at 1.8 times (it was 2.5)
 - The other drains (a colour cut off, destinations backed up, unconnected buildings, fires, wrecks) are the same, and the rating still refills when the city is calm
