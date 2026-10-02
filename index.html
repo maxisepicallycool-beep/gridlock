@@ -51,6 +51,8 @@ body.app #hud{padding-left:92px;padding-top:10px}
 .stat{display:flex;flex-direction:column;align-items:center;min-width:56px}
 .stat small{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);font-weight:800}
 .stat b{font-size:21px;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+.ratbar{display:block;width:100%;height:4px;border-radius:3px;background:var(--soft);overflow:hidden;margin-top:1px}.ratbar u{display:block;height:100%;width:100%;background:#2fb67c;transition:width .4s,background .4s}
+#ratStat.warnr b{color:#e0a020}#ratStat.badr b{color:var(--danger)}
 .btn{border:0;background:var(--soft);color:var(--ink);border-radius:12px;padding:8px 12px;font:700 13px inherit;cursor:pointer;transition:transform .12s,background .12s}
 .btn:hover{background:rgba(35,39,51,.13)}.btn:active{transform:scale(.95)}
 
@@ -285,6 +287,7 @@ body.inmenu #coach{display:none!important}
     <div class="pill glass" style="gap:16px">
       <div class="stat"><small>Trips</small><b id="sc">0</b></div>
       <div class="stat"><small>Cars</small><b id="cr">0</b></div>
+      <div class="stat" id="ratStat" style="display:none" title=""><small>City rating</small><b id="rat">100</b><i class="ratbar"><u id="ratfill"></u></i></div>
       <div class="stat" id="clockStat" style="display:none"><small id="clkn">Time</small><b id="clk">06:00</b></div>
       <div class="stat" id="crashStat" style="display:none"><small>Crashes</small><b id="crsh" style="color:var(--danger)">0</b></div>
     </div>
@@ -312,7 +315,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.9.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.10.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -371,11 +374,11 @@ const STALL_FRAC=.75, STALL_GRACE=20, STALL_IDLE=25;   // cut-off countdown: sha
 const DIFFS=[
   {id:'tutorial',name:'Tutorial',tag:'Learn the game',col:'#2fb67c',demandBase:4,demandMin:3,stall:999,dlimit:999,dcap:99,weekLen:99999,firstWeek:99999,cardMul:1,startMul:1,growth:0,maxOut:2,fleet:2,fireChance:0,fireBurn:80,fireOW:true,fireBuild:15,anyDest:true,crash:0,notify:true,noFail:true,infinite:true},
   {id:'relaxed', name:'Relaxed',  tag:'Take your time',          col:'#2fb67c',demandBase:14,  demandMin:7,  stall:35,dlimit:22,dcap:7,weekLen:50,firstWeek:60,cardMul:1.3, startMul:1.5, growth:.75,maxOut:2,fleet:0,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:20,anyDest:false,crash:0,notify:true},
-  {id:'standard',name:'Standard', tag:'The intended ride',       col:'#4c9be8',demandBase:11,  demandMin:4.5,stall:22.5,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.10,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true},
-  {id:'rush',    name:'Rush Hour',tag:'Busy, busy, busy',        col:'#ff8b3d',demandBase:8.5, demandMin:3.5,stall:18,dlimit:10,dcap:5,weekLen:38,firstWeek:44,cardMul:.85, startMul:.8,  growth:1.4,maxOut:2,fleet:2,fireChance:.125,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:0,notify:true},
-  {id:'gridlock',name:'Gridlock', tag:'Good luck',               col:'#e5484d',demandBase:6.5, demandMin:2.8,stall:15,dlimit:7, dcap:4,weekLen:34,firstWeek:40,cardMul:.7,  startMul:.65, growth:1.8,maxOut:1,fleet:1,fireChance:.15,fireBurn:45,fireOW:false,fireBuild:70,anyDest:true,crash:15,notify:false,coord:true,stopMul:6},
-  {id:'realism_easy',name:'Realism \u00b7 Easy',real:'Easy',tag:'Be a civil engineer',col:'#17a2b8',demandBase:11,demandMin:4.5,stall:30,dlimit:18,dcap:6,weekLen:48,firstWeek:55,cardMul:1.15,startMul:1.2,growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true,coord:true,clock:true,dayLen:360,waves:.6,stopMul:3},
-  {id:'realism_hard',name:'Realism \u00b7 Hard',real:'Hard',tag:'Be a civil engineer',col:'#0f7f93',demandBase:9.5,demandMin:3.8,stall:20,dlimit:12,dcap:5,weekLen:40,firstWeek:46,cardMul:.95,startMul:1,growth:1.3,maxOut:2,fleet:2,fireChance:.1,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:12,notify:true,coord:true,clock:true,dayLen:360,waves:1,stopMul:4.5},
+  {id:'standard',name:'Standard', tag:'The intended ride',       col:'#4c9be8',demandBase:11,  demandMin:4.5,stall:22.5,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.10,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true,rate:1},
+  {id:'rush',    name:'Rush Hour',tag:'Busy, busy, busy',        col:'#ff8b3d',demandBase:8.5, demandMin:3.5,stall:18,dlimit:10,dcap:5,weekLen:38,firstWeek:44,cardMul:.85, startMul:.8,  growth:1.4,maxOut:2,fleet:2,fireChance:.125,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:0,notify:true,rate:1.25},
+  {id:'gridlock',name:'Gridlock', tag:'Good luck',               col:'#e5484d',demandBase:6.5, demandMin:2.8,stall:15,dlimit:7, dcap:4,weekLen:34,firstWeek:40,cardMul:.7,  startMul:.65, growth:1.8,maxOut:1,fleet:1,fireChance:.15,fireBurn:45,fireOW:false,fireBuild:70,anyDest:true,crash:15,notify:false,coord:true,stopMul:6,rate:1.5},
+  {id:'realism_easy',name:'Realism \u00b7 Easy',real:'Easy',tag:'Be a civil engineer',col:'#17a2b8',demandBase:11,demandMin:4.5,stall:30,dlimit:18,dcap:6,weekLen:48,firstWeek:55,cardMul:1.15,startMul:1.2,growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true,coord:true,clock:true,dayLen:360,waves:.6,stopMul:3,rate:.85},
+  {id:'realism_hard',name:'Realism \u00b7 Hard',real:'Hard',tag:'Be a civil engineer',col:'#0f7f93',demandBase:9.5,demandMin:3.8,stall:20,dlimit:12,dcap:5,weekLen:40,firstWeek:46,cardMul:.95,startMul:1,growth:1.3,maxOut:2,fleet:2,fireChance:.1,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:12,notify:true,coord:true,clock:true,dayLen:360,waves:1,stopMul:4.5,rate:1.3},
   {id:'sandbox', name:'Sandbox',  tag:'No fail, all the pieces', col:'#a468e6',demandBase:11,  demandMin:4.5,stall:30,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:10,anyDest:true,crash:0,notify:true,noFail:true,infinite:true}
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
@@ -866,7 +869,7 @@ function newGame(diffId,seed){
   blds=[];cars=[];particles=[];undoStack=[];depts=[];stroke=null;hold.fill(null);queue.fill(null);crashUntil.fill(0);heat.fill(0);time=0;bldId=0;
   inv=startInv();
   colorOrder=[0,1,2,3,4,5].sort(()=>Math.random()-.5);
-  S={grow:null,expansions:0,sirens:[],fireClock:0,crashes:0,wrecks:[],seed:mapSeed,runId:Date.now().toString(36)+Math.floor(Math.random()*1e4),name:'',stallT:[0,0,0,0,0,0],colorBorn:{},stall:null,stallClock:0,week:1,weekT:0,weekLen:D.firstWeek,score:0,colors:0,modal:null,paused:false,speed:1,over:false,mid:false,saveClock:0,demo:false};
+  S={rating:100,ratRate:0,ratClock:0,ratWhy:'',ratList:[],grow:null,expansions:0,sirens:[],fireClock:0,crashes:0,wrecks:[],seed:mapSeed,runId:Date.now().toString(36)+Math.floor(Math.random()*1e4),name:'',stallT:[0,0,0,0,0,0],colorBorn:{},stall:null,stallClock:0,week:1,weekT:0,weekLen:D.firstWeek,score:0,colors:0,modal:null,paused:false,speed:1,over:false,mid:false,saveClock:0,demo:false};
   Notes.clear();rebuild();rebuildGoals();startWeek(1);buildDock();hud(true);
 }
 function addColor(){const c=colorOrder[S.colors++];S.colorBorn[c]=time;spawnBld(c,true);spawnBld(c,false);spawnBld(c,false);}
@@ -990,7 +993,7 @@ function crash(nx,a,b){   // hardest difficulty: crossing paths in an unsigned j
   const px=(nx>>1)%W+.5,py=(((nx>>1)/W)|0)+.5;
   S.wrecks.push({x:px,y:py,t:time});if(S.wrecks.length>12)S.wrecks.shift();
   for(let i=0;i<22;i++)particles.push({x:px,y:py,vx:rnd(-3,3),vy:rnd(-3,3),life:rnd(.5,1.1),max:1.1,col:pick(['#ffb02e','#ff6b3d','#444','#ffe08a']),r:rnd(.04,.1)});
-  killCar(a,'crash');if(b)killCar(b,'crash');
+  killCar(a,'crash');if(b)killCar(b,'crash');ratingHit(4);
   if(D.crash&&S.crashes>=D.crash&&!S.over)gameOver(D.crash+' crashes — the roads are a wreck.');
 }
 function tryEnter(c,nx,d){
@@ -1069,6 +1072,7 @@ function igniteHouse(h,spread){
 }
 function igniteRandom(){const hs=blds.filter(b=>!b.dest&&!b.fire);if(hs.length)igniteHouse(pick(hs));}
 function destroyHouse(b){
+  ratingHit(6);
   for(const c of cars)if(!c.dead&&!c.truck&&c.home===b)killCar(c);
   for(const ci of b.cells)cells[ci].bld=null;
   blds.splice(blds.indexOf(b),1);if(b.truck){b.truck.target=null;b.truck.home.truck=b.truck.home.truck;}
@@ -1624,6 +1628,32 @@ function drawAlert(b){   // big bobbing marker that stands out above anything th
 /* ---------- cut-off countdown ---------- */
 // a house is stalled if it can't reach a destination of its colour, or has trips waiting but nothing has moved for a while.
 // if STALL_FRAC or more of a colour's houses are stalled, that colour's countdown runs; it drains while things recover.
+/* ---------- city rating: every kind of trouble drains it, a calm city refills it, and at zero the city is lost ---------- */
+function ratingTick(dt){
+  if(!D.rate||D.noFail||S.over||S.tut)return;
+  S.ratClock-=dt;
+  if(S.ratClock<=0){
+    S.ratClock=.5;const k=D.rate*(1+Math.min(1.5,Math.max(0,S.week-4)*.06)),L=[];
+    const hs=blds.filter(b=>!b.dest),n=hs.length||1;
+    const sf=hs.filter(b=>b.stalled).length/n;if(sf>.15)L.push(['Stalled houses',(sf-.15)*1.6]);
+    let late=0;for(const c of cars)if(!c.dead&&c.leg===0&&c.ph==='drive'&&lateCar(c))late++;if(late>3)L.push(['Cars running late',(late-3)*.02]);
+    let near=0;for(const b of blds)if(b.dest&&b.jam>=D.dcap-1)near++;if(near)L.push(['Destinations backed up',near*.15]);
+    let cut=0;for(let c=0;c<6;c++)if((S.stallT[c]||0)>0)cut++;if(cut)L.push(['A colour cut off',cut*.3]);
+    let lone=0;for(const b of blds)if(!b.linked&&time-b.born>30)lone++;if(lone)L.push(['Buildings not connected',lone*.08]);
+    const full=hs.filter(b=>b.demand>=MAXD).length/n;if(full>.3)L.push(['Trips piling up',(full-.3)*.8]);
+    let fire=0;for(const b of blds)if(b.fire)fire++;if(fire)L.push(['Houses on fire',fire*.1]);
+    L.forEach(x=>x[1]*=k);L.sort((a,b)=>b[1]-a[1]);
+    S.ratList=L;S.ratRate=L.reduce((a,x)=>a+x[1],0);S.ratWhy=L.length?L[0][0]:'';
+  }
+  const calm=S.ratRate<.04;
+  S.rating=Math.max(0,Math.min(100,S.rating-S.ratRate*dt+(calm?.35:S.ratRate<.15?.1:0)*dt));
+  if(S.rating<=0&&!S.over){gameOver('Your city\u2019s rating hit zero ('+(S.ratWhy||'too much going wrong')+').');return;}
+  if(S.ratRate>.05&&!S.demo){
+    if(S.rating<55)Notes.push('rating','warn','!','City rating is falling',S.ratWhy+' ('+Math.round(S.rating)+'%)');
+    if(S.rating<28)Notes.push('rating2','crit','!','City rating is critical',S.ratWhy+': fix it or the city is lost ('+Math.round(S.rating)+'%)');
+  }
+}
+function ratingHit(n){if(D.rate&&!D.noFail&&S.rating!==undefined)S.rating=Math.max(0,S.rating-n*D.rate);}
 function updateStall(dt){
   if(D.noFail)return;
   S.stallClock-=dt;
@@ -1806,7 +1836,7 @@ function step(dt){
     if(b.jam>=D.dcap&&!D.noFail){b.over+=dt;if(b.over>=D.dlimit&&!S.over){gameOver('Cars couldn\u2019t get to a destination in time.');return;}}
     else b.over=Math.max(0,b.over-dt*2);
   }
-  updateStall(dt);Snd.tick(dt);
+  updateStall(dt);ratingTick(dt);Snd.tick(dt);
   if(D.clock&&!S.demo&&!S.tut){const nm=rushName();if(nm!==S.rushNm){S.rushNm=nm;if(time>3)toast(nm?nm+': traffic is building':'Rush hour is over: traffic is easing off');}}
   S.fireClock+=dt;if(S.fireClock>=60){S.fireClock-=60;if(D.fireChance&&Math.random()<D.fireChance)igniteRandom();}   // a chance of a house fire every minute
   for(const b of blds.slice())if(b.fire)tickFire(b,dt);
@@ -2535,6 +2565,9 @@ let hudCache={};
 function hud(force){
   if(force){const dc=$('dchip');dc.textContent=D.name;dc.style.setProperty('--chipc',D.col);}
   const set=(id,v)=>{if(force||hudCache[id]!==v){hudCache[id]=v;$(id).textContent=v;}};
+  const rs=$('ratStat');rs.style.display=D.rate&&!D.noFail?'flex':'none';
+  if(D.rate&&!D.noFail){const r=Math.round(S.rating===undefined?100:S.rating);set('rat',r+(S.ratRate>.05?' \u2193':S.rating<99.5?' \u2191':''));$('ratfill').style.width=r+'%';$('ratfill').style.background=r>60?'#2fb67c':r>30?'#e0a020':'#e5484d';rs.classList.toggle('warnr',r<=60&&r>30);rs.classList.toggle('badr',r<=30);
+    rs.title='City rating: it drains when things go wrong and refills when the city runs smoothly. At zero the city is lost.'+((S.ratList||[]).length?'\n'+S.ratList.map(x=>x[0]+' \u2212'+x[1].toFixed(2)+'/s').join('\n'):'\nAll calm.');}
   $('clockStat').style.display=D.clock?'flex':'none';
   if(D.clock){const rn=rushName(),h=hourNow();set('clk',clockText());set('clkn',rn||(h<5.5||h>=20.5?'Night':h<7?'Dawn':h>=19.5?'Dusk':'Daytime'));$('clk').style.color=rn?'var(--danger)':'';}
   $('crashStat').style.display=D.crash?'flex':'none';if(D.crash)set('crsh',(S.crashes||0)+'/'+D.crash);
@@ -3603,7 +3636,7 @@ function serialize(){
   const signs=[],tls=[];for(let i=0;i<W*H;i++){const sg=cells[i].sg;if(sg)for(let s=0;s<8;s++)if(sg[s])signs.push([i,s,sgCode(sg[s])]);if(cells[i].tl)tls.push([i,cells[i].tl]);}
   const bl=blds.map(b=>[b.x,b.y,b.w,b.color,b.dest?1:0,b.dir,Math.min(MAXD,b.demand+b.out),+b.timer.toFixed(2),b.kind||0,b.color2>=0?b.color2:-1,b.seen?1:0]);
   const dp=depts.map(d=>[d.x,d.y,d.dir,Math.max(0,+(d.readyAt-time).toFixed(1))]);
-  return {v:2,rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
+  return {v:2,rt:+(S.rating===undefined?100:S.rating).toFixed(1),rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
     colorBorn:S.colorBorn,stallT:S.stallT.map(v=>+v.toFixed(2)),inv,time:+time.toFixed(2),mid:!!S.mid,edges,signs,tl:tls,bl,dp,tr:Object.keys(sbTerr).map(k=>[+k,sbTerr[k]?1:0]),ns:sbNoSpawn?1:0};
 }
 function restore(sv){
@@ -3617,7 +3650,7 @@ function restore(sv){
   blds=[];cars=[];particles=[];undoStack=[];stroke=null;depts=[];hold.fill(null);queue.fill(null);crashUntil.fill(0);heat.fill(0);bldId=0;
   time=st.time||0;inv=Object.assign({},st.inv);inv.hwy1=inv.hwy1||0;inv.bridge=(inv.bridge||0)+(inv.bridge1||0);delete inv.bridge1;   // saved one-way bridges become ordinary ones
   colorOrder=st.colorOrder.slice();
-  S={seed:st.seed,runId:sv.runId||Date.now().toString(36),name:sv.name||'City',stallT:st.stallT.slice(),colorBorn:Object.assign({},st.colorBorn),stall:null,stallClock:0,
+  S={rating:st.rt===undefined?100:st.rt,ratRate:0,ratClock:0,ratWhy:'',ratList:[],seed:st.seed,runId:sv.runId||Date.now().toString(36),name:sv.name||'City',stallT:st.stallT.slice(),colorBorn:Object.assign({},st.colorBorn),stall:null,stallClock:0,
      grow:null,expansions:0,sirens:[],fireClock:0,crashes:st.crashes||0,wrecks:[],week:st.week,weekT:st.weekT,weekLen:st.weekLen,score:st.score,colors:st.colors,modal:null,paused:false,speed:1,over:false,mid:!!st.mid,saveClock:0,demo:false};
   for(const [i,d,ly,k,ow] of st.edges)setEdge(ly?'f':'g',i,d,k,ow);
   for(const [i,s,code] of st.signs)setSign(i,s,code||1);
@@ -3665,7 +3698,7 @@ const statLines=d=>{
   const fire=d.fireChance?`House fires ${+(d.fireChance*100).toFixed(1)}%/min`:'No house fires';
   const rules=d.fleet?`${d.fleet} car${d.fleet>1?'s':''} per house, must return · any destination`:'Cars spawn freely · fixed destination';
   if(d.noFail)return ['No fail states','Unlimited pieces',rules,fire];
-  return [`Cut-off timer ${d.stall}s`,`Late cars: ${d.dcap} for ${d.dlimit}s ends it`,`Weeks ${d.weekLen}s · pieces ×${d.startMul}`,rules,fire].concat(d.crash?[`Cars crash · ${d.crash} crashes ends it`,d.notify?'Alerts on':'No alerts']:[]).concat(d.coord?['Traffic lights, yield and stop signs']:[]).concat(d.clock?['A 24-hour clock with rush hours']:[]);
+  return [`Cut-off timer ${d.stall}s`,`Late cars: ${d.dcap} for ${d.dlimit}s ends it`,`Weeks ${d.weekLen}s · pieces ×${d.startMul}`,rules,fire].concat(d.crash?[`Cars crash · ${d.crash} crashes ends it`,d.notify?'Alerts on':'No alerts']:[]).concat(d.rate?['City rating: lose it and it is over']:[]).concat(d.coord?['Traffic lights, yield and stop signs']:[]).concat(d.clock?['A 24-hour clock with rush hours']:[]);
 };
 const bldSvg=c=>`<svg class="ti" viewBox="0 0 40 40"><rect x="5" y="8" width="30" height="27" rx="8" fill="${PAL[c].d}"/><rect x="5" y="5" width="30" height="25" rx="8" fill="${PAL[c].c}"/><rect x="11" y="17" width="18" height="2.4" fill="#fff" opacity=".6"/><rect x="17" y="24" width="6" height="8" rx="2" fill="#fff6e0"/></svg>`;
 const miscSvg=(p,c)=>`<svg class="ti" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="${c}" opacity=".16"/>${p}</svg>`;

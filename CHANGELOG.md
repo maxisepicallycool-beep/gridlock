@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.10.0 — City rating
+- Standard, Rush Hour, Gridlock and both Realism difficulties now have a City rating (100 at the start, shown in the top bar with a bar that goes amber then red). Trouble drains it: stalled houses, cars running late, destinations backing up, a colour being cut off, buildings left unconnected for 30 seconds, trips piling up at most houses, houses on fire. Wrecks and burned-down houses knock a chunk off at once. A calm city refills it. At 0 the city is lost. Hover the rating to see what is draining it right now, and warnings tell you when it falls below 55 and below 28
+- The drain grows a little after week 4, and it is harsher on Rush Hour, Gridlock and Realism Hard (gentler on Realism Easy). Relaxed, the tutorial and the sandbox have no rating. The cut-off and late-car rules still apply on top of it
+
 ## 1.9.2 — Pins that stay until you notice the building
 - The pin over a new house or destination now stays until you interact with it: click the building, rest the pointer on it for a moment, or connect a road to it (a building that spawned already beside a road does not count as connected by you). The ring around it keeps pulsing while the pin is up, and saved cities remember which buildings you have seen
 - A building that still has a pin but is off the screen gets an arrow on the edge of the screen in its colour; click the arrow to jump to it
