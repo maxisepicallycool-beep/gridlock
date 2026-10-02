@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Gridlock</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <style>
 :root{
   --bg:#e7e0cd; --ink:#232733; --ink2:#4b5163; --muted:#80869a; --panel:rgba(255,255,255,.88);
@@ -304,7 +304,7 @@ body.inmenu #coach{display:none!important}
       <div class="stat" id="crashStat" style="display:none"><small>Crashes</small><b id="crsh" style="color:var(--danger)">0</b></div>
     </div>
     <div class="pill glass" style="gap:6px;padding:8px">
-      <button class="btn" id="bzout" title="Zoom out (-)">−</button><button class="btn" id="bfit" title="Fit map (0)">Fit</button><button class="btn" id="bzin" title="Zoom in (+)">+</button>
+      <button class="btn" id="bzout" title="Zoom out (-)">−</button><button class="btn" id="bfit" title="Fit map (0)">Fit</button><button class="btn" id="bzin" title="Zoom in (+)">+</button><button class="btn" id="bhand" title="Move the map with one finger" style="display:none">\u270B</button>
     </div>
     <div class="pill glass" style="gap:6px;padding:8px"><button class="btn" id="blayer" title="Layers (L)">Layers</button><button class="btn" id="bsnd" title="Mute or unmute all sound (M)">Sound</button><button class="btn" id="bset" title="Settings">Settings</button></div>
     <div class="pill glass" style="gap:6px;padding:8px">
@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.19.5';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.20.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -2631,7 +2631,7 @@ function drawArrow(cx,y0,t){
 /* ---------- input ---------- */
 function worldPos(e){return [(e.clientX-ox)/cs,(e.clientY-oy)/cs];}
 cv.addEventListener('contextmenu',e=>e.preventDefault());
-cv.addEventListener('pointerdown',e=>{
+const gameDown=e=>{
   if(S.modal)return;
   if(locEdgeHits.length){const r=cv.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;const h=locEdgeHits.find(q=>Math.hypot(q.x-px,q.y-py)<20);if(h&&blds.includes(h.b)){focusOn(h.b);return;}}   // an edge arrow: jump to that buildingtry{cv.setPointerCapture(e.pointerId);}catch(_){}
   const [fx,fy]=worldPos(e),x=Math.floor(fx),y=Math.floor(fy);if(!inB(x,y))return;
@@ -2648,7 +2648,41 @@ cv.addEventListener('pointerdown',e=>{
   if(tool==='ring'){buildRoundabout(ci);return;}
   if(tool==='line'){if(lineA===null){lineA=ci;lineDrag=true;}else{lineCommit(lineA,ci);lineA=null;}return;}
   if(PK[tool])startStroke(ci);
-});
+};
+/* touch (iPad): one finger places things, two fingers pinch to zoom and drag to move the map, and the hand button makes one finger move the map.
+   A touch is held back for a moment so that a second finger landing can cancel it: pinching never places or erases anything */
+const TCH=new Map();let tPinch=null,tPend=null,touchPan=false;
+function tFlush(){if(tPend){const p=tPend;tPend=null;clearTimeout(p.t);gameDown(p.e);}}
+function touchCancelActions(){
+  if(tPend){clearTimeout(tPend.t);tPend=null;}
+  erasing=false;sbPaint=false;
+  if(stroke){const st=stroke;stroke=null;for(let i=st.steps.length-1;i>=0;i--)if(st.steps[i])undoRec(st.steps[i]);}   // (a road the first finger had started)
+  if(lineA!==null){lineA=null;lineDrag=false;}
+}
+cv.addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='touch')return;
+  TCH.set(e.pointerId,{x:e.clientX,y:e.clientY});e.stopImmediatePropagation();
+  if(TCH.size>=2){touchCancelActions();const [a,b]=[...TCH.values()];tPinch={d:Math.hypot(a.x-b.x,a.y-b.y)||1,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2};panning=null;return;}
+  if(touchPan){panning={x:e.clientX,y:e.clientY,ox,oy};return;}
+  tPend={e,x:e.clientX,y:e.clientY,t:setTimeout(tFlush,70)};
+},true);
+cv.addEventListener('pointermove',e=>{
+  if(e.pointerType!=='touch')return;
+  const t=TCH.get(e.pointerId);if(!t)return;t.x=e.clientX;t.y=e.clientY;
+  if(tPinch&&TCH.size>=2){
+    const [a,b]=[...TCH.values()],d=Math.hypot(a.x-b.x,a.y-b.y)||1,cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;
+    ox+=cx-tPinch.cx;oy+=cy-tPinch.cy;setZoom(zoomZ*d/tPinch.d,cx,cy);clampView();
+    tPinch.d=d;tPinch.cx=cx;tPinch.cy=cy;e.stopImmediatePropagation();return;
+  }
+  if(tPend&&Math.hypot(e.clientX-tPend.x,e.clientY-tPend.y)>8)tFlush();   // the finger is dragging: begin now
+},true);
+function tUp(e){
+  if(e.pointerType!=='touch')return;
+  if(tPend&&TCH.size<2&&TCH.has(e.pointerId))tFlush();   // a quick tap: it counts now
+  TCH.delete(e.pointerId);if(TCH.size<2)tPinch=null;
+}
+addEventListener('pointerup',tUp,true);addEventListener('pointercancel',tUp,true);
+cv.addEventListener('pointerdown',gameDown);
 cv.addEventListener('pointermove',e=>{
   const [fx,fy]=worldPos(e),x=Math.floor(fx),y=Math.floor(fy);
   hover=inB(x,y)?[x,y]:null;hoverF=[fx,fy];
@@ -2714,7 +2748,7 @@ cv.addEventListener('wheel',e=>{
 },{passive:false});
 let gz0=1;
 addEventListener('gesturestart',e=>{e.preventDefault();gz0=zoomZ;});
-addEventListener('gesturechange',e=>{e.preventDefault();setZoom(gz0*e.scale,e.clientX,e.clientY);});
+addEventListener('gesturechange',e=>{e.preventDefault();if(TCH.size>=2)return;setZoom(gz0*e.scale,e.clientX,e.clientY);});   // (a trackpad pinch on a Mac; on touch screens the pointer code above does it)
 cv.addEventListener('auxclick',e=>e.preventDefault());
 cv.addEventListener('pointerdown',e=>{   // middle-drag or Alt+drag pans
   if(e.button===1||(e.button===0&&e.altKey)){e.preventDefault();panning={x:e.clientX,y:e.clientY,ox,oy};cv.style.cursor='grabbing';e.stopImmediatePropagation();}
@@ -2724,6 +2758,8 @@ addEventListener('pointerup',()=>{if(panning){panning=null;cv.style.cursor='cros
 document.getElementById('bzin').onclick=()=>setZoom(zoomZ*1.35,cw/2,ch/2);
 document.getElementById('bzout').onclick=()=>setZoom(zoomZ/1.35,cw/2,ch/2);
 document.getElementById('bfit').onclick=()=>fitView();
+if(navigator.maxTouchPoints>1||matchMedia('(pointer:coarse)').matches)document.getElementById('bhand').style.display='';   // touch screens only
+document.getElementById('bhand').onclick=e=>{touchPan=!touchPan;e.currentTarget.style.background=touchPan?'var(--accent)':'';e.currentTarget.style.color=touchPan?'#fff':'';toast(touchPan?'One finger moves the map':'One finger builds again',true);};
 
 /* ---------- UI ---------- */
 function buildDock(){

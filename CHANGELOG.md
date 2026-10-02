@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.20.0 — Touch controls
+- On a touch screen (the iPad app) one finger builds as before, but two fingers now pinch to zoom and drag to move the map without placing or erasing anything: a touch is held back for a split second, and a second finger landing cancels it. A new hand button next to the zoom buttons makes one finger move the map as well. The page can no longer be zoomed by accident
+
 ## 1.19.5 — Ready for the iPad
 - The About line names the iPad app. The game now has an iPad app (in the ios folder of the project) that updates itself the same way the other apps do: it checks on launch, when you come back to it, every 15 minutes and while it is closed, keeps the last good copy, and goes back to it if a new version fails to start
 
