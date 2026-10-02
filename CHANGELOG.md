@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.14.0 — The daily challenge and a GitHub leaderboard
+- New on the main menu: Daily challenge. Every day (by UTC date) there is one level, the same for everyone: its own land (Archipelago with a moat to bridge, River country, or Lake district with about a third of the start area under water) plus two rule changes picked from Short weeks, Lean pieces, Arson, Heavy traffic, Rush hours, Reckless drivers (wrecks, with traffic coordinators) and Fragile rating. It uses the city rating, and every destination needs a road. A countdown shows when the next one arrives
+- The leaderboard lives on GitHub, so it needs an internet connection (the level itself plays offline): the screen shows today's top 15 by best score. Press Post my score (also on the game-over screen) and GitHub opens a prefilled issue titled "[daily] DATE · SCORE": press Submit new issue there (it needs a GitHub account). It is an honour system. Your best score for each day is kept on your computer
+- Cities started from the daily level save and load with the rules of the day they were started on
+
 ## 1.13.0 — Roundabout tool and Straight road tool
 - Roundabout (key 8): click a junction and it turns into a one-way ring round the old crossing. It costs 8 one-way road pieces, the crossing roads come up and their pieces come back, and cars on them finish their trip first. The preview shows the ring and what comes up, or why it can't be built there
 - Straight road (key Q): click where a road starts and where it ends (or drag it out) and the road is laid between them in one go, diagonal first and then straight. The preview shows the cost and warns about new junctions, tight angles onto an existing road, and ends that touch nothing. Esc or right-click cancels

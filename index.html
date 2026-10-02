@@ -322,7 +322,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.13.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.14.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -386,6 +386,7 @@ const DIFFS=[
   {id:'gridlock',name:'Gridlock', tag:'Good luck',               col:'#e5484d',demandBase:6.5, demandMin:2.8,stall:15,dlimit:7, dcap:4,weekLen:34,firstWeek:40,cardMul:.7,  startMul:.65, growth:1.8,maxOut:1,fleet:1,fireChance:.15,fireBurn:45,fireOW:false,fireBuild:70,anyDest:true,crash:15,notify:false,coord:true,stopMul:6,rate:1.5},
   {id:'realism_easy',name:'Realism \u00b7 Easy',real:'Easy',tag:'Be a civil engineer',col:'#17a2b8',demandBase:11,demandMin:4.5,stall:30,dlimit:18,dcap:6,weekLen:48,firstWeek:55,cardMul:1.15,startMul:1.2,growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true,coord:true,clock:true,dayLen:360,waves:.6,stopMul:3,rate:.85},
   {id:'realism_hard',name:'Realism \u00b7 Hard',real:'Hard',tag:'Be a civil engineer',col:'#0f7f93',demandBase:9.5,demandMin:3.8,stall:20,dlimit:12,dcap:5,weekLen:40,firstWeek:46,cardMul:.95,startMul:1,growth:1.3,maxOut:2,fleet:2,fireChance:.1,fireBurn:60,fireOW:false,fireBuild:55,anyDest:true,crash:12,notify:true,coord:true,clock:true,dayLen:360,waves:1,stopMul:4.5,rate:1.3},
+  {id:'daily',name:'Daily challenge',daily:true,tag:'A new level every day',col:'#f0b429',demandBase:11,demandMin:4.5,stall:22.5,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,startMul:1,growth:1,maxOut:2,fleet:2,fireChance:.10,fireBurn:80,fireOW:true,fireBuild:45,anyDest:true,crash:0,notify:true,rate:1},
   {id:'sandbox', name:'Sandbox',  tag:'No fail, all the pieces', col:'#a468e6',demandBase:11,  demandMin:4.5,stall:30,dlimit:14,dcap:6,weekLen:42,firstWeek:50,cardMul:1,   startMul:1,   growth:1,maxOut:2,fleet:2,fireChance:.05,fireBurn:80,fireOW:true,fireBuild:10,anyDest:true,crash:0,notify:true,noFail:true,infinite:true}
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
@@ -696,6 +697,16 @@ function genMapInner(){
   for(let k=0;k<12;k++){const lx=rnd(3,W-3),ly=rnd(3,H-3);if(lx>X0-3&&lx<IR.x1+3&&ly>Y0-3&&ly<IR.y1+3)continue;lakes.push([lx,ly,rnd(2,4),rnd(1.6,3)]);}
   for(const [lx,ly,a,b] of lakes) for(let y=0;y<H;y++)for(let x=0;x<W;x++)
     if(((x-lx)/a)**2+((y-ly)/b)**2<1) cells[cellIdx(x,y)].water=true;
+  if(D&&D.terrain){   // the daily level's own land
+    const mid=cellIdx,wet=(x,y)=>{if(x>=0&&x<W&&y>=0&&y<H)cells[mid(x,y)].water=true;};
+    if(D.terrain==='islands'){const cxm=(X0+IR.x1)/2,cym=(Y0+IR.y1)/2,a=(IR.x1-X0)*.34,b=(IR.y1-Y0)*.38;for(let y=0;y<H;y++)for(let x=0;x<W;x++){const q=((x-cxm)/a)**2+((y-cym)/b)**2;if(q>.4&&q<.95)wet(x,y);}}
+    else if(D.terrain==='rivers'){
+      river(X0+rnd(8,11),rnd(0,6),rnd(0,6),rnd(0,6),1.2);river(X0+rnd(17,20),rnd(0,6),rnd(0,6),rnd(0,6),1.1);
+      const cyb=Y0+rnd(11,16),p1=rnd(0,6),p2=rnd(0,6);for(let x=0;x<W;x++){const cy=cyb+Math.sin(x*.33+p1)*2.4+Math.sin(x*.11+p2)*1.8;for(let y=0;y<H;y++)if(Math.abs(y-cy)<1.3)wet(x,y);}
+    } else if(D.terrain==='lakes'){
+      for(let k=0;k<15;k++){const lx=rnd(X0+1,IR.x1-1),ly=rnd(Y0+1,IR.y1-1),a=rnd(1.4,3.2),b=rnd(1.2,2.5);for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(((x-lx)/a)**2+((y-ly)/b)**2<1)wet(x,y);}
+    }
+  }
   trees=[];
   for(let y=0;y<H;y++)for(let x=0;x<W;x++) if(!cells[cellIdx(x,y)].water && RNG()<.07)
     trees.push({x:x+rnd(.25,.75),y:y+rnd(.25,.75),r:rnd(.17,.28),s:ri(0,2)});
@@ -797,7 +808,7 @@ function assignedDest(h){   // Relaxed: every house has one fixed destination (n
   }
   return h.asg=best;
 }
-const needAll=()=>D.id==='standard'||D.id==='rush'||D.id==='gridlock'||D.id==='realism_easy'||D.id==='realism_hard';   // standard and up: a trip's destination is picked first, so every destination needs road access
+const needAll=()=>D.id==='standard'||D.id==='rush'||D.id==='gridlock'||D.id==='realism_easy'||D.id==='realism_hard'||D.id==='daily';   // standard and up: a trip's destination is picked first, so every destination needs road access
 function tripDest(h){   // the destination this house's next trip is going to (picked at random, nearer ones more often), whether or not a road reaches it
   if(h.want&&blds.includes(h.want)&&acc(h.want,h.color))return h.want;
   let pool=blds.filter(d=>acc(d,h.color)&&time-d.born>30);   // a brand new destination gets half a minute to be connected
@@ -895,8 +906,37 @@ function drawGrowth(){   // new land fades in, rippling out from the old edge
 function startInv(){
   const base={road:60,road1:10,hwy:4,bridge:6,stop:3,fire:1,hwy1:1},o={};
   for(const k in base)o[k]=D.infinite?9999:Math.round(base[k]*D.startMul*(k==='stop'?(D.stopMul||1):1));
+  if(D.startExtra&&!D.infinite)for(const k in D.startExtra)o[k]=(o[k]||0)+D.startExtra[k];
   return o;
 }
+/* ---------- the daily challenge: one level a day (the same for everyone, by UTC date), with its own land and two rule changes; scores go to a GitHub leaderboard ---------- */
+const DAILY_MODS=[
+  ['fast','Short weeks','Weeks are 28% shorter',d=>{d.weekLen=Math.round(d.weekLen*.72);d.firstWeek=Math.round(d.firstWeek*.8);}],
+  ['lean','Lean pieces','40% fewer starting pieces and smaller cards',d=>{d.startMul*=.6;d.cardMul*=.8;}],
+  ['arson','Arson','Fires start four times as often and burn faster',d=>{d.fireChance=Math.min(.45,d.fireChance*4);d.fireBurn=Math.round(d.fireBurn*.65);}],
+  ['busy','Heavy traffic','Trips come about 30% faster',d=>{d.demandBase*=.72;d.demandMin*=.8;}],
+  ['rush','Rush hours','A 24-hour clock with morning and evening rush hours',d=>{d.clock=true;d.dayLen=360;d.waves=.9;}],
+  ['wrecks','Reckless drivers','Cars wreck at junctions (18 end the run) and the sign piece is a traffic coordinator',d=>{d.crash=18;d.coord=true;d.stopMul=4;}],
+  ['frail','Fragile rating','The city rating drains 70% faster',d=>{d.rate=1.7;}]];
+const DAILY_TERRAIN=[
+  ['islands','Archipelago','A moat splits the start into an island and a mainland, so you need bridges',{bridge:6}],
+  ['rivers','River country','Three rivers and a stream cut the land into strips',{bridge:3}],
+  ['lakes','Lake district','Lakes everywhere: roads must wind around them',{}]];
+const todayUTC=()=>new Date().toISOString().slice(0,10);
+function dailyFor(date){
+  const h=hashSeed('gridlock-daily-'+date),ter=DAILY_TERRAIN[h%3],a=(h>>>3)%DAILY_MODS.length;let b=(h>>>8)%(DAILY_MODS.length-1);if(b>=a)b++;
+  const base=Object.assign({},DIFFS.find(d=>d.id==='standard'),{id:'daily',daily:true,col:'#f0b429',rate:1,date,terrain:ter[0],startExtra:ter[3]});
+  const mods=[DAILY_MODS[a],DAILY_MODS[b]];for(const m of mods)m[3](base);
+  base.name='Daily \u00b7 '+ter[1];base.tag=mods.map(m=>m[1]).join(' + ');base.terrainName=ter[1];base.terrainDesc=ter[2];base.mods=mods.map(m=>({id:m[0],label:m[1],desc:m[2]}));
+  return base;
+}
+let dailyCache=null;
+function makeDaily(date){   // fill in the 'daily' difficulty for that date
+  if(!dailyCache||dailyCache.date!==date)dailyCache=dailyFor(date);
+  const i=DIFFS.findIndex(d=>d.id==='daily');DIFFS[i]=Object.assign({},dailyCache);return DIFFS[i];
+}
+function dailyInfo(){return (dailyCache&&dailyCache.date===todayUTC())?dailyCache:(dailyCache=dailyFor(todayUTC()));}
+function startDaily(){const d=makeDaily(todayUTC());startGameWith('daily',hashSeed('gridlock-daily-'+d.date),'Daily '+d.date);}
 function newGame(diffId,seed){
   D=diffById(diffId||'standard');mapSeed=(seed==null?Math.random()*4294967295:seed)>>>0;
   genMap(mapSeed);RX0=DX0=IR.x0;RX1=DX1=IR.x1;RY0=DY0=IR.y0;RY1=DY1=IR.y1;sbTerr={};sbNoSpawn=false;
@@ -905,7 +945,7 @@ function newGame(diffId,seed){
   blds=[];cars=[];particles=[];undoStack=[];depts=[];stroke=null;hold.fill(null);queue.fill(null);crashUntil.fill(0);heat.fill(0);time=0;bldId=0;
   inv=startInv();
   colorOrder=[0,1,2,3,4,5].sort(()=>Math.random()-.5);
-  S={rating:100,ratRate:0,ratClock:0,ratWhy:'',ratList:[],grow:null,expansions:0,sirens:[],fireClock:0,crashes:0,wrecks:[],seed:mapSeed,runId:Date.now().toString(36)+Math.floor(Math.random()*1e4),name:'',stallT:[0,0,0,0,0,0],colorBorn:{},stall:null,stallClock:0,week:1,weekT:0,weekLen:D.firstWeek,score:0,colors:0,modal:null,paused:false,speed:1,over:false,mid:false,saveClock:0,demo:false};
+  S={dailyDate:D.id==='daily'?D.date:undefined,rating:100,ratRate:0,ratClock:0,ratWhy:'',ratList:[],grow:null,expansions:0,sirens:[],fireClock:0,crashes:0,wrecks:[],seed:mapSeed,runId:Date.now().toString(36)+Math.floor(Math.random()*1e4),name:'',stallT:[0,0,0,0,0,0],colorBorn:{},stall:null,stallClock:0,week:1,weekT:0,weekLen:D.firstWeek,score:0,colors:0,modal:null,paused:false,speed:1,over:false,mid:false,saveClock:0,demo:false};
   Notes.clear();rebuild();rebuildGoals();startWeek(1);buildDock();hud(true);
 }
 function addColor(){const c=colorOrder[S.colors++];S.colorBorn[c]=time;spawnBld(c,true);spawnBld(c,false);spawnBld(c,false);}
@@ -967,8 +1007,11 @@ function gameOver(why){
   m.innerHTML=`<div class="sheet glass"><h2>Run over</h2><p>${why||'Cars couldn\u2019t get to a destination in time.'}</p>
     <div class="big">${S.score}</div><p class="tiny" style="margin-top:2px">TRIPS COMPLETED</p>
     <div class="stats"><div><b>${S.week}</b><small>Weeks</small></div><div><b>${best?best.score:S.score}</b><small>Best (${D.name})</small></div><div><b>${esc(S.name||'City')}</b><small>City</small></div></div>
+    ${D.id==='daily'?`<div class="tiny" style="margin:10px 0 4px">Daily challenge ${D.date} \u00b7 ${esc(D.terrainName)}: ${((Store.meta.daily||{})[D.date]||{score:S.score}).score} trips is your best today</div><div class="row" style="margin:6px 0;gap:8px;justify-content:center"><button class="go alt" data-a="dsubmit">Post to the leaderboard</button><button class="go alt" data-a="dboard">Leaderboard</button></div>`:''}
     <div class="row"><button class="go" data-a="retry">Try again</button><button class="go alt" data-a="menu">Main menu</button></div></div>`;
-  m.querySelector('[data-a=retry]').onclick=()=>startGameWith(D.id,null,S.name);
+  m.querySelector('[data-a=retry]').onclick=()=>D.id==='daily'?startDaily():startGameWith(D.id,null,S.name);
+  const ds=m.querySelector('[data-a=dsubmit]');if(ds)ds.onclick=()=>dailySubmit(D.date);
+  const db=m.querySelector('[data-a=dboard]');if(db)db.onclick=()=>{m.className='hidden';enterMenu();Menu.show('daily');fetchBoard(true);};
   m.querySelector('[data-a=menu]').onclick=()=>{m.className='hidden';enterMenu();};
 }
 
@@ -2244,6 +2287,53 @@ function drawSbHover(){
     const ok=inB(x,y)&&freeFor(x,y,w,0)&&(t!=='fire'||deptOrient(x,y,hoverF[0],hoverF[1])>=0);
     ctx.fillStyle=ok?(t==='fire'?'rgba(216,56,47,.3)':PAL[sbColor].c+'66'):'rgba(229,72,77,.35)';ctx.strokeStyle=ok?'rgba(35,39,51,.5)':'#e5484d';ctx.lineWidth=.05;rr(x+.04,y+.04,w-.08,w-.08,.15);ctx.fill();ctx.stroke();}
   ctx.restore();
+}
+/* ---------- the daily leaderboard: scores are GitHub issues titled '[daily] DATE \u00b7 SCORE' (needs an internet connection) ---------- */
+let DBOARD={date:'',status:'idle',rows:[],msg:'',ts:0};
+function parseDailyIssue(item,date){
+  const t=String(item.title||'');if(t.indexOf('[daily] '+date)!==0)return null;
+  let j=null;const m=/<!--\s*gridlock-daily\s+(\{[\s\S]*?\})\s*-->/.exec(item.body||'');if(m){try{j=JSON.parse(m[1]);}catch(e){}}
+  const score=j&&Number.isFinite(+j.s)?+j.s:parseInt((t.match(/(\d+)\s*$/)||[])[1]);
+  if(!Number.isFinite(score)||score<0||score>1e6)return null;
+  return {login:(item.user&&item.user.login)||'?',score,week:j&&j.w,t:j&&j.t,v:j&&j.v,when:item.created_at};
+}
+function buildBoard(items,date){   // each player's best score of the day, best first
+  const best={};for(const it of items){const r=parseDailyIssue(it,date);if(!r)continue;if(!best[r.login]||r.score>best[r.login].score)best[r.login]=r;}
+  return Object.values(best).sort((a,b)=>b.score-a.score||String(a.when).localeCompare(String(b.when)));
+}
+async function ghJson(url){
+  const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),10000);
+  try{const r=await fetch(url,{headers:{Accept:'application/vnd.github+json'},signal:ctl.signal});if(!r.ok){const e=new Error('http '+r.status);e.status=r.status;throw e;}return await r.json();}finally{clearTimeout(to);}
+}
+async function fetchBoard(force){
+  const date=todayUTC();
+  if(!force&&DBOARD.date===date&&DBOARD.status==='ok'&&Date.now()-DBOARD.ts<60000)return;
+  DBOARD={date,status:'loading',rows:[],msg:'',ts:0};if(MS.screen==='daily')Menu.show('daily');
+  try{
+    let items=[];
+    try{const q=encodeURIComponent('repo:'+REPORT_REPO+' is:issue in:title "[daily] '+date+'"');const r=await ghJson('https://api.github.com/search/issues?per_page=100&q='+q);items=r.items||[];}
+    catch(e){items=await ghJson('https://api.github.com/repos/'+REPORT_REPO+'/issues?state=all&per_page=100&sort=created&direction=desc');}   // (search is limited to a few calls a minute: fall back to the latest issues)
+    DBOARD={date,status:'ok',rows:buildBoard(items,date),msg:'',ts:Date.now()};
+  }catch(e){
+    DBOARD={date,status:'error',rows:[],msg:e&&e.status===403?'GitHub is limiting requests right now. Try again in a minute.':'The leaderboard needs an internet connection.',ts:Date.now()};
+  }
+  if(MS.screen==='daily'&&mode==='menu')Menu.show('daily');
+}
+function dailySubmitUrl(e,date){
+  const info=dailyInfo(),title='[daily] '+date+' \u00b7 '+e.score;
+  const body='**Daily challenge '+date+'** \u00b7 '+(e.terrain||info.terrainName)+' \u00b7 '+(e.mods||info.mods.map(m=>m.label).join(' + '))+'\n\nScore: **'+e.score+' trips** \u00b7 reached week '+e.week+' \u00b7 '+Math.floor(e.t/60)+':'+String(e.t%60).padStart(2,'0')+' \u00b7 game '+GAME_VERSION+'\n\nPress \u201cSubmit new issue\u201d to put this score on the leaderboard. (Please leave the line below as it is.)\n<!-- gridlock-daily '+JSON.stringify({d:date,s:e.score,w:e.week,t:e.t,v:GAME_VERSION})+' -->';
+  return 'https://github.com/'+REPORT_REPO+'/issues/new?title='+encodeURIComponent(title)+'&body='+encodeURIComponent(body);
+}
+function dailySubmit(date){
+  const e=((Store.meta.daily||{})[date]);if(!e){toast('Play today\u2019s level first',true);return;}
+  const u=dailySubmitUrl(e,date);
+  if(window.AppBridge)AppBridge.call('openurl',{url:u});else window.open(u,'_blank');
+  toast('GitHub is opening. Press \u201cSubmit new issue\u201d there to post your score (you need a GitHub account).',true);
+}
+function dailyCopy(date){
+  const e=((Store.meta.daily||{})[date]);if(!e)return;
+  const txt='Gridlock daily '+date+' ('+(e.terrain||'')+'): '+e.score+' trips, week '+e.week;
+  try{navigator.clipboard.writeText(txt).then(()=>toast('Score copied',true),()=>toast('Couldn\u2019t copy',true));}catch(x){toast('Couldn\u2019t copy',true);}
 }
 /* ---------- bug reports: opened as a prefilled GitHub issue, or copied ---------- */
 const REPORT_REPO='maxisepicallycool-beep/gridlock';
@@ -3878,11 +3968,12 @@ function serialize(){
   const signs=[],tls=[];for(let i=0;i<W*H;i++){const sg=cells[i].sg;if(sg)for(let s=0;s<8;s++)if(sg[s])signs.push([i,s,sgCode(sg[s])]);if(cells[i].tl)tls.push([i,cells[i].tl]);}
   const bl=blds.map(b=>[b.x,b.y,b.w,b.color,b.dest?1:0,b.dir,Math.min(MAXD,b.demand+b.out),+b.timer.toFixed(2),b.kind||0,b.color2>=0?b.color2:-1,b.seen?1:0]);
   const dp=depts.map(d=>[d.x,d.y,d.dir,Math.max(0,+(d.readyAt-time).toFixed(1))]);
-  return {v:2,rt:+(S.rating===undefined?100:S.rating).toFixed(1),rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
+  return {v:2,dd:D.id==='daily'?D.date:undefined,rt:+(S.rating===undefined?100:S.rating).toFixed(1),rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
     colorBorn:S.colorBorn,stallT:S.stallT.map(v=>+v.toFixed(2)),inv,time:+time.toFixed(2),mid:!!S.mid,edges,signs,tl:tls,bl,dp,tr:Object.keys(sbTerr).map(k=>[+k,sbTerr[k]?1:0]),ns:sbNoSpawn?1:0};
 }
 function restore(sv){
   const st=sv.state;
+  if(st.diff==='daily')makeDaily(st.dd||todayUTC());
   D=diffById(st.diff);mapSeed=st.seed;
   genMap(st.seed);{const rg=st.rg||[IR.x0,IR.x1,IR.y0,IR.y1];RX0=DX0=rg[0];RX1=DX1=rg[1];RY0=DY0=rg[2];RY1=DY1=rg[3];if(cw)computeBase();}
   sbTerr={};sbNoSpawn=!!st.ns;
@@ -3918,7 +4009,13 @@ function thumbURL(){
     return url;
   }catch(e){return '';}
 }
+function noteDaily(){
+  if(D.id!=='daily'||S.demo)return;
+  const m=Store.meta;m.daily=m.daily||{};const c=m.daily[D.date];
+  if(!c||S.score>c.score){m.daily[D.date]={score:S.score,week:S.week,t:Math.round(time),terrain:D.terrainName,mods:D.mods.map(x=>x.label).join(' + ')};Store.saveMeta();}
+}
 function noteBest(){
+  noteDaily();
   if(D.noFail||S.demo)return;
   const b=Store.meta.best,c=b[D.id];
   if(!c||S.score>c.score){b[D.id]={score:S.score,week:S.week,name:S.name};Store.saveMeta();}
@@ -3957,6 +4054,7 @@ const SCREENS={
         <div class="mbtns">
           ${last?`<button class="mbtn primary" data-act="continue"><b>Continue</b><small>${esc(last.name)} · ${diffById(last.diff).name} · week ${last.week} · ${timeAgo(last.ts)}</small></button>`:''}
           <button class="mbtn ${last?'':'primary'}" data-act="new"><b>New Game</b><small>Pick a difficulty and start a fresh city</small></button>
+          <button class="mbtn" data-act="daily"><b>Daily challenge</b><small>${esc(dailyInfo().terrainName)} \u00b7 ${esc(dailyInfo().tag)}</small></button>
           <button class="mbtn${Settings.v.tutDone?'':' primary'}" data-act="tutorial"><b>Tutorial${Settings.v.tutDone?'':' \u2014 start here'}</b><small>Learn roads, junctions, bridges, highways and fires, step by step</small></button>
           <button class="mbtn" data-act="load"><b>Your Cities</b><small>${n} saved ${n===1?'city':'cities'}, every one kept</small></button>
           <button class="mbtn" data-act="settings"><b>Settings</b><small>Theme, sound, day and night, controls, menu AI</small></button>
@@ -3975,12 +4073,25 @@ const SCREENS={
         <h4>${d.name}</h4><div class="dt">${d.tag}</div><ul>${statLines(d).map(l=>`<li>${l}</li>`).join('')}</ul></button>`;
     const realCard=`<button class="dcard ${real?'sel':''}" style="--dc:#17a2b8" data-act="realism"><h4>Realism</h4><div class="dt">Be a civil engineer${real?' \u00b7 '+diffById(MS.diff).real:''}</div>
         <ul><li>Traffic lights, yield and stop signs</li><li>Time every signal, junction by junction</li><li>Level-of-service reports</li><li>A 24-hour clock with rush hours</li><li>Pick Easy or Hard (opens a menu)</li></ul></button>`;
-    const cards=DIFFS.filter(d=>d.id!=='tutorial'&&!d.real).map(d=>d.id==='sandbox'?realCard+card(d):card(d)).join('');
+    const cards=DIFFS.filter(d=>d.id!=='tutorial'&&!d.real&&!d.daily).map(d=>d.id==='sandbox'?realCard+card(d):card(d)).join('');
     return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">←</button><h2>New Game</h2></div>
       <div class="pbody"><div class="dgrid">${cards}</div>
       <div class="fields"><div><label>City name</label><input id="cityname" maxlength="24" placeholder="${esc(MS.placeholder||'Riverton')}" value="${esc(MS.name)}"></div>
       <div><label>Map seed (optional)</label><input id="seedin" maxlength="20" placeholder="random" value="${esc(MS.seed)}"></div></div></div>
       <div class="row" style="margin-top:14px"><button class="go" data-act="start">Start ${diffById(MS.diff).name}</button></div></div>`;
+  },
+  daily(){
+    const info=dailyInfo(),date=info.date,my=(Store.meta.daily||{})[date],B=DBOARD.date===date?DBOARD:{status:'idle',rows:[],msg:''};
+    const left=Math.max(0,Date.UTC(+date.slice(0,4),+date.slice(5,7)-1,+date.slice(8,10)+1)-Date.now()),hh=Math.floor(left/3.6e6),mm=Math.floor(left%3.6e6/6e4);
+    const rows=B.status==='loading'?'<div class="tiny" style="padding:14px 4px">Loading the leaderboard\u2026</div>':B.status==='error'?`<div class="tiny" style="padding:14px 4px">${esc(B.msg)}</div>`:B.status==='ok'?(B.rows.length?B.rows.slice(0,15).map((r,i)=>`<div class="best"><b style="min-width:30px">#${i+1}</b><b style="font-weight:800">${esc(r.login)}</b><div class="sc">${r.score} trips<small>${r.week?'week '+r.week:''}</small></div></div>`).join(''):'<div class="tiny" style="padding:14px 4px">No scores yet today. Be the first!</div>'):'<div class="tiny" style="padding:14px 4px">Tap Refresh to load the leaderboard.</div>';
+    return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Daily challenge</h2></div><div class="pbody">
+      <div class="dcard sel" style="--dc:#f0b429;cursor:default;margin-bottom:12px"><h4>${esc(info.terrainName)}</h4><div class="dt">${date} \u00b7 a new level in ${hh} h ${mm} min</div>
+        <ul><li>${esc(info.terrainDesc)}</li>${info.mods.map(m=>`<li><b>${esc(m.label)}</b>: ${esc(m.desc)}</li>`).join('')}<li>Everyone gets the same land and rules today</li></ul></div>
+      <div class="row" style="margin:0 0 6px"><button class="go" data-act="dailyplay">${my?'Play today\u2019s level again':'Play today\u2019s level'}</button></div>
+      <div class="tiny" style="margin:6px 0 12px">${my?'Your best today: <b>'+my.score+' trips</b> (week '+my.week+'). ':'You have not played today yet. '}Your score is the trips you deliver before the city is lost.</div>
+      ${my?'<div class="row" style="margin:0 0 12px;gap:8px"><button class="sbtn" data-act="dailysubmit">Post my score to the leaderboard</button><button class="sbtn ghost" data-act="dailycopy">Copy my score</button></div>':''}
+      <h3 style="margin:10px 0 4px">Leaderboard \u00b7 ${date} <button class="sbtn ghost" style="float:right;padding:3px 10px" data-act="dailyrefresh">Refresh</button></h3>${rows}
+      <div class="tiny" style="margin-top:12px;line-height:1.5">The leaderboard lives on GitHub, so it needs an internet connection (the level itself works offline). Posting a score opens a prefilled GitHub issue: press \u201cSubmit new issue\u201d there (it needs a GitHub account). It is an honour system.</div></div></div>`;
   },
   realism(){
     const cards=DIFFS.filter(d=>d.real).map(d=>`<button class="dcard ${MS.diff===d.id?'sel':''}" style="--dc:${d.col}" data-act="diff" data-id="${d.id}">
@@ -4175,6 +4286,11 @@ function act(a,d){
   switch(a){
     case 'continue':{const l=Cities.latest();if(l)loadCity(l.id);break;}
     case 'new':Menu.show('new');break;
+    case 'daily':Menu.show('daily');fetchBoard(false);break;
+    case 'dailyplay':startDaily();break;
+    case 'dailyrefresh':fetchBoard(true);break;
+    case 'dailysubmit':dailySubmit(todayUTC());break;
+    case 'dailycopy':dailyCopy(todayUTC());break;
     case 'load':MS.confirm=null;Menu.show('load');break;
     case 'howto':Menu.show('howto');break;
     case 'tutorial':startTutorial();break;
