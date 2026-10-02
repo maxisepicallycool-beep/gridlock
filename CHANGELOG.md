@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.10.1 — A city rating you can keep up in a big city
+- The rating was impossible to hold in a large city: in the late game every house always has more trips waiting than its cars can carry, so "trips piling up" drained it for everyone, and the stalled-house and late-car drains counted head counts, so a bigger city was punished just for being bigger. The piling-up drain is gone, houses are now judged as "waiting too long" against how long a round trip on their own route should take, and both that and late cars are measured as a share of the city (it starts to drain above about 16%). The growth of the drain after week 4 is capped at 1.8 times (it was 2.5)
+- The other drains (a colour cut off, destinations backed up, unconnected buildings, fires, wrecks) are the same, and the rating still refills when the city is calm
+
 ## 1.10.0 — City rating
 - Standard, Rush Hour, Gridlock and both Realism difficulties now have a City rating (100 at the start, shown in the top bar with a bar that goes amber then red). Trouble drains it: stalled houses, cars running late, destinations backing up, a colour being cut off, buildings left unconnected for 30 seconds, trips piling up at most houses, houses on fire. Wrecks and burned-down houses knock a chunk off at once. A calm city refills it. At 0 the city is lost. Hover the rating to see what is draining it right now, and warnings tell you when it falls below 55 and below 28
 - The drain grows a little after week 4, and it is harsher on Rush Hour, Gridlock and Realism Hard (gentler on Realism Easy). Relaxed, the tutorial and the sandbox have no rating. The cut-off and late-car rules still apply on top of it

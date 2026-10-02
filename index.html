@@ -315,7 +315,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.10.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.10.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -963,6 +963,7 @@ function dispatch(h){
   if(!p||p.length<2)return false;
   h.want=null;
   cars.push({id:++carId,color:h.color,home:h,leg:0,path:p,i:0,u:0,ph:'drive',dwell:0,res:false,resDin:-1,din:-1,stopWait:-1,stopped:-1,blocked:0,wait:0,rrDone:false,qn:-1,force:false,by:null,dest:destOf(p),dead:false,t0:time,eta:etaOf(p)});
+  h.lastEta=etaOf(p);
   h.out++;h.demand--;if(D.fleet)h.gar--;h.lastProg=time;return true;
 }
 function reroute(c){
@@ -1633,15 +1634,18 @@ function ratingTick(dt){
   if(!D.rate||D.noFail||S.over||S.tut)return;
   S.ratClock-=dt;
   if(S.ratClock<=0){
-    S.ratClock=.5;const k=D.rate*(1+Math.min(1.5,Math.max(0,S.week-4)*.06)),L=[];
+    S.ratClock=.5;const k=D.rate*(1+Math.min(.8,Math.max(0,S.week-4)*.03)),L=[];   // (a bigger city is judged on shares, not head counts, so it stays possible to keep up)
     const hs=blds.filter(b=>!b.dest),n=hs.length||1;
-    const sf=hs.filter(b=>b.stalled).length/n;if(sf>.15)L.push(['Stalled houses',(sf-.15)*1.6]);
-    let late=0;for(const c of cars)if(!c.dead&&c.leg===0&&c.ph==='drive'&&lateCar(c))late++;if(late>3)L.push(['Cars running late',(late-3)*.02]);
-    let near=0;for(const b of blds)if(b.dest&&b.jam>=D.dcap-1)near++;if(near)L.push(['Destinations backed up',near*.15]);
+    // a house is "waiting too long" when it has gone far longer without a car than a round trip on its own route should take
+    const waiting=hs.filter(b=>b.demand>0&&b.linked&&!(b.rt&&b.rt.length)&&time-b.lastProg>(2*(b.lastEta||12)+12)*1.5+10).length/n;
+    const RT=window.__RT||{wt:.16,lt:.16,k:1.3};
+    if(waiting>RT.wt)L.push(['Houses waiting too long',(waiting-RT.wt)*RT.k]);
+    let late=0,drv=0;for(const c of cars)if(!c.dead&&c.leg===0&&c.ph==='drive'){drv++;if(lateCar(c))late++;}
+    const lf=drv?late/drv:0;if(lf>RT.lt&&late>3)L.push(['Cars running late',(lf-RT.lt)*RT.k]);
+    let near=0;for(const b of blds)if(b.dest&&b.jam>=D.dcap-1)near++;if(near)L.push(['Destinations backed up',Math.min(3,near)*.15]);
     let cut=0;for(let c=0;c<6;c++)if((S.stallT[c]||0)>0)cut++;if(cut)L.push(['A colour cut off',cut*.3]);
-    let lone=0;for(const b of blds)if(!b.linked&&time-b.born>30)lone++;if(lone)L.push(['Buildings not connected',lone*.08]);
-    const full=hs.filter(b=>b.demand>=MAXD).length/n;if(full>.3)L.push(['Trips piling up',(full-.3)*.8]);
-    let fire=0;for(const b of blds)if(b.fire)fire++;if(fire)L.push(['Houses on fire',fire*.1]);
+    let lone=0;for(const b of blds)if(!b.linked&&time-b.born>30)lone++;if(lone)L.push(['Buildings not connected',Math.min(5,lone)*.08]);
+    let fire=0;for(const b of blds)if(b.fire)fire++;if(fire)L.push(['Houses on fire',Math.min(5,fire)*.1]);
     L.forEach(x=>x[1]*=k);L.sort((a,b)=>b[1]-a[1]);
     S.ratList=L;S.ratRate=L.reduce((a,x)=>a+x[1],0);S.ratWhy=L.length?L[0][0]:'';
   }
