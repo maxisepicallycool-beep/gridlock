@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.19.3 — The grass turns white in snow
+- When snow weather begins the grass fades to the colour of the snow over 10 seconds, and back after the snow has gone. The white is part of the ground itself, underneath roads, driveways, trees and props, so it never covers them
+
 ## 1.19.2 — See-through snow
 - Snow on the ground is 75% opaque, so the roads and the land show faintly through it
 

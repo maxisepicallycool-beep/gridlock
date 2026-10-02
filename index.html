@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.19.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.19.3';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -3536,6 +3536,7 @@ function drawGround(){
   ctx.fillStyle=TH.ground;ctx.fillRect(RX0-1,RY0-1,RX1-RX0+2,RY1-RY0+2);
   for(const q of patches){if(q.x+q.rx<vx0||q.x-q.rx>vx1||q.y+q.ry<vy0||q.y-q.ry>vy1)continue;ctx.fillStyle=TH.patch[q.g?1:0]+q.a+')';ctx.beginPath();ctx.ellipse(q.x,q.y,q.rx,q.ry,0,0,7);ctx.fill();}
   for(const q of grass){if(q.x<vx0||q.x>vx1||q.y<vy0||q.y>vy1)continue;ctx.fillStyle=TH.grass[q.g]+q.a+')';ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,7);ctx.fill();}
+  if(WX.gq>0){ctx.globalAlpha=Math.min(1,WX.gq/20);ctx.fillStyle='#f8faff';ctx.fillRect(RX0-1,RY0-1,RX1-RX0+2,RY1-RY0+2);ctx.globalAlpha=1;}   // the grass turns the colour of the snow (underneath the roads, trees and props, which are drawn after this)
   ctx.strokeStyle=TH.grid;ctx.lineWidth=.02;ctx.beginPath();
   for(let x=vx0;x<=vx1;x++){ctx.moveTo(x,vy0);ctx.lineTo(x,vy1);}for(let y=vy0;y<=vy1;y++){ctx.moveTo(vx0,y);ctx.lineTo(vx1,y);}ctx.stroke();
   ctx.fillStyle=TH.water;
@@ -3952,8 +3953,10 @@ function wxDeposit(k,x,y){   // one more bit of snow, leaf or wetness lands on t
 const wxLand=(x,y)=>{const cx=Math.floor(x),cy=Math.floor(y);return inB(cx,cy)&&!cells[cellIdx(cx,cy)].water;};
 function wxStep(dt,w,poses){
   const T=performance.now()/1000;
-  if(WX.S!==S){WX.S=S;WX.p.length=WX.rip.length=WX.sp.length=0;for(const k in WXL){const L=WXL[k];L.g.clearRect(0,0,L.cv.width,L.cv.height);L.m=0;L.n=0;}}
+  if(WX.S!==S){WX.S=S;WX.gw=0;WX.gq=0;GC.dirty=true;WX.p.length=WX.rip.length=WX.sp.length=0;for(const k in WXL){const L=WXL[k];L.g.clearRect(0,0,L.cv.width,L.cv.height);L.m=0;L.n=0;}}
   const kind=w&&w.amt>.03?(w.kind==='storm'?'rain':w.kind):null,amt=kind?w.amt:0,lk=kind==='rain'?'wet':kind==='snow'?'snow':kind==='leaves'?'leaves':null;
+  WX.gw=kind==='snow'?Math.min(1,(WX.gw||0)+dt/10):Math.max(0,(WX.gw||0)-dt/WXFADE.snow);   // the grass goes white over 10 s when snow starts, and back when it is over
+  {const q=Math.round(WX.gw*20);if(q!==WX.gq){WX.gq=q;GC.dirty=true;}}   // (the ground is cached, so it is redrawn in twenty steps)
   for(const k in WXL){const L=WXL[k];
     if(k===lk)L.m=Math.min(1,L.m+dt*.8);else L.m=Math.max(0,L.m-dt/WXFADE[k]);
     if(L.m<=0&&L.n>0){L.g.clearRect(0,0,L.cv.width,L.cv.height);L.n=0;}}
