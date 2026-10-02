@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.18.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.18.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -3722,15 +3722,15 @@ function drawAmbient(poses){
     if(b.x<vx0-2||b.x>vx1+2||b.y<vy0-2||b.y>vy1+2)continue;
     if(b.fire){ctx.globalAlpha=Math.min(1,a+.3);ctx.drawImage(fire,b.x+.5-1.5,b.y+.5-1.5,3,3);continue;}
     if(b.dest){const cg=colorGlow(b.color),r=1.35,cx=b.x+b.w/2,cy=b.y+b.w/2;
-      if(b.color2>=0){ctx.globalAlpha=a*.2;ctx.drawImage(colorGlow(b.color2),cx-r+.35,cy-r,r*2,r*2);}   // each building glows in its own colour so it can be told apart in the dark
-      ctx.globalAlpha=a*.26;ctx.drawImage(cg,cx-r,cy-r,r*2,r*2);}   // destinations: just a soft hint of their colour (their coloured kerb does the rest)
-    if(b.dest){ctx.globalAlpha=a*.14;ctx.drawImage(cool,b.x+1-1.1,b.y+1-1.1,2.2,2.2);continue;}
+      if(b.color2>=0){ctx.globalAlpha=a*.07;ctx.drawImage(colorGlow(b.color2),cx-r+.35,cy-r,r*2,r*2);}   // each building glows in its own colour so it can be told apart in the dark
+      ctx.globalAlpha=a*.09;ctx.drawImage(cg,cx-r,cy-r,r*1.6,r*1.6);}   // destinations: just a soft hint of their colour (their coloured kerb does the rest)
+    if(b.dest){ctx.globalAlpha=a*.04;ctx.drawImage(cool,b.x+1-.8,b.y+1-.8,1.6,1.6);continue;}
     if((b.id*7)%5===0)continue;
-    ctx.globalAlpha=a*.55;   // the glow comes out of the windows
-    for(const wx of [.305,.705])ctx.drawImage(warm,b.x+wx-.38,b.y+.625-.3,.76,.76);
-    ctx.globalAlpha=a*.22;ctx.drawImage(warm,b.x+.56-.25,b.y+.84-.25,.5,.5);   // spill onto the doorstep
+    ctx.globalAlpha=a*.16;   // the glow comes out of the windows
+    for(const wx of [.305,.705])ctx.drawImage(warm,b.x+wx-.26,b.y+.625-.2,.52,.52);
+    ctx.globalAlpha=a*.05;ctx.drawImage(warm,b.x+.56-.18,b.y+.84-.18,.36,.36);   // spill onto the doorstep
   }
-  ctx.globalAlpha=a*.7;for(const d of depts){if(d.x<vx0-2||d.x>vx1+2||d.y<vy0-2||d.y>vy1+2)continue;ctx.drawImage(red,d.x+1-1,d.y+1-1,2,2);}
+  ctx.globalAlpha=a*.3;for(const d of depts){if(d.x<vx0-2||d.x>vx1+2||d.y<vy0-2||d.y>vy1+2)continue;ctx.drawImage(red,d.x+1-1,d.y+1-1,2,2);}
   for(const [c,q] of poses){if(c.color===undefined||c.truck)continue;ctx.globalAlpha=a*.5;ctx.drawImage(colorGlow(c.color),q.x-.5,q.y-.5,1,1);}   // cars glow in their colour too
   // headlights: two beams ahead of every moving car, bright lamps on the front, red lights at the back
   const bm=beam();
@@ -4025,10 +4025,10 @@ function drawFogLights(poses,f){   // in the mist every light blooms: headlights
   for(const l of lamps()){if(l.x<vx0-3||l.x>vx1+3||l.y<vy0-3||l.y>vy1+3)continue;
     const r=l.canopy?1.1:1.5;ctx.globalAlpha=k*.55;ctx.drawImage(lamp,l.hx-r,l.hy-r,r*2,r*2);ctx.globalAlpha=k*.5;ctx.drawImage(lamp,l.hx-r*.4,l.hy-r*.4,r*.8,r*.8);}
   for(const b of blds){if(b.x<vx0-3||b.x>vx1+3||b.y<vy0-3||b.y>vy1+3)continue;
-    if(b.dest){const cg=colorGlow(b.color),cx=b.x+b.w/2,cy=b.y+b.w/2;ctx.globalAlpha=k*.4;ctx.drawImage(cg,cx-1.7,cy-1.7,3.4,3.4);if(b.color2>=0){ctx.globalAlpha=k*.25;ctx.drawImage(colorGlow(b.color2),cx-1.4,cy-1.4,2.8,2.8);}continue;}
-    if(b.fire){ctx.globalAlpha=k*.7;ctx.drawImage(red,b.x+.5-1.6,b.y+.5-1.6,3.2,3.2);continue;}
-    if((b.id*7)%5!==0){ctx.globalAlpha=k*(.18+.4*am.n);for(const wx of [.305,.705])ctx.drawImage(warm,b.x+wx-.6,b.y+.625-.6,1.2,1.2);}}
-  for(const d of depts){if(d.x<vx0-3||d.x>vx1+3||d.y<vy0-3||d.y>vy1+3)continue;ctx.globalAlpha=k*.6;ctx.drawImage(red,d.x+1-1.6,d.y+1-1.6,3.2,3.2);}
+    if(b.dest){const cg=colorGlow(b.color),cx=b.x+b.w/2,cy=b.y+b.w/2;ctx.globalAlpha=k*.12;ctx.drawImage(cg,cx-1.2,cy-1.2,2.4,2.4);if(b.color2>=0){ctx.globalAlpha=k*.07;ctx.drawImage(colorGlow(b.color2),cx-1,cy-1,2,2);}continue;}
+    if(b.fire){ctx.globalAlpha=k*.7;ctx.drawImage(red,b.x+.5-1.6,b.y+.5-1.6,3.2,3.2);continue;}   // (a burning house stays bright)
+    if((b.id*7)%5!==0){ctx.globalAlpha=k*(.05+.1*am.n);for(const wx of [.305,.705])ctx.drawImage(warm,b.x+wx-.4,b.y+.625-.4,.8,.8);}}
+  for(const d of depts){if(d.x<vx0-3||d.x>vx1+3||d.y<vy0-3||d.y>vy1+3)continue;ctx.globalAlpha=k*.22;ctx.drawImage(red,d.x+1-1.2,d.y+1-1.2,2.4,2.4);}
   for(const [c,q] of poses){
     if(q.br)continue;const co=Math.cos(q.a),si=Math.sin(q.a),fx=q.x+co*.2,fy=q.y+si*.2;
     ctx.globalAlpha=k*.62;ctx.save();ctx.translate(fx,fy);ctx.rotate(q.a);ctx.drawImage(fb,0,-.7,2.8,1.4);ctx.restore();   // the cone, shining a long way through the haze

@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.18.1 — Softer building lights
+- The glow from windows, doorsteps, destinations and fire stations at night (and in fog) is much fainter and smaller. Street lamps, headlights and burning houses are unchanged
+
 ## 1.18.0 — Weather that belongs to the map
 - Rain, ripples, snow, falling leaves and fog now live on the map: they pan and zoom with the land instead of sitting on the screen
 - Snow and leaves land and stay: flakes and leaves fall to the ground and settle, and the ground slowly turns white or fills with leaves. Rain leaves the ground wet and dark. Everything on the ground fades away some time after the weather changes
