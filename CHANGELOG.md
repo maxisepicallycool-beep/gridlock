@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.23.1 — Simpler turn signals
+- The turn signals are now just small amber lamps in the same spots as the tail lights, at the front and the back on the side the car is turning to, flashing. (The bigger glowing dots are gone.)
+
 ## 1.23.0 — Turn signals, and driveways always give way
 - Cars now flash amber turn signals (front and back, on the side they are turning to) as they approach a turn at a junction, and when they turn into or pull out of a driveway
 - A car turning into a driveway now always gives way to the traffic it crosses, just as a car pulling out of one already did

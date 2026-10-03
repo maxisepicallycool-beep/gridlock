@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.23.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.23.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -3437,12 +3437,11 @@ function drawCar(c,q){
   ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.a);
   if(q.h>0){ctx.fillStyle='rgba(20,40,60,'+(.12+.1*q.h)+')';ctx.save();ctx.rotate(-q.a);ctx.translate(.06*q.h,.16*q.h);ctx.rotate(q.a);rr(-.2,-.08,.42,.22,.07);ctx.fill();ctx.restore();ctx.scale(1+.22*q.h,1+.22*q.h);}
   ctx.drawImage(sprite('c'+c.color,.6,.36,300,()=>paintCar(p)),-.3,-.18,.6,.36);
-  if(cs>=12&&Settings.v.signals!==false){   // turn signals: amber lamps at the front and back corners on the side it is turning to, flashing
+  if(cs>=10&&Settings.v.signals!==false){   // turn signals: the same small lamps as the tail lights, at the front and the back on the side it is turning to, flashing amber
     const tn=turnSignal(c);
     if(tn&&Math.floor(performance.now()/380)%2===0){
-      const sy=tn==='R'?.16:-.16;
-      ctx.fillStyle='rgba(255,176,32,.35)';for(const sx of [.26,-.26]){ctx.beginPath();ctx.arc(sx,sy,.075,0,7);ctx.fill();}
-      ctx.fillStyle='#ffb020';for(const sx of [.26,-.26]){ctx.beginPath();ctx.arc(sx,sy,.036,0,7);ctx.fill();}
+      const sy=tn==='R'?.062:-.062;
+      ctx.fillStyle='#ffb020';ctx.beginPath();ctx.arc(.19,sy,.022,0,7);ctx.arc(-.19,sy,.022,0,7);ctx.fill();
     }
   }
   ctx.restore();
