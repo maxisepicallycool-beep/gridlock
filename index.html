@@ -333,7 +333,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.25.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.25.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1186,7 +1186,7 @@ function crewWork(c,dt){
   } else {
     if(c.ph==='wait'){if(sc.coned&&sc.asideT>=1){c.ph='work';sc.st='clearing';}return;}
     sc.work+=dt;
-    if(sc.work>=sc.workMax){sc.work=sc.workMax;c.cargo=sc.cars.length;c.cargoCols=sc.cars.map(w=>w.color);sc.st='pickup';truckReturn(c);}   // loaded: off it goes, and the cone truck picks up its cones
+    if(sc.work>=sc.workMax){sc.work=sc.workMax;c.cargo=sc.cars.length;c.cargoCols=sc.cars.map(w=>w.color);c.trail=null;sc.st='pickup';truckReturn(c);}   // loaded: off it goes, and the cone truck picks up its cones
   }
 }
 function updateCrew(c,dt){
@@ -1267,11 +1267,9 @@ function drawCrewTruck(c,q){
   if(lit){const g=ctx.createRadialGradient(.1,0,0,.1,0,1);g.addColorStop(0,'rgba(255,170,30,'+(flash?.5:.22)+')');g.addColorStop(1,'rgba(255,170,30,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(.1,0,1,0,7);ctx.fill();}
   const key=c.dot==='cone'?'dotcone':c.rk==='lift'?'dotlift':'dottow';
   ctx.drawImage(sprite(key,1.05,.5,300,c.dot==='cone'?paintCone:c.rk==='lift'?paintLift:paintTow),-.525,-.25,1.05,.5);
-  if(c.cargo){   // what it is carrying away: cars on the bed, or one hanging off the hook
+  if(c.cargo&&c.rk==='lift'){   // a flatbed carries its cars on the bed
     c.cargoCols.forEach((col,i)=>{
-      ctx.save();
-      if(c.rk==='lift'){ctx.translate(-.2,(i?.06:-.06)*(c.cargoCols.length>1?1:0));ctx.scale(.5,.5);}
-      else{ctx.translate(-.72-i*.5,0);ctx.rotate(i?.1:-.08);ctx.scale(.9,.9);}
+      ctx.save();ctx.translate(-.2,(i?.06:-.06)*(c.cargoCols.length>1?1:0));ctx.scale(.5,.5);
       ctx.drawImage(sprite('c'+col,.6,.36,300,()=>paintCar(PAL[col])),-.3,-.18,.6,.36);
       ctx.fillStyle='rgba(20,20,20,.3)';rr(-.3,-.18,.6,.36,.1);ctx.fill();
       ctx.restore();
@@ -1286,6 +1284,33 @@ function drawCrewTruck(c,q){
     ctx.fillStyle=flash?'#ffb020':'#6a4a10';for(let i=-1;i<=1;i++){ctx.beginPath();ctx.arc(-.425,i*.06,.016,0,7);ctx.fill();}
   }
   ctx.restore();
+  drawTowed(c,q);
+}
+function towedPose(c,q,i){   // a towed car follows the road the truck drove, not the truck's own turning: it sits where the truck was a car-length (or two) ago
+  const tr=c.trail||(c.trail=[]);
+  if(!tr.length)for(let k=0;k<14;k++)tr.push([q.x-Math.cos(q.a)*k*.15,q.y-Math.sin(q.a)*k*.15]);   // (a fresh trail starts straight behind it)
+  const l=tr[0];if(Math.hypot(q.x-l[0],q.y-l[1])>.04){tr.unshift([q.x,q.y]);if(tr.length>90)tr.pop();}
+  const L=.82+i*.62;let acc=0,px=q.x,py=q.y;
+  for(const pt of tr){
+    const d=Math.hypot(pt[0]-px,pt[1]-py);
+    if(d>1e-6&&acc+d>=L){const k=(L-acc)/d,x=px+(pt[0]-px)*k,y=py+(pt[1]-py)*k;return {x,y,a:Math.atan2(py-y,px-x)};}
+    acc+=d;px=pt[0];py=pt[1];
+  }
+  return {x:q.x-Math.cos(q.a)*L,y:q.y-Math.sin(q.a)*L,a:q.a};
+}
+function drawTowed(c,q){
+  if(!c.cargo||c.rk!=='tow')return;
+  const poses=c.cargoCols.map((col,i)=>towedPose(c,q,i));
+  c.cargoCols.forEach((col,i)=>{
+    const t=poses[i];
+    ctx.save();ctx.strokeStyle='#2c3038';ctx.lineWidth=.03;ctx.lineCap='round';ctx.beginPath();   // the tow bar to the car in front of it
+    const fx=i?poses[i-1].x-Math.cos(poses[i-1].a)*.28:q.x-Math.cos(q.a)*.45,fy=i?poses[i-1].y-Math.sin(poses[i-1].a)*.28:q.y-Math.sin(q.a)*.45;
+    ctx.moveTo(fx,fy);ctx.lineTo(t.x+Math.cos(t.a)*.27,t.y+Math.sin(t.a)*.27);ctx.stroke();ctx.restore();
+    ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.a);ctx.scale(.9,.9);
+    ctx.drawImage(sprite('c'+col,.6,.36,300,()=>paintCar(PAL[col])),-.3,-.18,.6,.36);
+    ctx.fillStyle='rgba(20,20,20,.3)';rr(-.3,-.18,.6,.36,.1);ctx.fill();
+    ctx.restore();
+  });
 }
 function drawCone(x,y,s){
   ctx.save();ctx.translate(x,y);ctx.scale(s,s);

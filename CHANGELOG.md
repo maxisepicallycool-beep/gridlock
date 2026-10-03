@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.25.1 — Towed cars stay on the road
+- A car on a tow truck's hook no longer swings round with the truck at a corner: it trails behind along the road the truck actually drove (with a tow bar), so it stays on the tarmac. Flatbeds still carry their cars on the bed
+
 ## 1.25.0 — Game modifiers
 - The New Game screen has a **Modifiers** section: tick any of nine rule changes to add to the difficulty you pick (not for the Sandbox): Short weeks, Lean pieces, Arson, Heavy traffic, Rush hours, Reckless drivers (cars wreck, with traffic coordinators and DOT depots), Fragile rating, and two new ones, Impatient houses and Generous cards. They stack with each other and with any difficulty
 - A modified game is remembered with its city (the list shows how many modifiers it has, and continuing it keeps them) and Try again keeps them, but it does not count for your best runs. The Daily challenge is unchanged
