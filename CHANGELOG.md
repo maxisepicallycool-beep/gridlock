@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.24.0 — Wrecks block the road, and DOT depots clear them
+- On the difficulties where cars wreck (Gridlock, Realism, and levels with Reckless drivers) a crash now stays: the wrecked cars sit in the junction and **block it** until they are cleared, so traffic backs up behind them. With nothing to clear them a wreck goes away by itself after about 45 seconds
+- New piece, the **DOT depot** (key O, only where cars wreck): a garage like the fire station, placed beside a road and facing it, with its own weekly card. When a crash happens the nearest finished, linked depot sends a **cone truck** and a **recovery truck** with amber lights: the cone truck puts cones out around the junction, the wrecks are pushed to the roadside and traffic can creep past at half speed, then the recovery truck clears them: a **tow truck** hooks the cars of a minor crash and a **flatbed with a crane** lifts the cars of a major one onto its bed (slower). The cones are picked up and the crew drives home with the cars
+- The menu AI builds DOT depots too, and its pieces panel shows how many it has left. Saved cities keep their depots
+
 ## 1.23.1 — Simpler turn signals
 - The turn signals are now just small amber lamps in the same spots as the tail lights, at the front and the back on the side the car is turning to, flashing. (The bigger glowing dots are gone.)
 
