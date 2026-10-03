@@ -231,6 +231,10 @@ body.app #menu{padding-top:44px}
 .phead .back:hover{background:rgba(35,39,51,.15)}.phead .back:active{transform:scale(.94)}
 .pbody{overflow:auto;padding:4px 2px 6px;margin:0 -2px}
 .dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:12px}
+.mods{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.modc{text-align:left;border:2px solid var(--line);border-radius:14px;background:var(--card);padding:9px 12px;cursor:pointer;font:inherit;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.modc b{font-size:13px}.modc small{font-size:11px;color:var(--muted);font-weight:600;line-height:1.3}
+.modc.sel{border-color:var(--accent);background:var(--soft)}.modc.sel b::before{content:'\2713  ';color:var(--accent)}
 .dcard{position:relative;text-align:left;border:2px solid transparent;border-radius:20px;background:var(--card);padding:16px 14px 14px;cursor:pointer;font:inherit;color:var(--ink);
   box-shadow:0 8px 20px rgba(60,50,30,.12);transition:transform .15s,border-color .15s,box-shadow .15s;overflow:hidden}
 .dcard::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:var(--dc)}
@@ -329,7 +333,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.24.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.25.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -938,6 +942,16 @@ const DAILY_MODS=[
   ['rush','Rush hours','A 24-hour clock with morning and evening rush hours',d=>{d.clock=true;d.dayLen=360;d.waves=.9;}],
   ['wrecks','Reckless drivers','Cars wreck at junctions (18 end the run) and the sign piece is a traffic coordinator',d=>{d.crash=18;d.coord=true;d.stopMul=4;}],
   ['frail','Fragile rating','The city rating drains 70% faster',d=>{d.rate=1.7;}]];
+const GAME_MODS=DAILY_MODS.concat([   // the daily's rule changes, plus two more, for any new game (DAILY_MODS itself must stay as it is: it decides each day's level)
+  ['tough','Impatient houses','Houses and destinations give up 30% sooner',d=>{d.stall=Math.round(d.stall*.7);d.dlimit=Math.round(d.dlimit*.75);}],
+  ['rich','Generous cards','Weekly cards are 40% bigger',d=>{d.cardMul*=1.4;}]]);
+function applyMods(base,ids){
+  const list=(ids||[]).map(id=>GAME_MODS.find(m=>m[0]===id)).filter(Boolean);
+  if(!list.length)return base;
+  const d=Object.assign({},base);for(const m of list)m[3](d);
+  d.mods=list.map(m=>m[0]);d.modded=true;d.name=base.name+' +'+list.length;
+  return d;
+}
 const DAILY_TERRAIN=[
   ['islands','Archipelago','A moat splits the start into an island and a mainland, so you need bridges',{bridge:6}],
   ['rivers','River country','Three rivers and a stream cut the land into strips',{bridge:3}],
@@ -957,8 +971,8 @@ function makeDaily(date){   // fill in the 'daily' difficulty for that date
 }
 function dailyInfo(){return (dailyCache&&dailyCache.date===todayUTC())?dailyCache:(dailyCache=dailyFor(todayUTC()));}
 function startDaily(){const d=makeDaily(todayUTC());startGameWith('daily',hashSeed('gridlock-daily-'+d.date),'Daily '+d.date);}
-function newGame(diffId,seed){
-  D=diffById(diffId||'standard');mapSeed=(seed==null?Math.random()*4294967295:seed)>>>0;
+function newGame(diffId,seed,mods){
+  D=applyMods(diffById(diffId||'standard'),mods);mapSeed=(seed==null?Math.random()*4294967295:seed)>>>0;
   genMap(mapSeed);RX0=DX0=IR.x0;RX1=DX1=IR.x1;RY0=DY0=IR.y0;RY1=DY1=IR.y1;sbTerr={};sbNoSpawn=false;
   if(D.id==='sandbox'){RX0=DX0=0;RX1=DX1=W;RY0=DY0=0;RY1=DY1=H;}   // the sandbox opens the whole map
   if(cw)computeBase();
@@ -1031,7 +1045,7 @@ function gameOver(why){
     ${TL.frames.length>=2?'<div class="row" style="margin:8px 0 2px"><button class="go alt" data-a="tlapse">Watch your city grow</button></div>':''}
     <div class="row"><button class="go" data-a="retry">Try again</button><button class="go alt" data-a="menu">Main menu</button></div></div>`;
   const tb=m.querySelector('[data-a=tlapse]');if(tb)tb.onclick=()=>openTimelapse();
-  m.querySelector('[data-a=retry]').onclick=()=>D.id==='daily'?startDaily():startGameWith(D.id,null,S.name);
+  m.querySelector('[data-a=retry]').onclick=()=>D.id==='daily'?startDaily():startGameWith(D.id,null,S.name,D.mods);
   const ds=m.querySelector('[data-a=dsubmit]');if(ds)ds.onclick=()=>dailySubmit(D.date);
   const db=m.querySelector('[data-a=dboard]');if(db)db.onclick=()=>{m.className='hidden';enterMenu();Menu.show('daily');fetchBoard(true);};
   m.querySelector('[data-a=menu]').onclick=()=>{m.className='hidden';enterMenu();};
@@ -4507,7 +4521,7 @@ const Store={
 };
 /* ---------- your cities: every city is kept on record (no numbered slots) and can be deleted ---------- */
 const Cities={list:[],recs:{},ready:false,backend:'local',
-  meta(id,r){return {id,name:r.name,diff:r.diff,week:r.week,score:r.score,ts:r.ts,thumb:r.thumb||''};},
+  meta(id,r){return {id,name:r.name,diff:r.diff,mods:r.mods||[],week:r.week,score:r.score,ts:r.ts,thumb:r.thumb||''};},
   async rd(name){if(this.backend==='files'){try{return await AppBridge.call('readfile',{name});}catch(e){return null;}}try{return localStorage.getItem('gridlock.'+name);}catch(e){return null;}},
   async wr(name,text){if(this.backend==='files'){try{await AppBridge.call('writefile',{name,text});}catch(e){}return;}try{localStorage.setItem('gridlock.'+name,text);}catch(e){}},
   writeIndex(){return this.wr('cities.json',JSON.stringify({v:1,list:this.list}));},
@@ -4561,13 +4575,13 @@ function serialize(){
   const signs=[],tls=[];for(let i=0;i<W*H;i++){const sg=cells[i].sg;if(sg)for(let s=0;s<8;s++)if(sg[s])signs.push([i,s,sgCode(sg[s])]);if(cells[i].tl)tls.push([i,cells[i].tl]);}
   const bl=blds.map(b=>[b.x,b.y,b.w,b.color,b.dest?1:0,b.dir,Math.min(MAXD,b.demand+b.out),+b.timer.toFixed(2),b.kind||0,b.color2>=0?b.color2:-1,b.seen?1:0]);
   const dp=depts.map(d=>[d.x,d.y,d.dir,Math.max(0,+(d.readyAt-time).toFixed(1)),d.dot?1:0]);
-  return {v:2,pf:D.id==='daily'?S.pf:undefined,dd:D.id==='daily'?D.date:undefined,rt:+(S.rating===undefined?100:S.rating).toFixed(1),rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
+  return {v:2,pf:D.id==='daily'?S.pf:undefined,dd:D.id==='daily'?D.date:undefined,rt:+(S.rating===undefined?100:S.rating).toFixed(1),rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,mods:D.mods,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
     colorBorn:S.colorBorn,stallT:S.stallT.map(v=>+v.toFixed(2)),inv,time:+time.toFixed(2),mid:!!S.mid,edges,signs,tl:tls,bl,dp,tr:Object.keys(sbTerr).map(k=>[+k,sbTerr[k]?1:0]),ns:sbNoSpawn?1:0};
 }
 function restore(sv){
   const st=sv.state;
   if(st.diff==='daily')makeDaily(st.dd||todayUTC());
-  D=diffById(st.diff);mapSeed=st.seed;
+  D=applyMods(diffById(st.diff),st.mods);mapSeed=st.seed;
   genMap(st.seed);{const rg=st.rg||[IR.x0,IR.x1,IR.y0,IR.y1];RX0=DX0=rg[0];RX1=DX1=rg[1];RY0=DY0=rg[2];RY1=DY1=rg[3];if(cw)computeBase();}
   sbTerr={};sbNoSpawn=!!st.ns;
   if(st.tr&&st.tr.length){for(const [ci,w] of st.tr){cells[ci].water=!!w;sbTerr[ci]=!!w;}
@@ -4609,19 +4623,19 @@ function noteDaily(){
 }
 function noteBest(){
   noteDaily();
-  if(D.noFail||S.demo)return;
+  if(D.noFail||S.demo||D.modded)return;   // a modified game is not a record
   const b=Store.meta.best,c=b[D.id];
   if(!c||S.score>c.score){b[D.id]={score:S.score,week:S.week,name:S.name};Store.saveMeta();}
 }
 function saveCity(){
-  const p=Cities.put({ts:Date.now(),name:S.name||'City',diff:D.id,week:S.week,score:S.score,runId:S.runId,thumb:thumbURL(),state:serialize()});
+  const p=Cities.put({ts:Date.now(),name:S.name||'City',diff:D.id,mods:D.mods||[],week:S.week,score:S.score,runId:S.runId,thumb:thumbURL(),state:serialize()});
   noteBest();return p;
 }
 function autosave(){if(mode!=='play'||S.over||S.demo||S.tut)return;saveCity();tlPersist();}
 async function loadCity(id){const rec=await Cities.get(id);if(rec)loadSave(rec);else toast('That city could not be opened',true);}
 
 /* ---------- menus ---------- */
-const MS={screen:'main',diff:'standard',name:'',seed:'',slotMode:'load',confirm:null};
+const MS={screen:'main',diff:'standard',mods:new Set(),name:'',seed:'',slotMode:'load',confirm:null};
 const menuEl=document.getElementById('menu');
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function timeAgo(ts){const s=Math.max(0,(Date.now()-ts)/1000);if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' h ago';return Math.floor(s/86400)+' d ago';}
@@ -4669,9 +4683,12 @@ const SCREENS={
     const cards=DIFFS.filter(d=>d.id!=='tutorial'&&!d.real&&!d.daily).map(d=>d.id==='sandbox'?realCard+card(d):card(d)).join('');
     return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">←</button><h2>New Game</h2></div>
       <div class="pbody"><div class="dgrid">${cards}</div>
+      ${MS.diff==='sandbox'?'':`<h3 style="margin:16px 0 6px">Modifiers <small style="font-weight:600;color:var(--muted)">(optional: tick any to make the game different)</small></h3>
+      <div class="mods">${GAME_MODS.map(m=>`<button class="modc${MS.mods.has(m[0])?' sel':''}" data-act="mod" data-id="${m[0]}"><b>${esc(m[1])}</b><small>${esc(m[2])}</small></button>`).join('')}</div>
+      ${MS.mods.size?'<div class="tiny" style="margin:6px 0 0">A game with modifiers does not count for your best runs.</div>':''}`}
       <div class="fields"><div><label>City name</label><input id="cityname" maxlength="24" placeholder="${esc(MS.placeholder||'Riverton')}" value="${esc(MS.name)}"></div>
       <div><label>Map seed (optional)</label><input id="seedin" maxlength="20" placeholder="random" value="${esc(MS.seed)}"></div></div></div>
-      <div class="row" style="margin-top:14px"><button class="go" data-act="start">Start ${diffById(MS.diff).name}</button></div></div>`;
+      <div class="row" style="margin-top:14px"><button class="go" data-act="start">Start ${diffById(MS.diff).name}${MS.diff!=='sandbox'&&MS.mods.size?' + '+MS.mods.size+' modifier'+(MS.mods.size>1?'s':''):''}</button></div></div>`;
   },
   daily(){
     const info=dailyInfo(),date=info.date,my=(Store.meta.daily||{})[date],B=DBOARD.date===date?DBOARD:{status:'idle',rows:[],msg:''};
@@ -4701,7 +4718,7 @@ const SCREENS={
       const d=diffById(c.diff);
       return `<div class="slot"><div class="th" style="${c.thumb?`background-image:url(${c.thumb})`:''}"></div>
         <div class="info"><div class="nm">${esc(c.name)}</div>
-          <div class="meta">${chip(d)}<span>Week ${c.week}</span><span>${c.score} trips</span><span>${timeAgo(c.ts)}</span></div></div>
+          <div class="meta">${chip(d)}${c.mods&&c.mods.length?`<span>+${c.mods.length} modifier${c.mods.length>1?'s':''}</span>`:''}<span>Week ${c.week}</span><span>${c.score} trips</span><span>${timeAgo(c.ts)}</span></div></div>
         <div class="acts"><button class="sbtn" data-act="city-load" data-id="${c.id}">Load</button><button class="sbtn ${cf==='d'+c.id?'warn':'ghost'}" data-act="city-del" data-id="${c.id}">${cf==='d'+c.id?'Delete it?':'Delete'}</button></div></div>`;
     }).join('');
     return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Your cities</h2></div><div class="pbody">${rows||'<div class="tiny" style="padding:20px">No cities yet. Start a new game and it will be kept here, saved automatically.</div>'}<div class="tiny" style="margin:8px 4px">Every city is saved automatically while you play and kept until you delete it.</div>${list.length?`<div class="row" style="margin:10px 0 2px"><button class="sbtn ${cf==='all'?'warn':'ghost'}" data-act="city-delall">${cf==='all'?'Really delete all '+list.length+' '+(list.length===1?'city':'cities')+'? Press again':'Delete all cities'}</button>${cf==='all'?'<button class="sbtn ghost" data-act="city-keep">Keep them</button>':''}</div>`:''}</div></div>`;
@@ -4867,10 +4884,10 @@ menuEl.addEventListener('click',e=>{
 
 function setPlay(){mode='play';tlEnsure();document.body.classList.remove('inmenu');fitView();if(tool.startsWith('sb:')&&D.id!=='sandbox')tool='road';buildSbBar();buildCoordBar();}
 function enterMenu(){if(S&&!S.demo&&TL.runId===S.runId)tlPersist(true);closeTimelapse();mode='menu';document.body.classList.add('inmenu');startDemo();MS.confirm=null;Menu.show('main');}
-function startGameWith(diffId,seed,name){newGame(diffId,seed);S.name=name||pick(NAMES);Menu.hide();document.getElementById('modal').className='hidden';setPlay();autosave();}
+function startGameWith(diffId,seed,name,mods){newGame(diffId,seed,mods);S.name=name||pick(NAMES);Menu.hide();document.getElementById('modal').className='hidden';setPlay();autosave();}
 function startNew(){
   const seed=MS.seed.trim()?hashSeed(MS.seed.trim()):null;
-  startGameWith(MS.diff,seed,(MS.name||'').trim()||MS.placeholder||pick(NAMES));
+  startGameWith(MS.diff,seed,(MS.name||'').trim()||MS.placeholder||pick(NAMES),MS.diff==='sandbox'?[]:[...MS.mods]);
   MS.name='';MS.seed='';MS.placeholder=null;
 }
 function loadSave(sv){if(!sv||!sv.state)return;document.getElementById('modal').className='hidden';restore(sv);Menu.hide();setPlay();}
@@ -4906,6 +4923,7 @@ function act(a,d){
     case 'back':MS.confirm=null;Menu.show(MS.screen==='realism'?'new':mode==='play'?'pause':'main');break;
     case 'realism':Menu.show('realism');break;
     case 'diff':MS.diff=d.id;Menu.show('new');break;
+    case 'mod':{const pb=menuEl.querySelector('.pbody'),st0=pb?pb.scrollTop:0;if(MS.mods.has(d.id))MS.mods.delete(d.id);else MS.mods.add(d.id);Menu.show('new');const nb=menuEl.querySelector('.pbody');if(nb)nb.scrollTop=st0;break;}
     case 'start':startNew();break;
     case 'city-load':loadCity(d.id);break;
     case 'city-keep':MS.confirm=null;Menu.show('load');break;
