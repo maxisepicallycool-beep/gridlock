@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.21.2 — One coordinator is one piece
+- A traffic coordinator with the straight, left-turn and right-turn lights all ticked now costs one coordinator, not three. Removing it (or rebuilding a junction into a roundabout) gives back one. Coordinators already placed in older saved cities were charged per light, so those refund one each
+
 ## 1.21.1 — Honest \u201ccut off\u201d messages, and a fairer leaderboard rule
 - When a colour is \u201ccut off\u201d the alert and the game-over screen now say why: no road at the end of a driveway, no route to a destination (and what to check), or houses stuck waiting because cars are not getting through
 - A daily score is no longer refused for being posted long after it was played. The only time rule left is that the level must still be that day\u2019s: once the daily changes, scores for the old level are refused

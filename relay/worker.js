@@ -32,7 +32,7 @@ async function writeBoard(env, date, entry, now) {
     if (sha) body.sha = sha;
     const p = await gh(env, file, { method: 'PUT', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } });
     if (p.ok) return { rank: rows.findIndex(r => r.id === entry.id) + 1, total: rows.length, improved: true };
-    if (p.status !== 409 && p.status !== 422) throw new Error('github write ' + p.status);
+    if (p.status !== 409 && p.status !== 422) { let m = ''; try { m = (await p.json()).message || ''; } catch (e) {} throw new Error('github write ' + p.status + (m ? ': ' + String(m).slice(0, 160) : '')); }
   }
   throw new Error('the board was busy, try again');
 }

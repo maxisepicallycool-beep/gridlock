@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.21.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.21.2';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -612,7 +612,7 @@ const sgCode=v=>v===true?1:(+v||0);
 const sgAt=(nx,d)=>{if(nx&1)return 0;const g=cells[nx>>1].sg;return g?sgCode(g[opp(d)]):0;};
 const stopAt=(nx,d)=>sgAt(nx,d)===1;
 const yieldAt=(nx,d)=>sgAt(nx,d)===2;
-const headsOf=v=>{v=sgCode(v);return v>=16?((v&1)+((v>>1)&1)+((v>>2)&1)):v?1:0;};
+const headsOf=v=>{v=sgCode(v);return v>=16?((v&7)?1:0):v?1:0;};   // one traffic coordinator is one piece, however many light types it carries
 const mvOf=(din,dout)=>{if(dout<0)return 'S';const k=(dout-din)&7;return k===0?'S':(k>=1&&k<=3)?'R':'L';};   // 1-3 clockwise on the map = a right turn (the map is drawn y-down)
 function signPos(idx,s){const C=ctr(idx),u=UNIT[s],din=opp(s),pv=[-UNIT[din][1],UNIT[din][0]];return {x:C[0]+u[0]*.36+pv[0]*.3,y:C[1]+u[1]*.36+pv[1]*.3,C,u,pv};}
 function setSign(ci,s,on){GC.dirty=true;const c=cells[ci];if(!c.sg)c.sg=new Array(8).fill(false);c.sg[s]=on===true?1:(on||0);if(!c.sg.some(Boolean))c.sg=null;tlSync(ci);}
