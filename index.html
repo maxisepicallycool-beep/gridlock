@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.21.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.22.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -2080,12 +2080,12 @@ function nearestSide(ci,sides,fx,fy){
   return best;
 }
 let coordType='stop';   // what the traffic coordinator tool places: yield, stop, lights (the ticked heads), or timing (opens the signal editor)
-const COORD=[['stop','Stop sign'],['yield','Yield sign'],['ls','Straight light'],['ll','Left-turn light'],['lr','Right-turn light']];
+const COORD=[['stop','Stop sign'],['yield','Yield sign'],['any','Any-way light'],['ls','Straight light'],['ll','Left-turn light'],['lr','Right-turn light']];
 const COORDBIT={ls:1,ll:2,lr:4};
 let coordSel=new Set(['stop']);   // tick boxes: stop or yield on their own, or any mix of the three light heads
-function coordSync(){coordType=coordSel.has('timing')?'timing':coordSel.has('stop')?'stop':coordSel.has('yield')?'yield':'lights';}
+function coordSync(){coordType=coordSel.has('timing')?'timing':coordSel.has('stop')?'stop':coordSel.has('yield')?'yield':coordSel.has('any')?'any':'lights';}
 const coordMask=()=>{let m=0;for(const k of coordSel)m|=COORDBIT[k]||0;return m;};
-const coordCode=t=>t==='yield'?2:t==='stop'?1:t==='lights'?(coordMask()?16|coordMask():0):0;
+const coordCode=t=>t==='yield'?2:t==='stop'?1:t==='any'?23:t==='lights'?(coordMask()?16|coordMask():0):0;
 function buildCoordBar(){
   const el=$('coordBar');if(!el)return;
   const on=mode==='play'&&D.coord&&tool==='stop';el.style.display=on?'flex':'none';if(!on)return;
@@ -2101,12 +2101,16 @@ $('coordBar').addEventListener('change',e=>{
   const i=e.target.closest('input');if(!i||!i.dataset.t)return;const k=i.dataset.t;
   coordSel.delete('timing');closeTlEditor();
   if(i.checked){   // a side holds one thing: a stop sign, a yield sign, or any mix of light heads
-    if(k==='stop'||k==='yield')coordSel=new Set([k]);
-    else{coordSel.delete('stop');coordSel.delete('yield');coordSel.add(k);}
+    if(k==='stop'||k==='yield'||k==='any')coordSel=new Set([k]);   // (the any-way light picks its own heads)
+    else{coordSel.delete('stop');coordSel.delete('yield');coordSel.delete('any');coordSel.add(k);}
   } else coordSel.delete(k);
   if(!coordSel.size)coordSel.add(k);   // always keep something ticked
   coordSync();buildCoordBar();
 });
+function anyCode(ci,sd){   // an any-way light: a head for every movement that has somewhere to go from this approach (a dead-end side road gets left and right only)
+  let m=0;for(const [k,b] of [['S',1],['L',2],['R',4]])if(tlExits(ci,sd,k).length)m|=b;
+  return m?16|m:0;
+}
 function placeStop(ci,fx,fy,all){
   const c=cells[ci],sides=signSides(c),what=D.coord?'Traffic coordinators':'Stop signs';
   if(sides.length<3){toast(what+' go at intersections (3+ roads meeting)');return;}
@@ -2122,9 +2126,14 @@ function placeStop(ci,fx,fy,all){
     const missing=sides.filter(sd=>sgCode(c.sg&&c.sg[sd])!==1);
     if(!missing.length){for(const sd of sides)apply(sd,0);}
     else for(const sd of missing){if(!apply(sd,1))break;}
+  } else if(all&&typ==='any'){   // shift-click: an any-way light on every approach (or take them all down)
+    const want=sides.map(sd=>anyCode(ci,sd)),has=sides.every((sd,i)=>sgCode(c.sg&&c.sg[sd])===want[i]);
+    if(has){for(const sd of sides)apply(sd,0);}
+    else for(let i=0;i<sides.length;i++){if(want[i]&&!apply(sides[i],want[i]))break;}
   } else {
     const sd=nearestSide(ci,sides,fx,fy),old=sgCode(c.sg&&c.sg[sd]);
-    if(typ==='yield'||typ==='stop'){const code=typ==='yield'?2:1;apply(sd,old===code?0:code);}
+    if(typ==='any'){const code=anyCode(ci,sd);if(!code){toast('No road leaves this way');return;}apply(sd,old===code?0:code);}
+    else if(typ==='yield'||typ==='stop'){const code=typ==='yield'?2:1;apply(sd,old===code?0:code);}
     else{const code=coordCode('lights');apply(sd,old===code?0:code);}   // the ticked heads go up together; the same again takes them down
   }
   if(recs.length)undoStack.push(recs);
@@ -2798,7 +2807,7 @@ function refreshDock(){
   });
 }
 function selectTool(k){
-  if(k==='stop'&&tool==='stop'&&D.coord&&mode==='play'){const pre=[['stop'],['yield'],['ls','ll','lr'],['timing']],cur=pre.findIndex(a=>a.length===coordSel.size&&a.every(x=>coordSel.has(x)));coordSel=new Set(pre[(cur+1)%pre.length]);if(!coordSel.has('timing'))closeTlEditor();coordSync();}   // pressing the key again cycles: stop, yield, all three lights, signal timing
+  if(k==='stop'&&tool==='stop'&&D.coord&&mode==='play'){const pre=[['stop'],['yield'],['any'],['ls','ll','lr'],['timing']],cur=pre.findIndex(a=>a.length===coordSel.size&&a.every(x=>coordSel.has(x)));coordSel=new Set(pre[(cur+1)%pre.length]);if(!coordSel.has('timing'))closeTlEditor();coordSync();}   // pressing the key again cycles: stop, yield, any-way light, all three lights, signal timing
   tool=k;lineA=null;lineDrag=false;if(tool!=='stop')closeTlEditor();refreshDock();buildSbBar();buildCoordBar();
 }
 let hudCache={};

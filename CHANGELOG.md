@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.22.0 — The any-way light
+- A new tick box on the traffic coordinator bar: **Any-way light**. It puts a light head on the approach for every movement that has somewhere to go: straight, left and right on a through road, and just left and right on a side road that ends (so a T junction gets a proper plan instead of a pointless straight light). It costs one coordinator. Shift-click puts one on every approach of the junction at once (or takes them all down). Pressing the coordinator key again also cycles through it
+
 ## 1.21.2 — One coordinator is one piece
 - A traffic coordinator with the straight, left-turn and right-turn lights all ticked now costs one coordinator, not three. Removing it (or rebuilding a junction into a roundabout) gives back one. Coordinators already placed in older saved cities were charged per light, so those refund one each
 
