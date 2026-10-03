@@ -329,7 +329,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.22.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.23.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -401,7 +401,7 @@ let D=DIFFS[2],mode='menu',mapSeed=1;
 const SET_DEF={theme:'dark',mapNatural:false,noHw:false,tlOn:true,tlEvery:8,season:'spooky',weather:'auto',wxAmt:60,aiStats:false,loc:true,locMode:'until',locTime:15,locHover:true,locConnect:true,locEdge:true,locSize:1,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
   tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:15,n_toastTime:4,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
-  music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false,pname:'',iid:''};
+  music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false,pname:'',iid:'',signals:true};
 const Settings={v:Object.assign({},SET_DEF),
   load(){
     // two copies exist: the one the app injected when it started (can be stale after an in-app update) and the browser's own,
@@ -1099,9 +1099,9 @@ function tryEnter(c,nx,d){
   c.by=null;c.redHold=false;
   if(isBld(nx))return 1;
   if(crashUntil[nx]>time)return 0;   // wreck still blocking the junction
-  const after=c.path[c.i+2],sc=sgAt(nx,d),sg=sc===1,yl=sc===2,lg=lightGate(nx,d,after),fromBld=isBld(c.path[c.i]),ctl=!!sc||fromBld;   // a car pulling out of a driveway or lot always gives way (those cannot be signed)
+  const after=c.path[c.i+2],sc=sgAt(nx,d),sg=sc===1,yl=sc===2,lg=lightGate(nx,d,after),fromBld=isBld(c.path[c.i]),toBld=after!==undefined&&isBld(after),ctl=!!sc||fromBld||toBld;   // a car pulling out of a driveway or lot, or turning into one, always gives way (those cannot be signed)
   if(lg&&lg.st!==2){c.redHold=true;return 0;}   // red or amber: wait at the line (never forced through, and it does not feed the deadlock timer)
-  const give=yl||fromBld||(lg&&lg.perm),force=c.force||c.wait>(sg?12:5);
+  const give=yl||fromBld||toBld||(lg&&lg.perm),force=c.force||c.wait>(sg?12:5);
   const mine=chord(nx,d,after!==undefined?dirOf(nx,after):-1);
   const crosses=(din,dout)=>chordDist(mine,chord(nx,din,dout))<.26;
   let q=null;
@@ -3424,6 +3424,12 @@ function paintCar(p){
   ctx.fillStyle='#fff3b0';ctx.beginPath();ctx.arc(.19,-.062,.022,0,7);ctx.arc(.19,.062,.022,0,7);ctx.fill();   // headlights
   ctx.fillStyle='#ff6b6b';ctx.beginPath();ctx.arc(-.19,-.062,.02,0,7);ctx.arc(-.19,.062,.02,0,7);ctx.fill();   // tail lights
 }
+function turnSignal(c){   // 'L' or 'R' while a car is on its way to turn at a junction or into / out of a driveway (null otherwise)
+  if(c.dead||c.ph!=='drive'||!c.path)return null;
+  const p=c.path,i=c.i,nn=p[i+1],af=p[i+2];if(nn===undefined||af===undefined)return null;
+  const mv=mvOf(dirOf(p[i],nn),dirOf(nn,af));if(mv==='S')return null;
+  return (inter[nn]||isBld(af)||isBld(p[i]))?mv:null;   // (not at every bend in the road)
+}
 function drawCar(c,q){
   if(c.ph==='dwell')return;
   if(c.truck||c.big){drawTruck(c,q||pose(c));return;}
@@ -3431,6 +3437,14 @@ function drawCar(c,q){
   ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.a);
   if(q.h>0){ctx.fillStyle='rgba(20,40,60,'+(.12+.1*q.h)+')';ctx.save();ctx.rotate(-q.a);ctx.translate(.06*q.h,.16*q.h);ctx.rotate(q.a);rr(-.2,-.08,.42,.22,.07);ctx.fill();ctx.restore();ctx.scale(1+.22*q.h,1+.22*q.h);}
   ctx.drawImage(sprite('c'+c.color,.6,.36,300,()=>paintCar(p)),-.3,-.18,.6,.36);
+  if(cs>=12&&Settings.v.signals!==false){   // turn signals: amber lamps at the front and back corners on the side it is turning to, flashing
+    const tn=turnSignal(c);
+    if(tn&&Math.floor(performance.now()/380)%2===0){
+      const sy=tn==='R'?.16:-.16;
+      ctx.fillStyle='rgba(255,176,32,.35)';for(const sx of [.26,-.26]){ctx.beginPath();ctx.arc(sx,sy,.075,0,7);ctx.fill();}
+      ctx.fillStyle='#ffb020';for(const sx of [.26,-.26]){ctx.beginPath();ctx.arc(sx,sy,.036,0,7);ctx.fill();}
+    }
+  }
   ctx.restore();
 }
 /* ---------- the roundabout tool and the straight road tool ---------- */

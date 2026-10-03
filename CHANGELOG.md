@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.23.0 — Turn signals, and driveways always give way
+- Cars now flash amber turn signals (front and back, on the side they are turning to) as they approach a turn at a junction, and when they turn into or pull out of a driveway
+- A car turning into a driveway now always gives way to the traffic it crosses, just as a car pulling out of one already did
+
 ## 1.22.0 — The any-way light
 - A new tick box on the traffic coordinator bar: **Any-way light**. It puts a light head on the approach for every movement that has somewhere to go: straight, left and right on a through road, and just left and right on a side road that ends (so a T junction gets a proper plan instead of a pointless straight light). It costs one coordinator. Shift-click puts one on every approach of the junction at once (or takes them all down). Pressing the coordinator key again also cycles through it
 
