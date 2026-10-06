@@ -1,5 +1,11 @@
 # Gridlock changelog
 
+## 1.27.1 — 3D view: gradual highway ramps, walls, steering cars [experimental]
+- Highways and bridges now rise and fall along a smooth five-cell ramp instead of stepping down, and cars follow the same curve
+- Highways have concrete walls on both sides and bridges have low rails
+- Cars in the 3D view steer with a front and rear axle, so they swing round corners instead of spinning on the spot
+- The road, building and tool previews are always drawn on top, even when you are building underneath a highway
+
 ## 1.27.0 — A real 3D view [experimental]
 - The game is now drawn as a real 3D scene seen from an angled, perspective camera (using three.js, which is built into the game, so it still works offline). The ground and roads are the same map as before; everything else is a 3D model with real shadows: every house style (pumpkin, mansion, witch hat, mausoleum, slime monster, castle, and the ordinary gabled house), the shops, petrol stations, car parks, potion shops, pumps with a crypt and graveyards, the fire station and DOT depot (with rolling shutters), trees, dead trees, gravestones, crosses, pumpkins and street lamps
 - Cars are 3D models (sedans, hatchbacks and SUVs in the house colours, with wheels, windows, head and tail lights and flashing amber turn signals), and so are the fire trucks and the DOT cone truck, tow truck and flatbed with a crane. Crash scenes show real wrecks, cones, and cars hanging off the tow truck or lifted onto the flatbed. Headlight beams show at night

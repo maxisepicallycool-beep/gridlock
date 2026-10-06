@@ -342,7 +342,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.27.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.27.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1901,7 +1901,7 @@ function pose(c){
   const x=m*m*E[0]+2*m*t*C[0]+t*t*X[0], y=m*m*E[1]+2*m*t*C[1]+t*t*X[1];
   let tx=2*m*(C[0]-E[0])+2*t*(X[0]-C[0]), ty=2*m*(C[1]-E[1])+2*t*(X[1]-C[1]);
   if(Math.abs(tx)+Math.abs(ty)<1e-4){const d=s.dout>=0?s.dout:s.din;tx=UNIT[d][0];ty=UNIT[d][1];}
-  const hn=n=>(n&1)?hgt[n>>1]:0;
+  const hn=n=>(n&1)?(R3D.on&&R3D.hz?R3D.hz[n>>1]:hgt[n>>1]):0;
   const hE=s.din<0?hn(s.n):(hn(c.path[c.i-1])+hn(s.n))/2, hX=s.dout<0?hn(s.n):(hn(s.n)+hn(c.path[c.i+1]))/2;
   return {x,y,a:Math.atan2(ty,tx),br:s.br,h:hE+(hX-hE)*t};
 }
@@ -5868,6 +5868,17 @@ R3D.carObj=function(c){
   if(g.bar){o.userData.bar=new THREE.Mesh(g.bar,this.mat('amber'));o.add(o.userData.bar);}
   this.objs.cars.set(c,o);this.carGroup.add(o);return o;
 };
+R3D.steer=function(c,o,q){   // the front axle follows the path, the rear axle trails it: a tight turn swings the body round instead of spinning it on the spot
+  const u=o.userData,WB=u.isT?.62:.4,half=WB/2,fx=q.x+Math.cos(q.a)*half,fy=q.y+Math.sin(q.a)*half;
+  let tr=u.trail;if(!tr){tr=u.trail=[];}
+  const last=tr[0];
+  if(!last||Math.hypot(fx-last[0],fy-last[1])>1.5){tr.length=0;for(let k=0;k<30;k++)tr.push([fx-Math.cos(q.a)*k*.04*WB*2.5,fy-Math.sin(q.a)*k*.04*WB*2.5]);}   // (a fresh trail starts straight behind)
+  else if(Math.hypot(fx-last[0],fy-last[1])>.015){tr.unshift([fx,fy]);if(tr.length>140)tr.pop();}
+  let acc=0,px=fx,py=fy,rx=null,ry=null;
+  for(const pt of tr){const d=Math.hypot(pt[0]-px,pt[1]-py);if(d>1e-6&&acc+d>=WB){const k=(WB-acc)/d;rx=px+(pt[0]-px)*k;ry=py+(pt[1]-py)*k;break;}acc+=d;px=pt[0];py=pt[1];}
+  if(rx===null)return {x:q.x,y:q.y,a:q.a};
+  return {x:(fx+rx)/2,y:(fy+ry)/2,a:Math.atan2(fy-ry,fx-rx)};
+};
 R3D.syncCars=function(){
   const seen=new Set(),T=performance.now(),flash=Math.floor(T/380)%2===0;
   for(const c of cars){
@@ -5875,7 +5886,8 @@ R3D.syncCars=function(){
     let q;try{q=(isPark(c.ph)||c.ph==='gout'||c.ph==='gin')?parkPose(c):pose(c);}catch(e){continue;}
     if(!q)continue;
     const o=this.carObj(c);seen.add(c);o.visible=true;
-    const z=this.heightAt(q);o.position.set(q.x,z,q.y);o.rotation.y=-q.a;
+    const z=this.heightAt(q);let pq=q;if(c.ph==='drive'&&!(c.truck&&c.dot))pq=this.steer(c,o,q);else o.userData.trail=null;
+    o.position.set(pq.x,z,pq.y);o.rotation.y=-pq.a;
     const u=o.userData;
     if(u.left){const tn=!u.isT?turnSignal(c):null;u.left.visible=tn==='L'&&flash;u.right.visible=tn==='R'&&flash;}
     if(u.bar){const lit=c.truck&&(c.ph==='go'||c.ph==='gout'||c.ph==='work'||c.ph==='wait'||c.ph==='spray');u.bar.visible=!!lit&&Math.floor(T/220)%2===0;}
@@ -6209,9 +6221,18 @@ GB.prototype.quad=function(a,b,c,d,color,hint){   // a, b, c, d are [x,y,z]; the
   if(flip)this.idx.push(base,base+2,base+1,base,base+3,base+2);else this.idx.push(base,base+1,base+2,base,base+2,base+3);
   return this;
 };
+const RAMP_LEN=5;   // cells a highway takes to climb to full height (and to come back down)
+R3D.computeHz=function(){   // every highway cell's height (0..1): zero where the highway meets the ground, rising along an S curve
+  const hz=this.hz||(this.hz=new Float32Array(W*H)),dd=new Int16Array(W*H).fill(-1),q=[];
+  hz.fill(0);
+  const hw=c=>c.f&&c.f.some(e=>e&&e.k===1);
+  for(let i=0;i<W*H;i++){const c=cells[i];if(hw(c)&&c.bd===1){dd[i]=0;q.push(i);}}
+  for(let h=0;h<q.length;h++){const i=q[h],c=cells[i];for(let d=0;d<8;d++){const e=c.f&&c.f[d];if(e&&e.k===1){const bi=nbIdx(i,d);if(dd[bi]<0){dd[bi]=dd[i]+1;q.push(bi);}}}}
+  for(let i=0;i<W*H;i++)if(hw(cells[i])){const t=dd[i]<0?1:Math.min(1,dd[i]/RAMP_LEN);hz[i]=t*t*(3-2*t);}
+};
 function elevZ(i){
   const c=cells[i];if(!c.f)return 0;
-  if(c.f.some(e=>e&&e.k===1))return (hgt[i]||0)*HWY_Z;
+  if(c.f.some(e=>e&&e.k===1))return ((R3D.hz?R3D.hz[i]:hgt[i])||0)*HWY_Z;
   if(c.f.some(e=>e&&e.k===2))return c.water?BR_Z:BR_Z*.4;
   return 0;
 }
@@ -6244,7 +6265,25 @@ R3D.ribbon=function(g,pts,w,top,color,thick,sideColor,lift){   // a strip along 
     }
   }
 };
+R3D.walls=function(g,pts,w,h,t,color,top){   // a wall along each edge of a deck
+  const n=pts.length;if(n<2)return;
+  for(const sd of [1,-1]){
+    const P=[];
+    for(let j=0;j<n;j++){
+      const a=pts[Math.max(0,j-1)],b=pts[Math.min(n-1,j+1)];let tx=b[0]-a[0],tz=b[1]-a[1];const tl=Math.hypot(tx,tz)||1;tx/=tl;tz/=tl;
+      P.push({x:pts[j][0]-tz*sd*(w/2-t/2),z:pts[j][1]+tx*sd*(w/2-t/2),y:pts[j][2],nx:-tz*sd,nz:tx*sd});
+    }
+    for(let j=0;j<n-1;j++){
+      const a=P[j],b=P[j+1];
+      const o=(p,k)=>[p.x+p.nx*k,p.y,p.z+p.nz*k],up=(p,k,hh)=>[p.x+p.nx*k,p.y+hh,p.z+p.nz*k];
+      g.quad(up(a,t/2,h),up(b,t/2,h),up(b,-t/2,h),up(a,-t/2,h),top||color,[0,1,0]);                       // the top
+      g.quad(o(a,t/2),o(b,t/2),up(b,t/2,h),up(a,t/2,h),color,[a.nx,0,a.nz]);                                // the outer face
+      g.quad(o(a,-t/2),o(b,-t/2),up(b,-t/2,h),up(a,-t/2,h),color,[-a.nx,0,-a.nz]);                          // the inner face
+    }
+  }
+};
 R3D.buildElevated=function(){
+  this.computeHz();
   const gr=this.elevGroup;while(gr.children.length)gr.remove(gr.children[0]);
   const g=new GB(),marks=new GB(),fillHwy=C3(TH.fill[1]||'#343843'),fillBr=C3(TH.fill[2]||'#d3c8ac'),sideHwy=C3('#2a2b30'),sideBr=C3('#6e644f'),rail=C3('#8a8f98');
   let any=false;
@@ -6256,7 +6295,7 @@ R3D.buildElevated=function(){
     const paths=this.deckPath(i,ds);
     for(const pts of paths){
       this.ribbon(g,pts,w,true,fill,.1,side,0);
-      this.ribbon(g,pts,.04,false,rail,0,rail,.0);
+      if(ds.length<3)this.walls(g,pts,w,k===1?.1:.055,k===1?.06:.03,k===1?C3('#b9b5ab'):C3('#8a7f66'),k===1?C3('#d4d0c6'):C3('#a39878'));
     }
     if(ds.length>=3){   // a junction disc
       const p=ctr(i),z=elevZ(i),N=14;
@@ -6297,8 +6336,8 @@ R3D.initGroups=function(){
   const bg=new THREE.PlaneGeometry(1.2,.62);bg.rotateX(-Math.PI/2);bg.translate(.2+.6,.04,0);this.beamGeo=bg;
   // the overlay plane (previews, layer views...) and the weather cover planes sit just above the ground
   this.ovCanvas=document.createElement('canvas');this.ovTex=new THREE.CanvasTexture(this.ovCanvas);
-  this.ovMat=new THREE.MeshBasicMaterial({map:this.ovTex,transparent:true,depthWrite:false});
-  this.ovMesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),this.ovMat);this.ovMesh.rotation.x=-Math.PI/2;this.ovMesh.position.y=.06;this.ovMesh.renderOrder=3;this.ovMesh.visible=false;sc.add(this.ovMesh);
+  this.ovMat=new THREE.MeshBasicMaterial({map:this.ovTex,transparent:true,depthWrite:false,depthTest:false});   // the building previews are always on top: you can see them even under a highway
+  this.ovMesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),this.ovMat);this.ovMesh.rotation.x=-Math.PI/2;this.ovMesh.position.y=.06;this.ovMesh.renderOrder=999;this.ovMesh.visible=false;sc.add(this.ovMesh);
   this.cover={};
   for(const k of ['wet','snow','leaves']){
     const m=new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,opacity:0});const p=new THREE.Mesh(new THREE.PlaneGeometry(W,H),m);
