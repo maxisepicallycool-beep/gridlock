@@ -1,5 +1,11 @@
 # Gridlock changelog
 
+## 1.29.0 — Real lamp and headlight lighting
+- Street lamps are now real lights: at dusk and night they light the road, cars, houses and lots beneath them, and the nearest few cast real shadows (lamp posts, cars and buildings throw shadows across the road)
+- Car headlights are real lights too, so they light the road, the cars ahead and anything beside the road
+- Surfaces are now shaded per pixel so the light falls smoothly across them
+- The lights are picked from the ones nearest the middle of the screen and fade in at dusk
+
 ## 1.28.1 — Brighter lights
 - Dusk and night are brighter: stronger moonlight and sky light, lamp glows reach further, windows stay lit, and highway lane marks are only dimmed a little at night
 
