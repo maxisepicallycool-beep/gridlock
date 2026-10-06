@@ -7,13 +7,15 @@ const RATE = 0.09;          // most trips one house can finish per second (real 
 const MAX_SPEED = 3.3;      // game seconds per real second at the fastest game speed
 
 const fnv = s => { let h = 2166136261; for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); };
-const checksum = o => { const a = [o.d, o.s, o.w, o.t, o.v, o.h, o.p, o.r]; if (o.n !== undefined || o.i !== undefined) a.push(o.n, o.i); return fnv(JSON.stringify(a) + SALT); };
+const checksum = o => { const a = [o.d, o.s, o.w, o.t, o.v, o.h, o.p, o.r]; if (o.n !== undefined || o.i !== undefined) a.push(o.n, o.i); if (o.g !== undefined) a.push(o.g); return fnv(JSON.stringify(a) + SALT); };
 const verNum = v => String(v || '0').split('.').map(n => parseInt(n) || 0);
 const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return true; };
 const no = reason => ({ ok: false, reason });
 const NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 _.\-]{0,15}$/, ID_RE = /^[a-z0-9]{8,32}$/;
 
-// opts: { nowSec } the time to judge which day a run was played on; { skipDay } and { requireIdentity }
+const BOARDS = ['relaxed', 'standard', 'rush', 'gridlock', 'realism_easy', 'realism_hard'];   // the difficulties that have a general leaderboard
+// opts: { nowSec } the time to judge which day a run was played on; { skipDay } and { requireIdentity }; { general } for a score on a difficulty board (the proof names it in g)
+const nowSecPlus = n => n + 3600;
 function validateProof(j, opts) {
   opts = opts || {};
   if (!j || typeof j !== 'object') return no('there is no score data');
@@ -24,6 +26,7 @@ function validateProof(j, opts) {
     if (typeof j.n !== 'string' || !NAME_RE.test(j.n)) return no('the name must be 1 to 16 letters, numbers, spaces, dots, dashes or underscores');
     if (typeof j.i !== 'string' || !ID_RE.test(j.i)) return no('the player id is missing');
   }
+  if (opts.general && !BOARDS.includes(j.g)) return no('that is not a leaderboard difficulty');
   if (!newer(j.v, MIN_VERSION)) return no('this game version is too old to post scores (update the game)');
   if (j.s < 0 || j.s > 200000 || j.w < 1 || j.t < 30 || j.t > 60 * 60 * 6) return no('the score or time is out of range');
   const cp = j.p, n = cp.length;
@@ -52,9 +55,10 @@ function validateProof(j, opts) {
   if (Number.isFinite(opts.nowSec)) {   // the run has to have been played on the day it is for (how long ago it was played does not matter)
     const lastReal = j.r[n - 1];
     const day = Date.parse(j.d + 'T00:00:00Z') / 1000;
+    if (lastReal > nowSecPlus(opts.nowSec)) return no('this run is dated in the future');
     if (!opts.skipDay && (lastReal < day - 3600 || lastReal > day + 86400 + 3600)) return no('this run was not played on that day');
   }
-  return { ok: true, entry: { name: j.n || '', id: j.i ? fnv(j.i) : '', score: j.s, week: j.w, t: j.t, v: j.v, houses: j.h } };
+  return { ok: true, entry: { name: j.n || '', id: j.i ? fnv(j.i) : '', score: j.s, week: j.w, t: j.t, v: j.v, houses: j.h, g: j.g } };
 }
 
 // scores posted as GitHub issues "[daily] DATE · SCORE" with the data in a hidden comment (the older path)
@@ -83,4 +87,4 @@ function buildRows(issues, date) {   // each player's best score of the day, bes
   }
   return Object.values(by).sort((a, b) => b.score - a.score || String(a.when).localeCompare(String(b.when)));
 }
-module.exports = { SALT, MIN_VERSION, RATE, MAX_SPEED, fnv, checksum, validateProof, parseIssue, validate, buildRows };
+module.exports = { BOARDS, SALT, MIN_VERSION, RATE, MAX_SPEED, fnv, checksum, validateProof, parseIssue, validate, buildRows };

@@ -222,6 +222,35 @@ body.app #menu{padding-top:44px}
 .best:first-of-type{border-top:0}
 .best .sc{margin-left:auto;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
 .best .sc small{display:block;color:var(--muted);font-weight:600;font-size:11.5px}
+.lbtabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.lbtab{border:2px solid transparent;background:rgba(35,39,51,.07);color:var(--ink);font:inherit;font-size:13px;font-weight:800;padding:7px 14px;border-radius:99px;cursor:pointer;transition:background .12s,transform .12s}
+.lbtab:hover{transform:translateY(-1px)}.lbtab.sel{background:var(--chipc);color:#fff}
+.lbhero{border-radius:22px;padding:18px 20px;margin-bottom:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--dc) 22%,transparent),color-mix(in srgb,var(--dc) 6%,transparent));border:1px solid color-mix(in srgb,var(--dc) 40%,transparent)}
+.lbh1{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.lbhero h3{margin:2px 0 0;font-size:24px;font-weight:880;letter-spacing:-.4px;text-transform:none;color:var(--ink)}
+.lbkick{font-size:11.5px;font-weight:850;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted)}
+.lbtime{text-align:right;font-size:11.5px;font-weight:700;color:var(--muted)}.lbtime b{display:block;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
+.lbtags{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+.lbtags span{font-size:12.5px;line-height:1.35;padding:5px 11px;border-radius:12px;background:rgba(35,39,51,.07);color:var(--ink)}
+.lbact{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:12px}
+.lbmine{text-align:left;font-variant-numeric:tabular-nums}.lbmine small{display:block;color:var(--muted);font-weight:650;font-size:11.5px}.lbmine b{font-size:20px;font-weight:880}
+.lbpost{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap}.lbpost label{font-size:12px;font-weight:700;color:var(--muted)}.lbpost input{flex:1;min-width:120px}
+.lbhead{display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px}.lbhead h3{margin:0}
+.lbnote{padding:26px 8px;text-align:center;color:var(--muted);font-weight:650;font-size:13.5px}
+.podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:10px;align-items:end;margin:6px 0 12px}
+.pod{border-radius:18px;padding:12px 8px 12px;text-align:center;background:rgba(35,39,51,.06);border:1px solid var(--line);min-width:0}
+.pod.p1{padding-top:18px;padding-bottom:18px;background:linear-gradient(180deg,rgba(240,180,41,.28),rgba(240,180,41,.08));border-color:rgba(240,180,41,.55)}
+.pod.p2{background:linear-gradient(180deg,rgba(160,170,190,.26),rgba(160,170,190,.07))}.pod.p3{background:linear-gradient(180deg,rgba(205,127,50,.26),rgba(205,127,50,.07))}
+.pod.empty{visibility:hidden}.pod.me{outline:2px solid #4c9be8}
+.medal{width:30px;height:30px;line-height:30px;margin:0 auto 6px;border-radius:50%;font-weight:900;font-size:14px;color:#fff;background:#a0aabe}
+.p1 .medal{background:#f0b429;width:36px;height:36px;line-height:36px;font-size:17px}.p3 .medal{background:#cd7f32}
+.pn{font-weight:850;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ps{font-weight:900;font-size:22px;font-variant-numeric:tabular-nums;margin-top:2px}
+.ps small{font-size:11px;font-weight:650;color:var(--muted);margin-left:4px}.pw{font-size:11.5px;color:var(--muted);font-weight:650}
+.lblist{border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+.lbrow{display:grid;grid-template-columns:34px 1fr auto 58px;gap:8px;align-items:center;padding:9px 14px;font-size:14px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.lbrow:first-child{border-top:0}.lbrow:nth-child(odd){background:rgba(35,39,51,.035)}.lbrow.me{background:rgba(76,155,232,.18);font-weight:800}
+.lbrow .rk{color:var(--muted);font-weight:800}.lbrow .nm{font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lbrow .wk{color:var(--muted);font-size:12px;font-weight:650}.lbrow .sc{text-align:right;font-weight:850}
+.lbgap{text-align:center;color:var(--muted);padding:2px 0}.lbfoot{margin-top:14px;line-height:1.5}
 .lastcard{display:flex;gap:14px;align-items:center;margin-bottom:10px;padding:12px;border-radius:18px;background:rgba(35,39,51,.05)}
 .lastcard img,.lastcard .ph{width:118px;height:76px;border-radius:12px;object-fit:cover;background:#e4dcc4;flex:none}
 .panel{width:min(880px,100%);border-radius:30px;padding:26px 28px;animation:rise .4s cubic-bezier(.2,.9,.3,1.1);max-height:calc(100vh - 52px);display:flex;flex-direction:column}
@@ -342,7 +371,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.29.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.30.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1049,17 +1078,20 @@ function chooseCard(o){
 function gameOver(why){
   if(D.noFail||S.over)return;
   if(S.demo){S.over=true;AI.restartAt=performance.now()+4500;return;}
-  S.over=true;S.modal='over';if(D.id==='daily')pfPush();noteBest();try{tlCapture();}catch(e){}
+  S.over=true;S.modal='over';if(pfOn())pfPush();noteBest();try{tlCapture();}catch(e){}
   Cities.del(S.runId);   // a lost city can't be continued
   const best=Store.meta.best[D.id],m=document.getElementById('modal');m.className='';
   m.innerHTML=`<div class="sheet glass"><h2>Run over</h2><p>${why||'Cars couldn\u2019t get to a destination in time.'}</p>
     <div class="big">${S.score}</div><p class="tiny" style="margin-top:2px">TRIPS COMPLETED</p>
     <div class="stats"><div><b>${S.week}</b><small>Weeks</small></div><div><b>${best?best.score:S.score}</b><small>Best (${D.name})</small></div><div><b>${esc(S.name||'City')}</b><small>City</small></div></div>
     ${D.id==='daily'?`<div class="tiny" style="margin:10px 0 4px">Daily challenge ${D.date} \u00b7 ${esc(D.terrainName)}: ${((Store.meta.daily||{})[D.date]||{score:S.score}).score} trips is your best today</div><div class="row" style="margin:6px 0;gap:8px;justify-content:center"><button class="go alt" data-a="dsubmit">Post to the leaderboard</button><button class="go alt" data-a="dboard">Leaderboard</button></div>`:''}
+    ${(D.id!=='daily'&&pfOn())?'<div class="row" style="margin:8px 0 2px;gap:8px;justify-content:center"><button class="go alt" data-a="lbpost">Post to the leaderboard</button><button class="go alt" data-a="lbview">See the board</button></div>':''}
     ${TL.frames.length>=2?'<div class="row" style="margin:8px 0 2px"><button class="go alt" data-a="tlapse">Watch your city grow</button></div>':''}
     <div class="row"><button class="go" data-a="retry">Try again</button><button class="go alt" data-a="menu">Main menu</button></div></div>`;
   const tb=m.querySelector('[data-a=tlapse]');if(tb)tb.onclick=()=>openTimelapse();
   m.querySelector('[data-a=retry]').onclick=()=>D.id==='daily'?startDaily():startGameWith(D.id,null,S.name,D.mods);
+  const lp=m.querySelector('[data-a=lbpost]');if(lp)lp.onclick=()=>boardSubmit(D.id);
+  const lv=m.querySelector('[data-a=lbview]');if(lv)lv.onclick=()=>{MS.lb=D.id;m.className='hidden';enterMenu();Menu.show('board');fetchGB(D.id,true);};
   const ds=m.querySelector('[data-a=dsubmit]');if(ds)ds.onclick=()=>dailySubmit(D.date);
   const db=m.querySelector('[data-a=dboard]');if(db)db.onclick=()=>{m.className='hidden';enterMenu();Menu.show('daily');fetchBoard(true);};
   m.querySelector('[data-a=menu]').onclick=()=>{m.className='hidden';enterMenu();};
@@ -2220,7 +2252,7 @@ function step(dt){
     else b.over=Math.max(0,b.over-dt*2);
   }
   updateStall(dt);ratingTick(dt);Snd.tick(dt);
-  if(D.id==='daily'&&!S.demo&&!S.over){S.pfClock=(S.pfClock||0)+dt;if(S.pfClock>=20){S.pfClock=0;pfPush();}}
+  if(pfOn()&&!S.over){S.pfClock=(S.pfClock||0)+dt;if(S.pfClock>=20){S.pfClock=0;pfPush();}}
   if(Settings.v.tlOn&&!S.demo&&!S.tut&&!S.over){S.tlClock=(S.tlClock||0)+dt;if(S.tlClock>=Settings.v.tlEvery*(TL.mult||1)){S.tlClock=0;tlDue=true;}}
   if(Settings.v.season==='auto'&&effSeason()!==seasonSeen)applyTheme();
   if(D.clock&&!S.demo&&!S.tut){const nm=rushName();if(nm!==S.rushNm){S.rushNm=nm;if(time>3)toast(nm?nm+': traffic is building':'Rush hour is over: traffic is easing off');}}
@@ -2619,19 +2651,21 @@ const DAILY_SALT='gridlock-daily-v1';
 const DAILY_RELAY='https://gridlock-daily.maxisepicallycool.workers.dev';   // the address of the score relay (relay/worker.js on Cloudflare); empty until it is deployed
 let DBOARD={date:'',status:'idle',rows:[],msg:'',ts:0};
 const gFnv=str=>{let h=2166136261;for(const ch of str){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return (h>>>0).toString(16);};
-const gChecksum=o=>{const a=[o.d,o.s,o.w,o.t,o.v,o.h,o.p,o.r];if(o.n!==undefined||o.i!==undefined)a.push(o.n,o.i);return gFnv(JSON.stringify(a)+DAILY_SALT);};
+const gChecksum=o=>{const a=[o.d,o.s,o.w,o.t,o.v,o.h,o.p,o.r];if(o.n!==undefined||o.i!==undefined)a.push(o.n,o.i);if(o.g!==undefined)a.push(o.g);return gFnv(JSON.stringify(a)+DAILY_SALT);};
 function installId(){let i=Settings.v.iid;if(!/^[a-z0-9]{8,32}$/.test(i||'')){i='';const a=new Uint8Array(12);try{crypto.getRandomValues(a);}catch(e){for(let k=0;k<12;k++)a[k]=Math.random()*256;}for(const b of a)i+=(b%36).toString(36);Settings.v.iid=i;Settings.save();}return i;}
 const nameOk=n=>/^[A-Za-z0-9][A-Za-z0-9 _.\-]{0,15}$/.test(n||'');
+const pfOn=()=>!S.demo&&!S.tut&&!!D&&!D.noFail&&D.id!=='tutorial'&&(D.id==='daily'||!D.modded);   // runs that can post a score keep a trail of checkpoints
 function pfPush(){   // a checkpoint of the run (game time, week, trips, houses, cars) with the real clock beside it
   S.pf=S.pf||{p:[],r:[]};const last=S.pf.p[S.pf.p.length-1];if(last&&Math.round(time)<=last[0])return;
-  S.pf.p.push([Math.round(time),S.week,S.score,blds.filter(b=>!b.dest).length,cars.length]);S.pf.r.push(Math.round(Date.now()/1000));
+  const nr=Math.round(Date.now()/1000);if(S.pf.r.length&&nr<=S.pf.r[S.pf.r.length-1])return;   // (the real clock must move on between checkpoints)
+  S.pf.p.push([Math.round(time),S.week,S.score,blds.filter(b=>!b.dest).length,cars.length]);S.pf.r.push(nr);
 }
 function dailyProof(e,date,maxPts){   // what gets posted: the score, its checkpoints (thinned if long) and a checksum
   const pf=e.pf||{p:[],r:[]},n=pf.p.length,keep=n<=maxPts?pf.p.map((_,i)=>i):Array.from({length:maxPts},(_,k)=>Math.round(k*(n-1)/(maxPts-1)));
   const o={d:date,s:e.score,w:e.week,t:e.t,v:GAME_VERSION,h:e.h,p:keep.map(i=>pf.p[i]),r:keep.map(i=>pf.r[i]),n:Settings.v.pname.trim(),i:installId()};o.k=gChecksum(o);return o;
 }
-async function fetchBoardFile(date){
-  const R=REPORT_REPO,path='daily/'+date+'.json',bases=[
+async function fetchBoardFile(date,pathOverride){
+  const R=REPORT_REPO,path=pathOverride||'daily/'+date+'.json',bases=[
     ['https://api.github.com/repos/'+R+'/contents/'+path,{headers:{Accept:'application/vnd.github.raw'}}],
     ['https://raw.githubusercontent.com/'+R+'/main/'+path+'?t='+Date.now(),{}],
     ['https://cdn.jsdelivr.net/gh/'+R+'@main/'+path,{}]];
@@ -2676,6 +2710,50 @@ function dailyCopy(date){
   const e=((Store.meta.daily||{})[date]);if(!e)return;
   const txt='Gridlock daily '+date+' ('+(e.terrain||'')+'): '+e.score+' trips, week '+e.week;
   try{navigator.clipboard.writeText(txt).then(()=>toast('Score copied',true),()=>toast('Couldn’t copy',true));}catch(x){toast('Couldn’t copy',true);}
+}
+/* ---------- the general leaderboards: one board per difficulty, fed by any normal game (no modifiers); the same checked proof, written to boards/DIFFICULTY.json ---------- */
+const BOARD_DIFFS=()=>DIFFS.filter(d=>!d.noFail&&!d.daily&&d.id!=='tutorial');
+const GBOARD={};   // difficulty id -> {status,rows,msg,ts}
+async function fetchGB(id,force){
+  const g=GBOARD[id];if(!force&&g&&g.status==='ok'&&Date.now()-g.ts<60000)return;
+  GBOARD[id]={status:'loading',rows:[],msg:'',ts:0};if(MS.screen==='board')Menu.show('board');
+  try{GBOARD[id]={status:'ok',rows:await fetchBoardFile('','boards/'+id+'.json'),msg:'',ts:Date.now()};}
+  catch(e){GBOARD[id]={status:'error',rows:[],msg:e&&e.limited?'GitHub is limiting requests right now. Try again in a minute.':'The leaderboard needs an internet connection.',ts:Date.now()};}
+  if(MS.screen==='board'&&mode==='menu')Menu.show('board');
+}
+function boardProof(e,g,maxPts){   // the best run's trail, with the day it was played on
+  const pf=e.pf||{p:[],r:[]},n=pf.p.length,keep=n<=maxPts?pf.p.map((_,i)=>i):Array.from({length:maxPts},(_,k)=>Math.round(k*(n-1)/(maxPts-1)));
+  const rs=keep.map(i=>pf.r[i]),d=new Date(rs[rs.length-1]*1000).toISOString().slice(0,10);
+  const o={d,s:e.score,w:e.week,t:e.t,v:GAME_VERSION,h:e.h,p:keep.map(i=>pf.p[i]),r:rs,n:Settings.v.pname.trim(),i:installId(),g};o.k=gChecksum(o);return o;
+}
+let GPOST=false;
+async function boardSubmit(id){
+  const e=Store.meta.best[id],dd=diffById(id);
+  if(!e){toast('Finish a run on '+dd.name+' first',true);return;}
+  if(!DAILY_RELAY){toast('The leaderboard is not switched on yet.',true);return;}
+  if(!e.pf||!e.pf.p||e.pf.p.length<2){toast('Scores are checked from a trail recorded while you play. Beat your best on '+dd.name+' to post one.',true);return;}
+  if(!nameOk((Settings.v.pname||'').trim())){toast('Type a name first (1 to 16 letters, numbers, spaces, dots, dashes or underscores).',true);MS.lb=id;const m=document.getElementById('modal');m.className='hidden';if(mode!=='menu')enterMenu();Menu.show('board');fetchGB(id,false);setTimeout(()=>{const f=document.getElementById('pname');if(f)f.focus();},50);return;}
+  if(GPOST)return;GPOST=true;
+  try{
+    const r=await fetch(DAILY_RELAY.replace(/\/$/,'')+'/score',{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(boardProof(e,id,240))});
+    let j=null;try{j=await r.json();}catch(x){}
+    if(j&&j.ok){toast(j.improved===false?'You already have a better or equal score on the board (rank #'+j.rank+').':'Posted! You are #'+j.rank+' of '+j.total+' on '+dd.name+'.',true);fetchGB(id,true);}
+    else toast('Score not accepted: '+((j&&j.reason)||('error '+r.status)),true);
+  }catch(err){toast('Could not reach the leaderboard. Check your connection.',true);}
+  GPOST=false;
+}
+/* the shared look of a board: a podium for the top three and a list below, with the player's own row picked out */
+function lbView(B,emptyMsg){
+  if(B.status==='loading'||B.status==='idle')return '<div class="lbnote">Loading the leaderboard…</div>';
+  if(B.status==='error')return `<div class="lbnote">${esc(B.msg)}</div>`;
+  if(!B.rows.length)return `<div class="lbnote">${emptyMsg}</div>`;
+  const me=gFnv(installId()),rows=B.rows,nm=r=>esc(r.name||r.login||'?');
+  const pod=(r,i)=>r?`<div class="pod p${i+1}${r.id===me?' me':''}"><div class="medal">${i+1}</div><div class="pn">${nm(r)}</div><div class="ps">${r.score}<small>trips</small></div><div class="pw">week ${r.week}</div></div>`:'<div class="pod empty"></div>';
+  const top=`<div class="podium">${pod(rows[1],1)}${pod(rows[0],0)}${pod(rows[2],2)}</div>`;
+  const list=rows.slice(3,20).map((r,i)=>`<div class="lbrow${r.id===me?' me':''}"><span class="rk">${i+4}</span><span class="nm">${nm(r)}</span><span class="wk">week ${r.week}</span><span class="sc">${r.score}</span></div>`).join('');
+  const mine=rows.findIndex(r=>r.id===me);
+  const tail=mine>=20?`<div class="lbrow me"><span class="rk">${mine+1}</span><span class="nm">${nm(rows[mine])}</span><span class="wk">week ${rows[mine].week}</span><span class="sc">${rows[mine].score}</span></div>`:'';
+  return top+(list||tail?`<div class="lblist">${list}${tail?'<div class="lbgap">⋯</div>'+tail:''}</div>`:'');
 }
 /* ---------- bug reports: opened as a prefilled GitHub issue, or copied ---------- */
 const REPORT_REPO='maxisepicallycool-beep/gridlock';
@@ -4756,7 +4834,7 @@ function serialize(){
   const signs=[],tls=[];for(let i=0;i<W*H;i++){const sg=cells[i].sg;if(sg)for(let s=0;s<8;s++)if(sg[s])signs.push([i,s,sgCode(sg[s])]);if(cells[i].tl)tls.push([i,cells[i].tl]);}
   const bl=blds.map(b=>[b.x,b.y,b.w,b.color,b.dest?1:0,b.dir,Math.min(MAXD,b.demand+b.out),+b.timer.toFixed(2),b.kind||0,b.color2>=0?b.color2:-1,b.seen?1:0]);
   const dp=depts.map(d=>[d.x,d.y,d.dir,Math.max(0,+(d.readyAt-time).toFixed(1)),d.dot?1:0]);
-  return {v:2,pf:D.id==='daily'?S.pf:undefined,dd:D.id==='daily'?D.date:undefined,rt:+(S.rating===undefined?100:S.rating).toFixed(1),rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,mods:D.mods,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
+  return {v:2,pf:pfOn()?S.pf:undefined,dd:D.id==='daily'?D.date:undefined,rt:+(S.rating===undefined?100:S.rating).toFixed(1),rg:[RX0,RX1,RY0,RY1],crashes:S.crashes||0,seed:S.seed,diff:D.id,mods:D.mods,week:S.week,weekT:+S.weekT.toFixed(2),weekLen:S.weekLen,score:S.score,colors:S.colors,colorOrder:colorOrder.slice(),
     colorBorn:S.colorBorn,stallT:S.stallT.map(v=>+v.toFixed(2)),inv,time:+time.toFixed(2),mid:!!S.mid,edges,signs,tl:tls,bl,dp,tr:Object.keys(sbTerr).map(k=>[+k,sbTerr[k]?1:0]),ns:sbNoSpawn?1:0};
 }
 function restore(sv){
@@ -4809,7 +4887,7 @@ function noteBest(){
   noteDaily();
   if(D.noFail||S.demo||D.modded)return;   // a modified game is not a record
   const b=Store.meta.best,c=b[D.id];
-  if(!c||S.score>c.score){b[D.id]={score:S.score,week:S.week,name:S.name};Store.saveMeta();}
+  if(!c||S.score>c.score){if(pfOn())pfPush();b[D.id]={score:S.score,week:S.week,name:S.name,t:Math.round(time),h:blds.filter(x=>!x.dest).length,pf:JSON.parse(JSON.stringify(S.pf||{p:[],r:[]}))};Store.saveMeta();}
 }
 function saveCity(){
   const p=Cities.put({ts:Date.now(),name:S.name||'City',diff:D.id,mods:D.mods||[],week:S.week,score:S.score,runId:S.runId,thumb:thumbURL(),state:serialize()});
@@ -4836,8 +4914,8 @@ const miscSvg=(p,c)=>`<svg class="ti" viewBox="0 0 40 40"><circle cx="20" cy="20
 const SCREENS={
   main(){
     const last=Cities.latest(),n=Cities.count();
-    const bests=DIFFS.filter(d=>!d.noFail).map(d=>{const b=Store.meta.best[d.id];
-      return `<div class="best">${chip(d)}<div class="sc">${b?b.score+' trips':'—'}<small>${b?'week '+b.week:'not played'}</small></div></div>`;}).join('');
+    const bests=DIFFS.filter(d=>!d.noFail&&Store.meta.best[d.id]).map(d=>{const b=Store.meta.best[d.id];
+      return `<div class="best">${chip(d)}<div class="sc">${b.score} trips<small>week ${b.week}</small></div></div>`;}).join('')||'<div class="tiny" style="padding:6px 0 2px">Finish a run on any difficulty and your best shows up here.</div>';
     return `<button class="btn mbugbtn" data-act="bug">Report a bug</button><div class="mwrap">
       <div>
         <div class="logo">Gridlock</div><div class="road-strip"></div>
@@ -4847,12 +4925,12 @@ const SCREENS={
           <button class="mbtn ${last?'':'primary'}" data-act="new"><b>New Game</b><small>Pick a difficulty and start a fresh city</small></button>
           <button class="mbtn" data-act="daily"><b>Daily challenge</b><small>${esc(dailyInfo().terrainName)} \u00b7 ${esc(dailyInfo().tag)}</small></button>
           <button class="mbtn${Settings.v.tutDone?'':' primary'}" data-act="tutorial"><b>Tutorial${Settings.v.tutDone?'':' \u2014 start here'}</b><small>Learn roads, junctions, bridges, highways and fires, step by step</small></button>
+          <button class="mbtn" data-act="boards"><b>Leaderboards</b><small>The best runs on every difficulty, from any game</small></button>
           <button class="mbtn" data-act="load"><b>Your Cities</b><small>${n} saved ${n===1?'city':'cities'}, every one kept</small></button>
           <button class="mbtn" data-act="settings"><b>Settings</b><small>Theme, sound, day and night, controls, menu AI</small></button>
           <button class="mbtn" data-act="howto"><b>How to Play</b><small>Roads, junctions, highways and weekly cards</small></button>
         </div>
         <div class="aicap" id="aicap"></div>
-        <div class="ver">Cmd+Q quits · Esc opens the menu in game</div>
       </div>
       <div class="mcol"><div class="mright glass">
         ${last?`<h3>Last played</h3><div class="lastcard">${last.thumb?`<img src="${last.thumb}">`:'<div class="ph"></div>'}<div><b style="font-size:17px">${esc(last.name)}</b><div class="tiny" style="margin:3px 0 5px">${timeAgo(last.ts)}</div>${chip(diffById(last.diff))}</div></div>`:''}
@@ -4877,16 +4955,27 @@ const SCREENS={
   daily(){
     const info=dailyInfo(),date=info.date,my=(Store.meta.daily||{})[date],B=DBOARD.date===date?DBOARD:{status:'idle',rows:[],msg:''};
     const left=Math.max(0,Date.UTC(+date.slice(0,4),+date.slice(5,7)-1,+date.slice(8,10)+1)-Date.now()),hh=Math.floor(left/3.6e6),mm=Math.floor(left%3.6e6/6e4);
-    const rows=B.status==='loading'?'<div class="tiny" style="padding:14px 4px">Loading the leaderboard\u2026</div>':B.status==='error'?`<div class="tiny" style="padding:14px 4px">${esc(B.msg)}</div>`:B.status==='ok'?(B.rows.length?B.rows.slice(0,15).map((r,i)=>`<div class="best"><b style="min-width:30px">#${i+1}</b><b style="font-weight:800">${esc(r.name||r.login||'?')}</b><div class="sc">${r.score} trips<small>${r.week?'week '+r.week:''}</small></div></div>`).join(''):'<div class="tiny" style="padding:14px 4px">No scores yet today. Be the first!</div>'):'<div class="tiny" style="padding:14px 4px">Tap Refresh to load the leaderboard.</div>';
-    return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Daily challenge</h2></div><div class="pbody">
-      <div class="dcard sel" style="--dc:#f0b429;cursor:default;margin-bottom:12px"><h4>${esc(info.terrainName)}</h4><div class="dt">${date} \u00b7 a new level in ${hh} h ${mm} min</div>
-        <ul><li>${esc(info.terrainDesc)}</li>${info.mods.map(m=>`<li><b>${esc(m.label)}</b>: ${esc(m.desc)}</li>`).join('')}<li>Everyone gets the same land and rules today</li></ul></div>
-      <div class="row" style="margin:0 0 6px"><button class="go" data-act="dailyplay">${my?'Play today\u2019s level again':'Play today\u2019s level'}</button></div>
-      <div class="tiny" style="margin:6px 0 12px">${my?'Your best today: <b>'+my.score+' trips</b> (week '+my.week+'). ':'You have not played today yet. '}Your score is the trips you deliver before the city is lost.</div>
-      ${my?'<div class="row" style="margin:0 0 8px;gap:8px"><button class="sbtn" data-act="dailysubmit">Post my score to the leaderboard</button><button class="sbtn ghost" data-act="dailycopy">Copy my score</button></div>':''}
-      ${my?`<div class="row" style="margin:0 0 8px;gap:8px;align-items:center"><label class="tiny" for="pname" style="white-space:nowrap">Your name</label><input id="pname" maxlength="16" placeholder="shown on the board" value="${esc(Settings.v.pname)}"></div>`:''}
-      <h3 style="margin:10px 0 4px">Leaderboard \u00b7 ${date} <button class="sbtn ghost" style="float:right;padding:3px 10px" data-act="dailyrefresh">Refresh</button></h3>${rows}
-      <div class="tiny" style="margin-top:12px;line-height:1.5">The leaderboard lives on GitHub, so it needs an internet connection (the level itself works offline). Every score is checked automatically against a trail of checkpoints the game records while you play, so numbers that were typed in or edited, or that the houses could not have delivered, are rejected.</div></div></div>`;
+    const board=lbView(B,'Nobody has posted a score yet today. Be the first.');
+    return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">←</button><h2>Daily challenge</h2></div><div class="pbody">
+      <div class="lbhero" style="--dc:#f0b429"><div class="lbh1"><div><div class="lbkick">${date}</div><h3>${esc(info.terrainName)}</h3></div><div class="lbtime">New level in<b>${hh} h ${mm} min</b></div></div>
+        <div class="lbtags"><span>${esc(info.terrainDesc)}</span>${info.mods.map(m=>`<span title="${esc(m.desc)}"><b>${esc(m.label)}</b>: ${esc(m.desc)}</span>`).join('')}</div>
+        <div class="lbact"><button class="go" data-act="dailyplay">${my?'Play again':'Play today’s level'}</button>
+        <div class="lbmine">${my?'<small>Your best today</small><b>'+my.score+' trips</b><small>week '+my.week+'</small>':'<small>You have not played today yet</small>'}</div></div></div>
+      ${my?`<div class="lbpost"><label for="pname">Your name</label><input id="pname" maxlength="16" placeholder="shown on the board" value="${esc(Settings.v.pname)}"><button class="sbtn" data-act="dailysubmit">Post my score</button><button class="sbtn ghost" data-act="dailycopy">Copy</button></div>`:''}
+      <div class="lbhead"><h3>Today’s leaderboard</h3><button class="sbtn ghost" data-act="dailyrefresh">Refresh</button></div>${board}
+      <div class="tiny lbfoot">The leaderboard lives on GitHub, so it needs an internet connection (the level itself works offline). Every score is checked against a trail of checkpoints the game records while you play, so numbers that were typed in or edited, or that the houses could not have delivered, are rejected.</div></div></div>`;
+  },
+  board(){
+    const ds=BOARD_DIFFS(),id=MS.lb&&ds.some(d=>d.id===MS.lb)?MS.lb:'standard',dd=diffById(id),B=GBOARD[id]||{status:'idle',rows:[],msg:''},my=Store.meta.best[id];
+    const tabs=ds.map(d=>`<button class="lbtab${d.id===id?' sel':''}" style="--chipc:${d.col}" data-act="lbtab" data-id="${d.id}">${d.name}</button>`).join('');
+    return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">←</button><h2>Leaderboards</h2></div><div class="pbody">
+      <div class="lbtabs">${tabs}</div>
+      <div class="lbhero" style="--dc:${dd.col}"><div class="lbh1"><div><div class="lbkick">${dd.tag}</div><h3>${dd.name}</h3></div></div>
+        <div class="lbact"><div class="lbmine">${my?'<small>Your best</small><b>'+my.score+' trips</b><small>week '+my.week+'</small>':'<small>You have not finished a run on '+esc(dd.name)+' yet</small>'}</div>
+        <button class="go" data-act="lbplay">Play ${dd.name}</button></div></div>
+      ${my?`<div class="lbpost"><label for="pname">Your name</label><input id="pname" maxlength="16" placeholder="shown on the board" value="${esc(Settings.v.pname)}"><button class="sbtn" data-act="lbsubmit">Post my best</button></div>`:''}
+      <div class="lbhead"><h3>Best runs on ${dd.name}</h3><button class="sbtn ghost" data-act="lbrefresh">Refresh</button></div>${lbView(B,'No scores here yet. Post yours to start the board.')}
+      <div class="tiny lbfoot">Scores from any normal game count (a game with modifiers does not). Each player keeps one score per difficulty, their best, and every score is checked against a trail of checkpoints recorded while playing. Needs an internet connection.</div></div></div>`;
   },
   realism(){
     const cards=DIFFS.filter(d=>d.real).map(d=>`<button class="dcard ${MS.diff===d.id?'sel':''}" style="--dc:${d.col}" data-act="diff" data-id="${d.id}">
@@ -5092,6 +5181,11 @@ function act(a,d){
     case 'dailyrefresh':fetchBoard(true);break;
     case 'dailysubmit':dailySubmit(todayUTC());break;
     case 'dailycopy':dailyCopy(todayUTC());break;
+    case 'boards':MS.lb=MS.lb||'standard';Menu.show('board');fetchGB(MS.lb,false);break;
+    case 'lbtab':MS.lb=d.id;Menu.show('board');fetchGB(MS.lb,false);break;
+    case 'lbrefresh':fetchGB(MS.lb||'standard',true);break;
+    case 'lbsubmit':boardSubmit(MS.lb||'standard');break;
+    case 'lbplay':MS.diff=MS.lb||'standard';MS.mods=new Set();Menu.show('new');break;
     case 'load':MS.confirm=null;Menu.show('load');break;
     case 'howto':Menu.show('howto');break;
     case 'tutorial':startTutorial();break;
@@ -6419,7 +6513,8 @@ R3D.buildElevated=function(){
     }
     // pillars
     const z=elevZ(i);
-    if(z>.09&&((i%W)+(i/W|0))%1===0){const p=ctr(i);g.cyl(k===1?.075:.05,k===1?.1:.07,z-.08,10,p[0],(z-.08)/2,p[1],C3(k===1?'#7e7b74':'#5e5546'));}
+    if(z>.09&&!cells[i].e&&!cells[i].bld){   // (never on a road underneath, or on a building)
+      const p=ctr(i);g.cyl(k===1?.075:.05,k===1?.1:.07,z-.08,10,p[0],(z-.08)/2,p[1],C3(k===1?'#7e7b74':'#5e5546'));}
   }
   if(!any)return;
   const m=new THREE.Mesh(g.finish(),this.mat('lit'));m.castShadow=m.receiveShadow=true;gr.add(m);

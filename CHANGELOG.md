@@ -1,5 +1,13 @@
 # Gridlock changelog
 
+## 1.30.0 — Leaderboards for every difficulty, a nicer daily board
+- New Leaderboards screen in the main menu: one board per difficulty (Relaxed, Standard, Rush Hour, Gridlock, Realism Easy and Hard). Scores from any normal game count (not games with modifiers), one best score per player, checked the same way as the daily scores. Post from the end of a run or from the Leaderboards screen
+- The daily challenge screen is redone: a level card with the rules and the countdown, your best, a podium for the top three and a list below with your own row highlighted
+- Best runs on the main menu only lists difficulties you have played
+- Removed the "Cmd+Q quits" hint from the menu
+- Highway pillars are no longer placed on roads or buildings underneath
+- Every normal game now records the checkpoint trail the leaderboards use
+
 ## 1.29.2 — Headlights like lamps, orange signals, brake lights, pin fix
 - Headlights now work like the street lamps: the nearest cars' headlights are real spotlights that cast shadows, and the other cars' headlights light the road too
 - Turn signals flash orange and light the road at the front and back corner on the side the car is turning to

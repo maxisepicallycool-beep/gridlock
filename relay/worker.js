@@ -17,8 +17,8 @@ async function gh(env, path, init) {
 }
 
 // add a verified entry to the day's board (best score per player), with a few retries if two scores arrive at once
-async function writeBoard(env, date, entry, now) {
-  const file = 'contents/daily/' + date + '.json', branch = env.GH_BRANCH || 'main';
+async function writeBoard(env, name, entry, now) {   // name: a date for a daily board, or boards/DIFFICULTY for a general one
+  const date = name, file = 'contents/' + (name.indexOf('boards/') === 0 ? name : 'daily/' + name) + '.json', branch = env.GH_BRANCH || 'main';
   for (let attempt = 0; attempt < 5; attempt++) {
     const g = await gh(env, file + '?ref=' + branch);
     let rows = [], sha;
@@ -28,7 +28,7 @@ async function writeBoard(env, date, entry, now) {
     if (cur && cur.score >= entry.score) return { rank: rows.sort((a, b) => b.score - a.score).findIndex(r => r.id === entry.id) + 1, total: rows.length, improved: false };
     const row = { name: entry.name, id: entry.id, score: entry.score, week: entry.week, t: entry.t, v: entry.v, houses: entry.houses, when: new Date(now).toISOString() };
     rows = rows.filter(r => r.id !== entry.id).concat([row]).sort((a, b) => b.score - a.score || String(a.when).localeCompare(String(b.when))).slice(0, 100);
-    const body = { message: 'Daily board ' + date, content: b64(JSON.stringify({ date, updated: new Date(now).toISOString(), rows }) + '\n'), branch };
+    const body = { message: 'Board ' + date, content: b64(JSON.stringify({ date, updated: new Date(now).toISOString(), rows }) + '\n'), branch };
     if (sha) body.sha = sha;
     const p = await gh(env, file, { method: 'PUT', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } });
     if (p.ok) return { rank: rows.findIndex(r => r.id === entry.id) + 1, total: rows.length, improved: true };
@@ -55,6 +55,13 @@ export default {
     let raw;
     try { raw = await req.text(); if (raw.length > 70000) return json({ ok: false, reason: 'that is too big' }, 413); } catch (e) { return json({ ok: false, reason: 'bad request' }, 400); }
     let j; try { j = JSON.parse(raw); } catch (e) { return json({ ok: false, reason: 'that is not valid data' }, 400); }
+    if (j && j.g !== undefined) {   // a score for a difficulty's general leaderboard: any normal game, any day
+      const v = V.validateProof(j, { nowSec: now / 1000, requireIdentity: true, general: true });
+      if (!v.ok) return json({ ok: false, reason: v.reason }, 422);
+      if (await limited(env, req.headers.get('CF-Connecting-IP') || 'x', now)) return json({ ok: false, reason: 'too many scores from here today' }, 429);
+      try { const r = await writeBoard(env, 'boards/' + j.g, v.entry, now); return json({ ok: true, rank: r.rank, total: r.total, improved: r.improved }); }
+      catch (e) { return json({ ok: false, reason: 'the leaderboard could not be updated: ' + e.message }, 502); }
+    }
     const today = todayUTC(now);
     if (!(j && j.d === today)) return json({ ok: false, reason: j && typeof j.d === 'string' && j.d < today ? 'the daily level has changed since this run: a score only counts on the day of its level' : 'that is not today’s level' }, 400);   // the only time-based rule: the level must still be today’s
     const v = V.validateProof(j, { nowSec: now / 1000, requireIdentity: true });
