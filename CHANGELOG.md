@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.30.2 — Menu cleanup
+- Removed the "AI playing · difficulty · week · trips" pill from the main menu
+
 ## 1.30.1 — House pins in the right place
 - Fixed the pins above houses and destinations in the 3D view: they were drawn far up and to the left (piling up in the top-left corner) instead of above their buildings
 

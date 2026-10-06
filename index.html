@@ -371,7 +371,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.30.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.30.2';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -4930,7 +4930,6 @@ const SCREENS={
           <button class="mbtn" data-act="settings"><b>Settings</b><small>Theme, sound, day and night, controls, menu AI</small></button>
           <button class="mbtn" data-act="howto"><b>How to Play</b><small>Roads, junctions, highways and weekly cards</small></button>
         </div>
-        <div class="aicap" id="aicap"></div>
       </div>
       <div class="mcol"><div class="mright glass">
         ${last?`<h3>Last played</h3><div class="lastcard">${last.thumb?`<img src="${last.thumb}">`:'<div class="ph"></div>'}<div><b style="font-size:17px">${esc(last.name)}</b><div class="tiny" style="margin:3px 0 5px">${timeAgo(last.ts)}</div>${chip(diffById(last.diff))}</div></div>`:''}
