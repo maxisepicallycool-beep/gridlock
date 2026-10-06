@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.29.1 — Every light source is a real light
+- All street lamps, all car headlights, building windows, traffic lights (red, amber, green) and the flashing beacons on DOT and fire trucks now really light up the road, cars and buildings around them, up to 48 at once nearest the middle of the screen
+- The nearest three lamps still cast shadows
+
 ## 1.29.0 — Real lamp and headlight lighting
 - Street lamps are now real lights: at dusk and night they light the road, cars, houses and lots beneath them, and the nearest few cast real shadows (lamp posts, cars and buildings throw shadows across the road)
 - Car headlights are real lights too, so they light the road, the cars ahead and anything beside the road

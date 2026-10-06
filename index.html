@@ -342,7 +342,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.29.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.29.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -5665,7 +5665,21 @@ window.G={weekEnd,roadBoost,Cities,loadCity,saveCity,Notes,checkAlerts,get view(
 <script>
 /* ---------- the 3D view (three.js): the game seen as a real 3D scene from an angled camera. The flat drawing code still paints the ground and roads into a texture; everything that stands up is a 3D model ---------- */
 /* the 3D view's "Lambert" surfaces are shaded per pixel (Phong with no shine), so lamps and headlights light them properly */
-THREE.MeshLambertMaterial=class extends THREE.MeshPhongMaterial{constructor(p){super(Object.assign({shininess:0,specular:0x000000},p||{}));}};
+const MAXL=48;   // how many extra lights (every lamp, headlight, window, traffic light and beacon near the view) can shine at once
+const LU={uLP:{value:Array.from({length:MAXL},()=>new THREE.Vector4())},uLC:{value:Array.from({length:MAXL},()=>new THREE.Vector4())},uLD:{value:Array.from({length:MAXL},()=>new THREE.Vector4())},uLN:{value:0}};
+THREE.MeshLambertMaterial=class extends THREE.MeshPhongMaterial{constructor(p){super(Object.assign({shininess:0,specular:0x000000},p||{}));
+  this.onBeforeCompile=sh=>{Object.assign(sh.uniforms,LU);
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nuniform vec4 uLP['+MAXL+'];uniform vec4 uLC['+MAXL+'];uniform vec4 uLD['+MAXL+'];uniform int uLN;')
+    .replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
+    for(int i=0;i<${MAXL};i++){ if(i>=uLN)break;
+      vec3 lv=uLP[i].xyz+vViewPosition;float d=length(lv);float r=uLP[i].w;
+      if(d<r){vec3 l=lv/d;float att=1.-d/r;att*=att;float sp=1.;
+        if(uLD[i].w>-1.5)sp=smoothstep(uLD[i].w,uLD[i].w+.22,dot(-l,uLD[i].xyz));
+        float nd=max(dot(normal,l),0.)*.9+.1*step(0.,dot(normal,l)+.2);
+        reflectedLight.directDiffuse+=diffuseColor.rgb*uLC[i].rgb*att*sp*nd;}
+    }`);};
+}};
+R3D.LU=LU;
 Object.assign(R3D,{ready:false,fail:false,pitch:.95,fov:30,K:40,tx:36,ty:23,dist:40,gk:0,groundKey:'',sceneKey:'',objs:{},shadows:true});
 
 R3D.init=function(){
@@ -5684,9 +5698,8 @@ R3D.init=function(){
   sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-.0006;sun.shadow.normalBias=.02;sc.add(sun);sc.add(sun.target);
   this.fill=new THREE.DirectionalLight(0xbcd0ff,.16);this.fill.position.set(-30,40,-20);sc.add(this.fill);
   // lamp and headlight spotlights: moved each half second to the ones nearest the middle of the view
-  this.lampL=[];this.carL=[];
-  for(let i=0;i<6;i++){const l=new THREE.SpotLight(0xffd9a0,0,5,1.25,.8,1.3);l.visible=false;l.castShadow=false;l.shadow.mapSize.set(512,512);l.shadow.bias=-.002;l.shadow.camera.near=.05;l.shadow.camera.far=5;sc.add(l);sc.add(l.target);this.lampL.push(l);}
-  for(let i=0;i<4;i++){const l=new THREE.SpotLight(0xfff0cc,0,2.6,.62,.65,1.4);l.visible=false;sc.add(l);sc.add(l.target);this.carL.push(l);}
+  this.lampL=[];
+  for(let i=0;i<3;i++){const l=new THREE.SpotLight(0xffd9a0,0,5,1.25,.8,1.3);l.visible=false;l.castShadow=false;l.shadow.mapSize.set(512,512);l.shadow.bias=-.002;l.shadow.camera.near=.05;l.shadow.camera.far=5;sc.add(l);sc.add(l.target);this.lampL.push(l);}
   // the ground: one big plane that shows the flat map texture
   this.groundMat=new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,alphaTest:.02});
   this.ground=new THREE.Mesh(new THREE.PlaneGeometry(1,1),this.groundMat);
@@ -6184,27 +6197,39 @@ R3D.syncLamps=function(){
   if(this.poolMat)this.poolMat.opacity=Math.max(0,Math.min(.95,on*.7+(this.wet||0)*.25*on));
   this.lampOn=on;this.syncSpots(on,n);
 };
-R3D.syncSpots=function(on,n){   // real lights: lamps shine down on the road, cars and houses; headlights light what is ahead
-  const T=performance.now(),want=on>.05,carWant=n>.25;
-  if(want!==this.lampL[0].visible||carWant!==this.carL[0].visible){   // switching lights on or off recompiles the materials once
-    for(const l of this.lampL)l.visible=want;for(const l of this.carL)l.visible=carWant;
-    for(let i=0;i<3;i++)this.lampL[i].castShadow=want&&this.shadows;
+R3D.syncSpots=function(on,n){   // every light source near the view shines for real; the nearest lamps also cast shadows
+  const T=performance.now(),want=on>.05;
+  if(want!==this.lampL[0].visible){   // the shadow-casting lamps: switching them recompiles the materials once
+    for(const l of this.lampL){l.visible=want;l.castShadow=want&&this.shadows;}
     this.scene.traverse(o=>{if(o.material)o.material.needsUpdate=true;});
   }
+  const cx=this.tx,cy=this.ty,R=this.dist*.9;
   if(want&&(!this.spotT||T-this.spotT>400)){
-    this.spotT=T;const ll=lamps(),cx=this.tx,cy=this.ty,list=[];
-    for(const l of ll){const d=Math.hypot(l.hx-cx,l.hy-cy);if(d<this.dist*.9)list.push([d,l]);}
+    this.spotT=T;const list=[];
+    for(const l of lamps()){const d=Math.hypot(l.hx-cx,l.hy-cy);if(d<R)list.push([d,l]);}
     list.sort((a,b)=>a[0]-b[0]);
-    this.lampL.forEach((sp,i)=>{const e=list[i];if(!e){sp.userData.live=false;return;}const l=e[1],hh=l.canopy?.4:.43;sp.position.set(l.hx,hh,l.hy);sp.target.position.set(l.hx,0,l.hy);sp.target.updateMatrixWorld();sp.userData.live=true;});
+    this.lampL.forEach((sp,i)=>{const e=list[i];if(!e){sp.userData.live=false;sp.userData.l=null;return;}const l=e[1],hh=l.canopy?.4:.43;sp.position.set(l.hx,hh,l.hy);sp.target.position.set(l.hx,0,l.hy);sp.target.updateMatrixWorld();sp.userData.live=true;sp.userData.l=l;});
   }
   if(want)for(const sp of this.lampL)sp.intensity=sp.userData.live?(1.5+.5*(this.wet||0))*on:0;
-  if(carWant){
-    const cx=this.tx,cy=this.ty,cs=[];
-    for(const [c,o] of this.objs.cars){if(c.dead||!o.visible)continue;const d=Math.hypot(o.position.x-cx,o.position.z-cy);if(d<this.dist*.8)cs.push([d,o]);}
-    cs.sort((a,b)=>a[0]-b[0]);
-    this.carL.forEach((sp,i)=>{const e=cs[i];if(!e){sp.intensity=0;return;}const o=e[1],yw=-o.rotation.y,fx=Math.cos(yw),fz=Math.sin(yw);
-      sp.position.set(o.position.x+fx*.2,o.position.y+.09,o.position.z+fz*.2);sp.target.position.set(o.position.x+fx*1.2,o.position.y,o.position.z+fz*1.2);sp.target.updateMatrixWorld();sp.intensity=1.1*Math.min(1,(n-.25)*3);});
+  // the rest: gather everything that glows near the middle of the view
+  this.cam.updateMatrixWorld();const mi=this.cam.matrixWorldInverse,C=[];
+  const add=(x,y,z,r,cr,cg,cb,dx,dy,dz,cone)=>{const d=Math.hypot(x-cx,z-cy);if(d<R)C.push({d,x,y,z,r,cr,cg,cb,dx,dy,dz,cone});};
+  if(want){const used=new Set(this.lampL.map(l=>l.userData.l));for(const l of lamps()){if(used.has(l))continue;add(l.hx,l.canopy?.4:.43,l.hy,2.4,1.3*on,1.1*on,.7*on,0,-1,0,.3);}}
+  const hl=Math.min(1,Math.max(0,(n-.2)*3));
+  for(const [c,o] of this.objs.cars){if(c.dead||!o.visible)continue;
+    const yw=-o.rotation.y,fx=Math.cos(yw),fz=Math.sin(yw),u=o.userData;
+    if(hl>0){const k=1.3*hl;add(o.position.x+fx*.2,o.position.y+.09,o.position.z+fz*.2,2.7,k,k*.94,k*.8,fx*.97,-.2,fz*.97,.8);}
+    if(u.bar&&u.bar.visible)add(o.position.x,o.position.y+.25,o.position.z,2,1.8,1.05,.15,0,0,0,-2);
   }
+  const wk=Math.min(1,n*1.6);
+  if(wk>.05)for(const b of blds.concat(depts)){const bx=b.x+(b.w||2)/2,bz=b.y+(b.w||2)/2;add(bx,.3,bz,1.7,.95*wk,.72*wk,.4*wk,0,0,0,-2);}
+  const tk=.35+.65*n,TC={r:[1,.18,.1],a:[1,.65,.1],g:[.25,1,.45]};
+  for(const L of this.lenses||[]){if(!L.on)continue;if(!L.wp){L.mesh.updateWorldMatrix(true,false);L.wp=L.mesh.getWorldPosition(new THREE.Vector3());}
+    const t=TC[L.kind];add(L.wp.x,L.wp.y,L.wp.z,.9,t[0]*tk,t[1]*tk,t[2]*tk,0,0,0,-2);}
+  C.sort((a,b)=>a.d-b.d);const m=Math.min(MAXL,C.length),v=new THREE.Vector3();
+  for(let i=0;i<m;i++){const e=C[i];v.set(e.x,e.y,e.z).applyMatrix4(mi);LU.uLP.value[i].set(v.x,v.y,v.z,e.r);LU.uLC.value[i].set(e.cr,e.cg,e.cb,1);
+    if(e.cone<-1.5)LU.uLD.value[i].set(0,0,1,-2);else{v.set(e.dx,e.dy,e.dz).normalize().transformDirection(mi);LU.uLD.value[i].set(v.x,v.y,v.z,e.cone);}}
+  LU.uLN.value=m;
 };
 
 /* ---- signs and traffic lights ---- */
@@ -6266,7 +6291,7 @@ R3D.syncSigns=function(){
   for(const L of this.lenses){
     const c=cells[L.ci],st=c&&c.tl?tlState(L.ci,L.side,L.mv):2;
     const on=L.kind==='r'?st===0:L.kind==='a'?st===1:st===2;
-    L.mesh.material=on?mats[L.kind][0]:mats[L.kind][1];
+    L.on=on;    L.mesh.material=on?mats[L.kind][0]:mats[L.kind][1];
   }
 };
 
