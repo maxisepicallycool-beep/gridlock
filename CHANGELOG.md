@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.26.1 — Height for roads, bridges and highways [experimental]
+- In the 2.5D view the roads now have height too. Bridges and highways rise off the ground: the deck is lifted, with a thick side and a shadow on the ground, and stands on pillars. Highway ramps slope up over three cells to full height and come back down, bridges stand low over the water and come down to the shore, and a road passing underneath is hidden where the deck crosses. Cars and trucks on them ride at deck height with their shadow on the ground below. Ground roads stand a little above the grass, with a kerb showing along their south edge
+- Still experimental, and the 2.5D view can be switched off in Settings
+
 ## 1.26.0 — 2.5D view [experimental]
 - The map is now viewed at an angle, like a tabletop: the whole land is tilted back so it has depth. Houses stand up on front walls with a door and windows (the windows light up at night), destinations and depots sit on raised pads, trees, gravestones and pumpkins stand upright with shadows, lamp posts stand up with the bulb at the top, and everything is drawn back to front so what is further south stands in front. Alert badges, locator pins and labels stay upright and readable
 - Experimental: this changes how the whole game is drawn. Switch it off any time in Settings (**2.5D view**) for the old flat top-down view. Known rough edges: cars, roads, bridges and highways are still flat, destinations are raised pads rather than tall buildings, and a click lands on the ground cell (so clicking the top of a tall roof can hit the cell just behind it)
