@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.28.1 — Brighter lights
+- Dusk and night are brighter: stronger moonlight and sky light, lamp glows reach further, windows stay lit, and highway lane marks are only dimmed a little at night
+
 ## 1.28.0 — A full lighting system, and the 3D view is now official
 - The 3D view is now a full part of the game, no longer a trial: it is the normal way the game looks (you can still switch to 2.5D or top-down in Settings)
 - A real sun that crosses the sky with the day and night cycle (or the clock in Realism): long warm light and shadows at sunrise and sunset, white light at noon, and the shadows move round as the sun does
