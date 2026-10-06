@@ -1,5 +1,11 @@
 # Gridlock changelog
 
+## 1.29.2 — Headlights like lamps, orange signals, brake lights, pin fix
+- Headlights now work like the street lamps: the nearest cars' headlights are real spotlights that cast shadows, and the other cars' headlights light the road too
+- Turn signals flash orange and light the road at the front and back corner on the side the car is turning to
+- Brake lights: cars show bright red lamps and a red glow on the road behind when they slow down or stop
+- Fixed destination pins piling up in the top-left corner of the screen when zoomed in (buildings behind the camera were drawn mirrored across the screen)
+
 ## 1.29.1 — Every light source is a real light
 - All street lamps, all car headlights, building windows, traffic lights (red, amber, green) and the flashing beacons on DOT and fire trucks now really light up the road, cars and buildings around them, up to 48 at once nearest the middle of the screen
 - The nearest three lamps still cast shadows
