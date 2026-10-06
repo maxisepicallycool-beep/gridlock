@@ -1,5 +1,14 @@
 # Gridlock changelog
 
+## 1.27.0 — A real 3D view [experimental]
+- The game is now drawn as a real 3D scene seen from an angled, perspective camera (using three.js, which is built into the game, so it still works offline). The ground and roads are the same map as before; everything else is a 3D model with real shadows: every house style (pumpkin, mansion, witch hat, mausoleum, slime monster, castle, and the ordinary gabled house), the shops, petrol stations, car parks, potion shops, pumps with a crypt and graveyards, the fire station and DOT depot (with rolling shutters), trees, dead trees, gravestones, crosses, pumpkins and street lamps
+- Cars are 3D models (sedans, hatchbacks and SUVs in the house colours, with wheels, windows, head and tail lights and flashing amber turn signals), and so are the fire trucks and the DOT cone truck, tow truck and flatbed with a crane. Crash scenes show real wrecks, cones, and cars hanging off the tow truck or lifted onto the flatbed. Headlight beams show at night
+- Stop signs and yield signs are real signs on poles, and traffic lights are real signal heads on mast arms that change colour with each junction's signal plan (round lenses for straight, arrows for left and right)
+- Bridges and highways are real decks: a thick side, lane dashes, pillars, ramps that climb to full height, and the roads underneath pass beneath them. Day and night change the lighting, windows glow at night, and fog is real fog
+- Clicking and hovering work through the 3D camera. The panning and zooming are the same as before
+- Settings has a new **View** control: 3D, 2.5D (the tilted flat map) or Top-down (the original). If a device can't do 3D it falls back to 2.5D by itself
+- Experimental: weather particles, pins, alert badges and the cars waiting at houses are drawn on top of the 3D scene as flat markers; a few overlays (route percentages, junction labels) may sit slightly off; and I have not tuned it for a very busy city on a slow device
+
 ## 1.26.1 — Height for roads, bridges and highways [experimental]
 - In the 2.5D view the roads now have height too. Bridges and highways rise off the ground: the deck is lifted, with a thick side and a shadow on the ground, and stands on pillars. Highway ramps slope up over three cells to full height and come back down, bridges stand low over the water and come down to the shore, and a road passing underneath is hidden where the deck crosses. Cars and trucks on them ride at deck height with their shadow on the ground below. Ground roads stand a little above the grass, with a kerb showing along their south edge
 - Still experimental, and the 2.5D view can be switched off in Settings
