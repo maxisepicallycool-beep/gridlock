@@ -333,7 +333,7 @@ body.inmenu #coach{display:none!important}
 
 <script>
 'use strict';
-const GAME_VERSION='1.25.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.26.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -403,7 +403,7 @@ const DIFFS=[
 ];
 let D=DIFFS[2],mode='menu',mapSeed=1;
 /* ---------- settings ---------- */
-const SET_DEF={theme:'dark',mapNatural:false,noHw:false,tlOn:true,tlEvery:8,season:'spooky',weather:'auto',wxAmt:60,aiStats:false,loc:true,locMode:'until',locTime:15,locHover:true,locConnect:true,locEdge:true,locSize:1,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
+const SET_DEF={theme:'dark',mapNatural:false,noHw:false,tlOn:true,tlEvery:8,season:'spooky',weather:'auto',wxAmt:60,aiStats:false,cam25:true,loc:true,locMode:'until',locTime:15,locHover:true,locConnect:true,locEdge:true,locSize:1,cycle:false,cycleLen:240,tod:'day',fx:true,sfx:70,horns:true,mute:false,
   n_crit:true,n_fire:true,n_good:true,n_warn:true,n_mark:true,n_toast:true,
   tutDone:false,updateQuiet:false,n_delayHouse:10,n_delayLoad:3,n_delayCut:3,n_show:15,n_toastTime:4,n_repeat:30,lum:25,zoomSens:1,invert:false,keyPan:70,rightErase:true,autosave:20,aiSpeed:2,aiDiff:'standard',keys:'',
   music:true,musicVol:35,musicMode:'auto',musicFade:6,musicMenu:true,musicToast:true,musicPause:false,musicBg:false,pname:'',iid:'',signals:true};
@@ -440,6 +440,7 @@ const Settings={v:Object.assign({},SET_DEF),
     else if(k==='sfx'){if(typeof Snd!=='undefined')Snd.setVol();}
     else if(k==='mute'){if(typeof Snd!=='undefined')Snd.setVol();const b=document.getElementById('bsnd');if(b){b.textContent=this.v.mute?'Muted':'Sound';b.classList.toggle('on',!!this.v.mute);b.setAttribute('aria-pressed',this.v.mute?'true':'false');}}
     else if(k==='aiDiff'){if(mode==='menu'&&typeof startDemo==='function')startDemo();}
+    else if(k==='cam25'){if(typeof applyTilt==='function')applyTilt();}
   }
 };
 Settings.load();
@@ -590,6 +591,10 @@ const pieceLabel=p=>p.k==='stop'&&D.coord?'Traffic coordinator':p.label;
 
 /* ---------- state ---------- */
 const cv=document.getElementById('cv'),mainCtx=cv.getContext('2d');
+{const fix=orig=>function(t,x,y,w){   // text drawn on the tilted map stands upright instead of being squashed
+    if(this===mainCtx&&TY!==1){const m=this.getTransform();if(m.a>0&&Math.abs(m.d/m.a-TY)<.02){this.save();this.translate(x,y);this.scale(1,1/TY);orig.call(this,t,0,0,w);this.restore();return;}}
+    orig.call(this,t,x,y,w);};
+  CanvasRenderingContext2D.prototype.fillText=fix(CanvasRenderingContext2D.prototype.fillText);CanvasRenderingContext2D.prototype.strokeText=fix(CanvasRenderingContext2D.prototype.strokeText);}
 let ctx=mainCtx;
 const _el={},$=id=>_el[id]||(_el[id]=document.getElementById(id));
 let props=[],cells,blds,depts=[],cars,inv,S,particles,trees,grass,patches,ripples,colorOrder,undoStack=[];
@@ -599,7 +604,7 @@ const mask=new Uint8Array(N), inter=new Uint8Array(N), bnode=new Int32Array(W*H)
 const egh=new Uint8Array(N*8), hgt=new Float32Array(W*H);   // egh: edge is a ghost (being removed); hgt: highway height 0..1 (ramps up from the road)
 const hold=new Array(N).fill(null), queue=new Array(N).fill(null), crashUntil=new Float32Array(N);
 let goals=[];
-let tool='road', dpr=1, cw=0, ch=0, cs=20, ox=0, oy=0;
+let tool='road', dpr=1, cw=0, ch=0, cs=20, ox=0, oy=0, TY=(Settings.v.cam25===false?1:.72);   // TY: how much the map is foreshortened in the 2.5D view (1 = flat top-down)
 let stroke=null, erasing=false, hover=null, hoverF=null, eraseTarget=null;
 let RNG=Math.random;
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -1657,8 +1662,9 @@ function paintDept(){   // drawn facing south; the garage doors themselves are d
   ctx.strokeStyle='rgba(244,180,0,.85)';ctx.lineWidth=.03;ctx.lineCap='butt';ctx.setLineDash([.1,.08]);ctx.beginPath();ctx.moveTo(.3,1.32);ctx.lineTo(1.66,1.32);ctx.stroke();ctx.setLineDash([]);   // apron line
 }
 function drawDept(d){
-  const left=d.readyAt-time,ang=deptAng(d);
-  ctx.save();ctx.translate(d.x+1,d.y+1);ctx.rotate(ang);ctx.translate(-1,-1);
+  const left=d.readyAt-time,ang=deptAng(d),dly=bLift(d);
+  if(dly){ctx.fillStyle='rgba(0,0,0,.2)';rr(d.x+.12,d.y+.12,1.9,1.9,.2);ctx.fill();ctx.fillStyle=d.dot?'#7a4306':'#7a2420';rr(d.x+.04,d.y+1.94-dly-.02,1.92,dly+.04,.08);ctx.fill();}
+  ctx.save();ctx.translate(d.x+1,d.y+1-dly);ctx.rotate(ang);ctx.translate(-1,-1);
   const dk=d.dot,dsp=()=>sprite(dk?'dot2':'dept2',2,2,224,dk?paintDot:paintDept);
   if(left>0){ctx.globalAlpha=.45;ctx.drawImage(dsp(),0,0,2,2);ctx.globalAlpha=1;}
   else{
@@ -1671,7 +1677,7 @@ function drawDept(d){
   }
   ctx.restore();
   if(left>0){   // under construction: scaffolding and a progress ring
-    ctx.save();ctx.strokeStyle='#f4b400';ctx.lineWidth=.05;ctx.lineCap='round';
+    ctx.save();ctx.translate(0,-dly);ctx.strokeStyle='#f4b400';ctx.lineWidth=.05;ctx.lineCap='round';
     for(let i=0;i<=4;i++){const x=d.x+.3+i*.35;ctx.beginPath();ctx.moveTo(x,d.y+.28);ctx.lineTo(x,d.y+1.2);ctx.stroke();}
     for(let j=0;j<4;j++){const y=d.y+.28+j*.31;ctx.beginPath();ctx.moveTo(d.x+.3,y);ctx.lineTo(d.x+1.7,y);ctx.stroke();}
     ctx.strokeStyle='#3a3a3a';ctx.lineWidth=.03;ctx.setLineDash([.12,.12]);ctx.strokeRect(d.x+.1,d.y+.1,1.8,1.8);ctx.setLineDash([]);
@@ -1928,7 +1934,7 @@ const Notes={keys:{},
 };
 function focusOn(b){   // jump the camera to a building
   if(mode!=='play')return;
-  zoomZ=Math.max(zoomZ,2.2);cs=baseCs*zoomZ;ox=cw/2-(b.x+b.w/2)*cs;oy=ch/2-(b.y+b.w/2)*cs;clampView();
+  zoomZ=Math.max(zoomZ,2.2);cs=baseCs*zoomZ;ox=cw/2-(b.x+b.w/2)*cs;oy=ch/2-(b.y+b.w/2)*cs*TY;clampView();
 }
 const REACHC=new Map();
 function reachOf(d){   // which nodes can drive to this one destination (cached for a couple of seconds)
@@ -1959,7 +1965,7 @@ function drawAlert(b){   // big bobbing marker that stands out above anything th
   const lv=alertLevel(b);if(!lv)return;
   const t=performance.now()/1000,rad=Math.max(.55,19/cs),cx=b.x+b.w/2,cy=b.y-(b.dest?.25:.3)-rad*1.55+Math.sin(t*5)*.1*rad/.55;
   const col=lv>1?'#e5484d':'#ffb02e';
-  ctx.save();
+  ctx.save();ctx.translate(0,b.y-bLift(b));ctx.scale(1,1/TY);ctx.translate(0,-b.y);   // (upright on the tilted map, and above the roof)
   const ph=(t*1.3)%1;ctx.strokeStyle=col;ctx.globalAlpha=.55*(1-ph);ctx.lineWidth=rad*.14;ctx.beginPath();ctx.arc(cx,cy,rad*(1+ph*.9),0,7);ctx.stroke();ctx.globalAlpha=1;
   ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.arc(cx+rad*.06,cy+rad*.12,rad,0,7);ctx.fill();
   ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(cx-rad*.42,cy+rad*.82);ctx.lineTo(cx+rad*.42,cy+rad*.82);ctx.lineTo(cx,cy+rad*1.55);ctx.closePath();ctx.fill();
@@ -2912,7 +2918,7 @@ function drawArrow(cx,y0,t){
   ctx.fillStyle='#3f8cff';ctx.strokeStyle='#fff';ctx.lineWidth=.05;ctx.beginPath();ctx.moveTo(cx,by+.34);ctx.lineTo(cx-.22,by);ctx.lineTo(cx+.22,by);ctx.closePath();ctx.fill();ctx.stroke();
 }
 /* ---------- input ---------- */
-function worldPos(e){return [(e.clientX-ox)/cs,(e.clientY-oy)/cs];}
+function worldPos(e){return [(e.clientX-ox)/cs,(e.clientY-oy)/(cs*TY)];}
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 const gameDown=e=>{
   if(S.modal)return;
@@ -3090,13 +3096,13 @@ let baseCs=20,baseOx=0,baseOy=0,zoomZ=1;
 const VTOP=70,VBOT=120;
 function computeBase(){
   const rw=DX1-DX0,rh=DY1-DY0;
-  baseCs=Math.min((cw-36)/rw,(ch-VTOP-VBOT)/rh);
-  baseOx=(cw-rw*baseCs)/2-DX0*baseCs;baseOy=VTOP+(ch-VTOP-VBOT-rh*baseCs)/2-DY0*baseCs;
+  baseCs=Math.min((cw-36)/rw,(ch-VTOP-VBOT)/(rh*TY));
+  baseOx=(cw-rw*baseCs)/2-DX0*baseCs;baseOy=VTOP+(ch-VTOP-VBOT-rh*baseCs*TY)/2-DY0*baseCs*TY;
 }
 function clampView(){   // keep the map from being flung out of sight
-  const rw=DX1-DX0,rh=DY1-DY0,mw=rw*cs,mh=rh*cs,mx=90,my=110;
+  const rw=DX1-DX0,rh=DY1-DY0,mw=rw*cs,mh=rh*cs*TY,mx=90,my=110,csy=cs*TY;
   ox=mw+2*mx<=cw?cw/2-(DX0+rw/2)*cs:Math.min(mx-DX0*cs,Math.max(cw-mx-DX1*cs,ox));      // when the map still fits, stay centred
-  oy=mh+2*my<=ch?VTOP+(ch-VTOP-VBOT)/2-(DY0+rh/2)*cs:Math.min(my-DY0*cs,Math.max(ch-my-DY1*cs,oy));
+  oy=mh+2*my<=ch?VTOP+(ch-VTOP-VBOT)/2-(DY0+rh/2)*csy:Math.min(my-DY0*csy,Math.max(ch-my-DY1*csy,oy));
 }
 function updateView(dt){   // glide the view out as the region grows
   if(DX0===RX0&&DX1===RX1&&DY0===RY0&&DY1===RY1)return;
@@ -3108,11 +3114,17 @@ function updateView(dt){   // glide the view out as the region grows
 function fitView(){zoomZ=1;cs=baseCs;ox=baseOx;oy=baseOy;}
 function setZoom(z,mx,my){   // zoom about a screen point
   z=Math.max(1,Math.min(5,z));if(z===zoomZ&&!(z===1))return;
-  const wx=(mx-ox)/cs,wy=(my-oy)/cs;zoomZ=z;cs=baseCs*z;ox=mx-wx*cs;oy=my-wy*cs;
+  const wx=(mx-ox)/cs,wy=(my-oy)/(cs*TY);zoomZ=z;cs=baseCs*z;ox=mx-wx*cs;oy=my-wy*cs*TY;
   if(z===1){fitView();return;}
   clampView();
 }
 function panBy(dx,dy){ox+=dx;oy+=dy;clampView();}
+function applyTilt(){   // the 2.5D view on or off
+  TY=Settings.v.cam25?.72:1;
+  if(!cw)return;computeBase();
+  if(zoomZ<=1.001)fitView();else{cs=baseCs*zoomZ;clampView();}
+  GC.dirty=true;gfxVer++;
+}
 function resize(){
   dpr=window.devicePixelRatio||1;cw=innerWidth;ch=innerHeight;
   cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);
@@ -3310,8 +3322,8 @@ function drawProbe(){
   ctx.save();ctx.lineCap='round';ctx.strokeStyle='#fff';ctx.lineWidth=.3;ctx.globalAlpha=.95;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
   ctx.strokeStyle='#232733';ctx.lineWidth=.14;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();ctx.globalAlpha=1;
   const cols=Object.keys(by).map(Number).sort((p,q)=>by[q]-by[p]),pct=tot?Math.round(hit/tot*100):0;
-  const cols2=cols;ctx.save();ctx.translate(mx,my);ctx.scale(1/cs,1/cs);   // the label is drawn in screen pixels so it stays readable at any zoom
-  const w=Math.max(150,26+cols2.length*58),h=cols2.length?78:48,flip=(my*cs+oy)<190,bx=-w/2,by0=flip?26:-26-h;
+  const cols2=cols;ctx.save();ctx.translate(mx,my);ctx.scale(1/cs,1/(cs*TY));   // the label is drawn in screen pixels so it stays readable at any zoom
+  const w=Math.max(150,26+cols2.length*58),h=cols2.length?78:48,flip=(my*cs*TY+oy)<190,bx=-w/2,by0=flip?26:-26-h;
   ctx.fillStyle='rgba(255,255,255,.97)';ctx.strokeStyle='rgba(35,39,51,.4)';ctx.lineWidth=1.5;rr(bx,by0,w,h,12);ctx.fill();ctx.stroke();
   ctx.beginPath();if(flip){ctx.moveTo(-9,by0);ctx.lineTo(0,by0-11);ctx.lineTo(9,by0);}else{ctx.moveTo(-9,by0+h);ctx.lineTo(0,by0+h+11);ctx.lineTo(9,by0+h);}ctx.closePath();ctx.fillStyle='rgba(255,255,255,.97)';ctx.fill();
   ctx.fillStyle='#232733';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 24px -apple-system,Helvetica,sans-serif';
@@ -3619,25 +3631,69 @@ function paintDest(p,kind,p2){   // drawn facing south: building at the back (to
     ctx.fillStyle='rgba(0,0,0,.12)';ctx.fillRect(.28,.84,1.3,.03);
   }
 }
+
+/* ---------- the 2.5D view: things stand up. Heights are in screen cells; on the tilted map a rise of h is drawn h/TY map-rows up ---------- */
+const HOUSE_L=.34,PAD_L=.12,LAMP_L=.36;
+const bLift=b=>TY<1?(b.dest||b.dept?PAD_L:HOUSE_L)/TY:0;
+function shadeHex(hex,f){const n=parseInt(hex.slice(1),16),r=Math.round((n>>16&255)*f),g=Math.round((n>>8&255)*f),b=Math.round((n&255)*f);return 'rgb('+r+','+g+','+b+')';}
+function drawTree25(t){
+  const h=.2+t.r*.85,cy=t.y-h/TY;
+  if(!hwLook()){
+    const cols=TH.trees[t.s];
+    ctx.fillStyle=TH.treeSh;ctx.beginPath();ctx.ellipse(t.x+.09,t.y+.03,t.r*1.1,t.r*.6,0,0,7);ctx.fill();
+    ctx.fillStyle='#7a5a3a';ctx.fillRect(t.x-.035,cy,.07,t.y-cy);
+    ctx.save();ctx.translate(t.x,cy);ctx.scale(1,1/TY);
+    ctx.fillStyle=cols[0];ctx.beginPath();ctx.arc(0,0,t.r*1.1,0,7);ctx.fill();
+    ctx.fillStyle=cols[1];ctx.beginPath();ctx.arc(-t.r*.28,-t.r*.3,t.r*.62,0,7);ctx.fill();
+    if(TH.snow){ctx.fillStyle='rgba(255,255,255,.92)';ctx.beginPath();ctx.arc(-t.r*.2,-t.r*.45,t.r*.45,0,7);ctx.fill();}
+    ctx.restore();
+  } else {   // the black dead trees stand up too
+    ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(t.x+.08,t.y+.03,t.r*1.1,t.r*.5,0,0,7);ctx.fill();
+    ctx.save();ctx.translate(t.x,t.y);ctx.scale(1,1/TY);ctx.translate(-t.x,-t.y-.15);drawDeadTree(t);ctx.restore();
+  }
+}
+function drawProp25(q){
+  ctx.save();ctx.translate(q.x,q.y);ctx.scale(1,1/TY);ctx.translate(-q.x,-q.y);drawProp(q);ctx.restore();
+}
+function drawUprights(){   // trees, gravestones, houses, destinations and depots, back to front, so what is further south stands in front
+  const L=[];
+  for(const t of trees){if(t.x<vx0-1||t.x>vx1+1||t.y<vy0-1||t.y>vy1+1)continue;const c=cells[cellIdx(Math.floor(t.x),Math.floor(t.y))];if(c.e||c.f||c.bld)continue;L.push([t.y,0,t]);}
+  if(hwLook())for(const q of props){if(q.x<vx0-1||q.x>vx1+1||q.y<vy0-1||q.y>vy1+1)continue;const c=cells[cellIdx(Math.floor(q.x),Math.floor(q.y))];if(c.water||c.e||c.f||c.bld)continue;L.push([q.y,1,q]);}
+  for(const b of blds)L.push([b.y+b.w,2,b]);
+  for(const d of depts)L.push([d.y+2,3,d]);
+  L.sort((a,b)=>a[0]-b[0]);
+  for(const e of L){const k=e[1],o=e[2];if(k===0)drawTree25(o);else if(k===1)drawProp25(o);else if(k===2)drawBld(o);else drawDept(o);}
+}
 function drawBld(b){
   const p=PAL[b.color],x=b.x,y=b.y;
   const age=Math.min(1,(time-b.born)*3.5+.15),sc=.6+.4*Math.min(1,age)+(b.pulse>0?b.pulse*.08:0);
   ctx.save();
   ctx.translate(x+b.w/2,y+b.w/2);ctx.scale(sc,sc);ctx.translate(-(x+b.w/2),-(y+b.w/2));
+  const ly=bLift(b);
   if(!b.dest){
-    ctx.drawImage(sprite('h'+b.color,1,1,224,()=>paintHouse(p)),x,y,1,1);
-    if(D.fleet){for(let i=0;i<D.fleet;i++){const home=i<(b.gar===undefined?D.fleet:b.gar);ctx.fillStyle=home?p.c:'rgba(60,60,60,.22)';ctx.strokeStyle='#fff';ctx.lineWidth=.02;rr(x+.5+(i-(D.fleet-1)/2)*.2-.07,y+.93,.14,.07,.03);ctx.fill();ctx.stroke();}}
+    if(ly){   // a shadow to the south east, then the front wall with a door and windows, under the lifted roof
+      ctx.fillStyle='rgba(0,0,0,.22)';rr(x+.1,y+.1,.92,.92,.12);ctx.fill();
+      ctx.fillStyle=p.d;rr(x+.07,y+.94-ly-.03,.86,ly+.05,.04);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.14)';ctx.fillRect(x+.07,y+.94-ly-.03,.86,.025);
+      ctx.fillStyle='#2b2f3b';rr(x+.43,y+.94-Math.min(ly*.7,.24),.14,Math.min(ly*.7,.24),.03);ctx.fill();   // the door
+      const lit=(window.__ambN||0)>.3&&(b.id*7)%5!==0;ctx.fillStyle=lit?'#ffd35c':'#cfe3ee';
+      for(const wx of [.17,.69])rr(x+wx,y+.94-ly*.78,.13,Math.min(ly*.45,.16),.02),ctx.fill();   // the windows
+    }
+    ctx.drawImage(sprite('h'+b.color,1,1,224,()=>paintHouse(p)),x,y-ly,1,1);
+    if(D.fleet){for(let i=0;i<D.fleet;i++){const home=i<(b.gar===undefined?D.fleet:b.gar);ctx.fillStyle=home?p.c:'rgba(60,60,60,.22)';ctx.strokeStyle='#fff';ctx.lineWidth=.02;rr(x+.5+(i-(D.fleet-1)/2)*.2-.07,y+.93-ly,.14,.07,.03);ctx.fill();ctx.stroke();}}
     for(let i=0;i<b.demand;i++){
-      const px=x+.5+(i-(b.demand-1)/2)*.15,py=y-.08;
+      const px=x+.5+(i-(b.demand-1)/2)*.15,py=y-.08-ly;
       ctx.fillStyle=p.c;ctx.strokeStyle='#fff';ctx.lineWidth=.03;
       ctx.beginPath();ctx.arc(px,py,.065,0,7);ctx.fill();ctx.stroke();
     }
   } else {
-    ctx.save();ctx.translate(x+1,y+1);ctx.rotate(faceAng(faceOf(b)));ctx.translate(-1,-1);   // the lot turns to face its driveway
+    if(ly){ctx.fillStyle='rgba(0,0,0,.2)';rr(x+.12,y+.12,1.9,1.9,.2);ctx.fill();ctx.fillStyle=shadeHex(p.c,.62);rr(x+.04,y+1.94-ly-.02,1.92,ly+.04,.08);ctx.fill();if(b.color2>=0){ctx.save();ctx.beginPath();ctx.rect(x+1,y,1,2);ctx.clip();ctx.fillStyle=shadeHex(PAL[b.color2].c,.62);rr(x+.04,y+1.94-ly-.02,1.92,ly+.04,.08);ctx.fill();ctx.restore();}}   // (the lot is a raised pad)
+    ctx.save();ctx.translate(x+1,y+1-ly);ctx.rotate(faceAng(faceOf(b)));ctx.translate(-1,-1);   // the lot turns to face its driveway
     ctx.drawImage(sprite('d'+b.color+'_'+(b.color2>=0?b.color2:'x')+'_'+(b.kind||0),2,2,224,()=>paintDest(p,b.kind||0,b.color2>=0?PAL[b.color2]:null)),0,0,2,2);ctx.restore();
     if(b.pulse>0){ctx.strokeStyle=b.color2>=0?PAL[b.color2].c:p.c;ctx.globalAlpha=b.pulse;ctx.lineWidth=.08;ctx.beginPath();ctx.arc(x+1,y+1,.9+(1-b.pulse)*.7,0,7);ctx.stroke();ctx.globalAlpha=1;}
   }
   ctx.restore();
+  ctx.save();ctx.translate(0,-ly);   // everything that rides above the building (flames, load dots, rings, badges) rises with it
   if(b.fire)drawFire(b);else if(b.steam)drawSteam(b);
   if(b.dest){
     const full=b.jam>=D.dcap,near=b.jam>=D.dcap-1,blink=Math.floor(time*4)%2;
@@ -3661,6 +3717,7 @@ function drawBld(b){
     ctx.fillStyle='#ff8a3d';ctx.strokeStyle='#fff';ctx.lineWidth=.04;ctx.beginPath();ctx.arc(b.x+.92,b.y+.1,.15,0,7);ctx.fill();ctx.stroke();
     ctx.fillStyle='#fff';ctx.fillRect(b.x+.905,b.y+.03,.03,.09);ctx.fillRect(b.x+.905,b.y+.14,.03,.03);
   }
+  ctx.restore();
   // unconnected port marker
   if(!b.linked&&b.port>=0){
     const q=ctr(b.port);ctx.save();ctx.strokeStyle=p.c;ctx.lineWidth=.06;ctx.setLineDash([.08,.08]);
@@ -3896,7 +3953,7 @@ function drawGround(){
     ctx.stroke();
   }
   ctx.lineCap='butt';
-  for(const t of trees){
+  if(TY===1)for(const t of trees){
     if(t.x<vx0-1||t.x>vx1+1||t.y<vy0-1||t.y>vy1+1)continue;
     const c=cells[cellIdx(Math.floor(t.x),Math.floor(t.y))];if(c.e||c.f||c.bld)continue;
     if(!hwLook()){const cols=TH.trees[t.s];
@@ -3906,7 +3963,7 @@ function drawGround(){
       if(TH.snow){ctx.fillStyle='rgba(255,255,255,.92)';ctx.beginPath();ctx.arc(t.x-t.r*.2,t.y-t.r*.38,t.r*.4,0,7);ctx.fill();ctx.beginPath();ctx.arc(t.x+t.r*.35,t.y+t.r*.1,t.r*.22,0,7);ctx.fill();}}
     else drawDeadTree(t);
   }
-  if(hwLook())for(const q of props){
+  if(hwLook()&&TY===1)for(const q of props){
     if(q.x<vx0-1||q.x>vx1+1||q.y<vy0-1||q.y>vy1+1)continue;
     const c=cells[cellIdx(Math.floor(q.x),Math.floor(q.y))];if(c.water||c.e||c.f||c.bld)continue;
     drawProp(q);
@@ -3969,7 +4026,7 @@ function renderLayers(k,rx0,rx1,ry0,ry1){   // render the world rectangle [rx0,r
 }
 function ensureLayers(){   // true when a cached layer covers what is on screen (whole map when it fits, else the visible window plus a margin)
   const k=cs*dpr,M=GC.M;
-  const wx0=Math.max(RX0-M,-ox/cs),wx1=Math.min(RX1+M,(cw-ox)/cs),wy0=Math.max(RY0-M,-oy/cs),wy1=Math.min(RY1+M,(ch-oy)/cs);
+  const wx0=Math.max(RX0-M,-ox/cs),wx1=Math.min(RX1+M,(cw-ox)/cs),wy0=Math.max(RY0-M,-oy/(cs*TY)),wy1=Math.min(RY1+M,(ch-oy)/(cs*TY));
   if(wx1<=wx0||wy1<=wy0)return true;
   const covers=GC.base&&GC.rx0<=wx0+1e-6&&GC.rx1>=wx1-1e-6&&GC.ry0<=wy0+1e-6&&GC.ry1>=wy1-1e-6;
   if(!GC.dirty&&covers&&Math.abs(k/GC.k-1)<=.25)return true;
@@ -3981,7 +4038,7 @@ function ensureLayers(){   // true when a cached layer covers what is on screen 
   return true;
 }
 function stampLayer(img){   // copy just the on-screen part of a cached layer
-  const k=GC.k,x0=Math.max(GC.rx0,-ox/cs),x1=Math.min(GC.rx1,(cw-ox)/cs),y0=Math.max(GC.ry0,-oy/cs),y1=Math.min(GC.ry1,(ch-oy)/cs);
+  const k=GC.k,x0=Math.max(GC.rx0,-ox/cs),x1=Math.min(GC.rx1,(cw-ox)/cs),y0=Math.max(GC.ry0,-oy/(cs*TY)),y1=Math.min(GC.ry1,(ch-oy)/(cs*TY));
   if(x1<=x0||y1<=y0)return;
   ctx.drawImage(img,(x0-GC.rx0)*k,(y0-GC.ry0)*k,(x1-x0)*k,(y1-y0)*k,x0,y0,x1-x0,y1-y0);
 }
@@ -4031,6 +4088,7 @@ function lampHead(l,lit){   // the bulb is grey, by day and by night: the light 
   ctx.fillStyle='rgba(255,255,255,.45)';ctx.beginPath();ctx.arc(l.hx-.016,l.hy-.016,.02,0,7);ctx.fill();
   if(lit){ctx.strokeStyle='rgba(255,224,150,'+lit+')';ctx.lineWidth=.022;ctx.beginPath();ctx.arc(l.hx,l.hy,.075,0,7);ctx.stroke();}
 }
+function lampLift(){return TY<1?LAMP_L/TY:0;}
 function drawLamps(){   // lamp posts are always there: a pole on the pavement with an arm that reaches over the road
   const hc=themeName()==='contrast',pole=hc?'#000':'#59606e',rim=hc?'#fff':'rgba(255,255,255,.8)',sx=.09,sy=.14;
   ctx.lineCap='round';
@@ -4038,10 +4096,11 @@ function drawLamps(){   // lamp posts are always there: a pole on the pavement w
     if(l.x<vx0-1||l.x>vx1+1||l.y<vy0-1||l.y>vy1+1||l.canopy)continue;
     ctx.strokeStyle='rgba(0,0,0,.22)';ctx.lineWidth=.045;ctx.beginPath();ctx.moveTo(l.x+sx*.3,l.y+sy*.3);ctx.lineTo(l.hx+sx,l.hy+sy);ctx.stroke();   // shadow of pole and arm
     ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(l.hx+sx,l.hy+sy,.07,.045,0,0,7);ctx.fill();                                          // and of the lamp head
-    ctx.strokeStyle=rim;ctx.lineWidth=.075;ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.hx,l.hy);ctx.stroke();
-    ctx.strokeStyle=pole;ctx.lineWidth=.04;ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.hx,l.hy);ctx.stroke();
+    const lp=lampLift();   // in the 2.5D view the pole stands up from its base and the arm reaches out at the top
+    ctx.strokeStyle=rim;ctx.lineWidth=.075;ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.x,l.y-lp);ctx.lineTo(l.hx,l.hy-lp);ctx.stroke();
+    ctx.strokeStyle=pole;ctx.lineWidth=.04;ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.x,l.y-lp);ctx.lineTo(l.hx,l.hy-lp);ctx.stroke();
     ctx.fillStyle=pole;ctx.strokeStyle=rim;ctx.lineWidth=.025;ctx.beginPath();ctx.arc(l.x,l.y,.058,0,7);ctx.fill();ctx.stroke();
-    lampHead(l,0);
+    lampHead({hx:l.hx,hy:l.hy-lp},0);
   }
 }
 let beamImg=null;
@@ -4064,9 +4123,9 @@ function drawAmbient(poses){
   for(const b of blds){
     if(b.dest||b.fire||b.x<vx0-2||b.x>vx1+2||b.y<vy0-2||b.y>vy1+2)continue;
     const lit=(b.id*7)%5!==0;if(!lit)continue;
-    ctx.globalAlpha=a;ctx.fillStyle='#ffd35c';
-    for(const wx of [.24,.64]){rr(b.x+wx,b.y+.56,.13,.13,.02);ctx.fill();}
-    ctx.fillStyle='rgba(255,247,200,.9)';for(const wx of [.24,.64])ctx.fillRect(b.x+wx+.03,b.y+.59,.07,.07);
+    const hl=bLift(b);ctx.globalAlpha=a;ctx.fillStyle='#ffd35c';
+    for(const wx of [.24,.64]){rr(b.x+wx,b.y+.56-hl,.13,.13,.02);ctx.fill();}
+    ctx.fillStyle='rgba(255,247,200,.9)';for(const wx of [.24,.64])ctx.fillRect(b.x+wx+.03,b.y+.59-hl,.07,.07);
   }
   ctx.restore();
   // light pouring out of things
@@ -4086,7 +4145,7 @@ function drawAmbient(poses){
     if(b.dest){ctx.globalAlpha=a*.04;ctx.drawImage(cool,b.x+1-.8,b.y+1-.8,1.6,1.6);continue;}
     if((b.id*7)%5===0)continue;
     ctx.globalAlpha=a*.16;   // the glow comes out of the windows
-    for(const wx of [.305,.705])ctx.drawImage(warm,b.x+wx-.26,b.y+.625-.2,.52,.52);
+    const hl2=bLift(b);for(const wx of [.305,.705])ctx.drawImage(warm,b.x+wx-.26,b.y+.625-.2-hl2,.52,.52);
     ctx.globalAlpha=a*.05;ctx.drawImage(warm,b.x+.56-.18,b.y+.84-.18,.36,.36);   // spill onto the doorstep
   }
   ctx.globalAlpha=a*.3;for(const d of depts){if(d.x<vx0-2||d.x>vx1+2||d.y<vy0-2||d.y>vy1+2)continue;ctx.drawImage(red,d.x+1-1,d.y+1-1,2,2);}
@@ -4100,7 +4159,7 @@ function drawAmbient(poses){
     if(!c.truck){ctx.globalAlpha=a*.7;for(const sd of [-1,1])ctx.drawImage(red,q.x-co*.2-si*.07*sd-.07,q.y-si*.2+co*.07*sd-.07,.14,.14);}
   }
   ctx.restore();
-  for(const l of lamps()){if(l.canopy||l.x<vx0-1||l.x>vx1+1||l.y<vy0-1||l.y>vy1+1)continue;lampHead(l,a*.7);}   // bulbs stay grey, ringed by the light
+  for(const l of lamps()){if(l.canopy||l.x<vx0-1||l.x>vx1+1||l.y<vy0-1||l.y>vy1+1)continue;lampHead({hx:l.hx,hy:l.hy-lampLift()},a*.7);}   // bulbs stay grey, ringed by the light
 }
 function drawRipples(){   // the only animated scenery: drifting ripples on the water
   const T=performance.now()/1000;
@@ -4414,7 +4473,7 @@ function drawLocators(){
     if(!locShown(b))continue;
     if(b.x<vx0-1||b.x>vx1+1||b.y<vy0-1||b.y>vy1+1)continue;
     const t=time-b.born,a=Math.min(1,t*5)*(v.locMode==='timed'?Math.min(1,(v.locTime-t)*2.5):1),bob=Math.sin(T*6)*4,tip=-8+bob,cy=tip-22;
-    ctx.save();ctx.translate(b.x+b.w/2,b.y-(b.dest?.1:.06));ctx.scale(sz/cs,sz/cs);ctx.globalAlpha=a;
+    ctx.save();ctx.translate(b.x+b.w/2,b.y-(b.dest?.1:.06)-bLift(b));ctx.scale(sz/cs,sz/(cs*TY));ctx.globalAlpha=a;
     const path=()=>{ctx.beginPath();ctx.moveTo(0,tip);ctx.lineTo(-9.6,cy+5.4);ctx.arc(0,cy,11,2.63,Math.PI*2+.513);ctx.closePath();};
     ctx.lineJoin='round';path();ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.stroke();
     ctx.fillStyle=PAL[b.color].c;path();ctx.fill();
@@ -4432,7 +4491,7 @@ function drawLocatorEdges(){
   const cx=cw/2,cy=ch/2,L=34,R=cw-34,Tp=104,B=ch-132,list=[];
   for(const b of blds){
     if(!locShown(b))continue;
-    const sx=(b.x+b.w/2)*cs+ox,sy=(b.y+b.w/2)*cs+oy;
+    const sx=(b.x+b.w/2)*cs+ox,sy=(b.y+b.w/2)*cs*TY+oy;
     if(sx>L&&sx<R&&sy>Tp-30&&sy<B+60)continue;   // its pin is on the screen
     list.push({b,sx,sy,d:Math.hypot(sx-cx,sy-cy)});
   }
@@ -4480,10 +4539,10 @@ function draw(){
   ctx=mainCtx;
   mainCtx.setTransform(dpr,0,0,dpr,0,0);mainCtx.clearRect(0,0,cw,ch);
   vx0=Math.max(RX0,Math.floor(-ox/cs)-2);vx1=Math.min(RX1,Math.ceil((cw-ox)/cs)+2);
-  vy0=Math.max(RY0,Math.floor(-oy/cs)-2);vy1=Math.min(RY1,Math.ceil((ch-oy)/cs)+2);
-  const useCache=ensureLayers();
+  vy0=Math.max(RY0,Math.floor(-oy/(cs*TY))-2);vy1=Math.min(RY1,Math.ceil((ch-oy)/(cs*TY))+2+(TY<1?3:0));   // (the extra rows: tall things south of the screen reach up into it)
+  const useCache=ensureLayers();window.__ambN=ambient().n;
   ctx.save();
-  ctx.translate(ox,oy);ctx.scale(cs,cs);
+  ctx.translate(ox,oy);ctx.scale(cs,cs*TY);
   if(useCache)stampLayer(GC.base);else drawGround();
   if(Settings.v.fx)drawRipples();drawGrowth();drawLayerUnder();
   if(hasGhost)drawGhostEdges();
@@ -4496,8 +4555,7 @@ function draw(){
   if(layerMode!=='roads')for(const [c,q] of poses)if(q.br)drawCar(c,q);
   drawScenes();
   for(const w of S.wrecks||[]){const a=5-(time-w.t);if(a<=0)continue;ctx.globalAlpha=Math.min(1,a);ctx.font='.8px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u{1F4A5}',w.x,w.y);ctx.globalAlpha=1;}
-  for(const b of blds)drawBld(b);
-  for(const d of depts)drawDept(d);
+  if(TY<1)drawUprights();else{for(const b of blds)drawBld(b);for(const d of depts)drawDept(d);}
   drawLamps();
   drawLayerOver();
   for(const c of cars)if(c.truck&&c.ph==='spray'&&!c.dead)drawSpray(c);
@@ -4633,7 +4691,7 @@ function restore(sv){
 function thumbURL(){
   try{
     const keep=[ox,oy,cs,zoomZ];fitView();draw();
-    const sx=Math.max(0,(ox+DX0*cs)*dpr),sy=Math.max(0,(oy+DY0*cs)*dpr),ex=Math.min(cv.width,(ox+DX1*cs)*dpr),ey=Math.min(cv.height,(oy+DY1*cs)*dpr);
+    const sx=Math.max(0,(ox+DX0*cs)*dpr),sy=Math.max(0,(oy+DY0*cs*TY)*dpr),ex=Math.min(cv.width,(ox+DX1*cs)*dpr),ey=Math.min(cv.height,(oy+DY1*cs*TY)*dpr);
     const t=document.createElement('canvas');t.width=220;t.height=Math.max(40,Math.round(220*(ey-sy)/(ex-sx)));
     t.getContext('2d').drawImage(cv,sx,sy,ex-sx,ey-sy,0,0,t.width,t.height);
     const url=t.toDataURL('image/jpeg',.72);
@@ -4778,6 +4836,7 @@ const SCREENS={
     return `<div class="panel glass"><div class="phead"><button class="back" data-act="back">\u2190</button><h2>Settings</h2></div><div class="pbody">
       ${sec('Display',
         row('Theme','Standard follows the brightness slider below; High contrast ignores it',seg('theme',[['dark','Standard'],['contrast','High contrast']]))
+        +tog('cam25','2.5D view (experimental)','Tilts the camera so the map has depth and buildings and trees stand up. Turn it off for the flat top-down view')
         +tog('mapNatural','Don\u2019t apply the theme to the map','The map keeps natural, realistic colours with green grass (and still gets dark at night); only the menus and buttons use the theme')
         +row('Season','What the ground, water and trees look like. Halloween is the spooky look; Auto goes through the four seasons, six weeks each',seg('season',[['spooky','Halloween'],['spring','Spring'],['summer','Summer'],['autumn','Autumn'],['winter','Winter'],['auto','Auto']]))
         +row('Weather','Rain, storms, snow, falling leaves and fog, for effect only. Auto follows the season (green rain in the Halloween look). Needs Visual effects on',seg('weather',[['auto','Auto'],['off','Off'],['rain','Rain'],['storm','Storm'],['snow','Snow'],['leaves','Leaves'],['fog','Fog']]))
@@ -5409,9 +5468,9 @@ function menuCam(now,dt){   // glide toward wherever the AI is drawing; wander o
   const k=1-Math.exp(-(dt||.016)*1.7);
   camAI.cx+=(tx-camAI.cx)*k;camAI.cy+=(ty-camAI.cy)*k;camAI.z+=(tz-camAI.z)*k;
   zoomZ=camAI.z;cs=baseCs*zoomZ;
-  ox=cw*.64-camAI.cx*cs;oy=ch*.70-camAI.cy*cs;   // keep the action lower right, clear of the menu and best-runs card
+  ox=cw*.64-camAI.cx*cs;oy=ch*.70-camAI.cy*cs*TY;   // keep the action lower right, clear of the menu and best-runs card
   if(rw*cs>cw)ox=Math.min(40-DX0*cs,Math.max(cw-40-DX1*cs,ox));
-  if(rh*cs>ch)oy=Math.min(40-DY0*cs,Math.max(ch-40-DY1*cs,oy));
+  if(rh*cs*TY>ch)oy=Math.min(40-DY0*cs*TY,Math.max(ch-40-DY1*cs*TY,oy));
 }
 function drawAI(){
   if(mode!=='menu'||!S||!S.demo)return;

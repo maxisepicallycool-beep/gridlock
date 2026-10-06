@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.26.0 — 2.5D view [experimental]
+- The map is now viewed at an angle, like a tabletop: the whole land is tilted back so it has depth. Houses stand up on front walls with a door and windows (the windows light up at night), destinations and depots sit on raised pads, trees, gravestones and pumpkins stand upright with shadows, lamp posts stand up with the bulb at the top, and everything is drawn back to front so what is further south stands in front. Alert badges, locator pins and labels stay upright and readable
+- Experimental: this changes how the whole game is drawn. Switch it off any time in Settings (**2.5D view**) for the old flat top-down view. Known rough edges: cars, roads, bridges and highways are still flat, destinations are raised pads rather than tall buildings, and a click lands on the ground cell (so clicking the top of a tall roof can hit the cell just behind it)
+
 ## 1.25.1 — Towed cars stay on the road
 - A car on a tow truck's hook no longer swings round with the truck at a corner: it trails behind along the road the truck actually drove (with a tow bar), so it stays on the tarmac. Flatbeds still carry their cars on the bed
 
