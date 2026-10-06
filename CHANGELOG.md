@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.30.1 — House pins in the right place
+- Fixed the pins above houses and destinations in the 3D view: they were drawn far up and to the left (piling up in the top-left corner) instead of above their buildings
+
 ## 1.30.0 — Leaderboards for every difficulty, a nicer daily board
 - New Leaderboards screen in the main menu: one board per difficulty (Relaxed, Standard, Rush Hour, Gridlock, Realism Easy and Hard). Scores from any normal game count (not games with modifiers), one best score per player, checked the same way as the daily scores. Post from the end of a run or from the Leaderboards screen
 - The daily challenge screen is redone: a level card with the rules and the countdown, your best, a podium for the top three and a list below with your own row highlighted
