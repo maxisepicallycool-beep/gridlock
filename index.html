@@ -342,7 +342,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.27.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.27.2';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -5853,7 +5853,7 @@ function truckGeo(role,rk){   // fire truck, DOT cone pickup, tow truck, flatbed
 /* ---- keeping the 3D cars in step with the game's cars ---- */
 R3D.heightAt=function(q){   // how far above the ground a vehicle rides (a highway deck, a bridge)
   if(!q.br)return 0;if(q.h>0)return q.h*HWY_Z;
-  const c=cells[cellIdx(Math.floor(q.x),Math.floor(q.y))];return c.water?BR_Z:BR_Z*.4;
+  const c=cells[cellIdx(Math.floor(q.x),Math.floor(q.y))];return c.water?BR_Z:(c.e&&c.bd>1?.34:BR_Z*.4);
 };
 const HWY_Z=.6,BR_Z=.24;
 R3D.carObj=function(c){
@@ -6228,12 +6228,12 @@ R3D.computeHz=function(){   // every highway cell's height (0..1): zero where th
   const hw=c=>c.f&&c.f.some(e=>e&&e.k===1);
   for(let i=0;i<W*H;i++){const c=cells[i];if(hw(c)&&c.bd===1){dd[i]=0;q.push(i);}}
   for(let h=0;h<q.length;h++){const i=q[h],c=cells[i];for(let d=0;d<8;d++){const e=c.f&&c.f[d];if(e&&e.k===1){const bi=nbIdx(i,d);if(dd[bi]<0){dd[bi]=dd[i]+1;q.push(bi);}}}}
-  for(let i=0;i<W*H;i++)if(hw(cells[i])){const t=dd[i]<0?1:Math.min(1,dd[i]/RAMP_LEN);hz[i]=t*t*(3-2*t);}
+  for(let i=0;i<W*H;i++)if(hw(cells[i])){const t=dd[i]<0?1:Math.min(1,dd[i]/RAMP_LEN);hz[i]=t*t*(3-2*t);if(cells[i].e&&cells[i].bd>1)hz[i]=Math.max(hz[i],.62);}   // a road passing underneath needs headroom
 };
 function elevZ(i){
   const c=cells[i];if(!c.f)return 0;
   if(c.f.some(e=>e&&e.k===1))return ((R3D.hz?R3D.hz[i]:hgt[i])||0)*HWY_Z;
-  if(c.f.some(e=>e&&e.k===2))return c.water?BR_Z:BR_Z*.4;
+  if(c.f.some(e=>e&&e.k===2))return c.water?BR_Z:(c.e&&c.bd>1?.34:BR_Z*.4);
   return 0;
 }
 R3D.deckPath=function(i,ds){   // the centre line of the deck through one cell: [x, z(map y), height] points

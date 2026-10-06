@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.27.2 — 3D view: headroom under highways and bridges [experimental]
+- Where a road passes underneath a highway or a bridge, the deck is now lifted high enough that cars drive under it instead of through it
+
 ## 1.27.1 — 3D view: gradual highway ramps, walls, steering cars [experimental]
 - Highways and bridges now rise and fall along a smooth five-cell ramp instead of stepping down, and cars follow the same curve
 - Highways have concrete walls on both sides and bridges have low rails
