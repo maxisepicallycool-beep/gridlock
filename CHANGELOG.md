@@ -1,5 +1,17 @@
 # Gridlock changelog
 
+## 1.28.0 — A full lighting system, and the 3D view is out of experimental
+- The 3D view is no longer experimental: it is the normal way the game looks (you can still switch to 2.5D or top-down in Settings)
+- A real sun that crosses the sky with the day and night cycle (or the clock in Realism): long warm light and shadows at sunrise and sunset, white light at noon, and the shadows move round as the sun does
+- At night a cool moon takes over, and the shadows follow it
+- Sky and ground light: shaded sides pick up blue from the sky by day, orange at dusk and deep blue at night, and the ground bounces a little light back
+- Weather affects the light: rain, storms, fog and snow thin out the sun and cool the sky, and lightning lights the whole city for an instant
+- Street lamp glows are stronger on wet streets and start at dusk
+- Highways and bridges now get dark at night like everything else (the lane marks were glowing)
+- Roads under highways and bridges: the deck is lifted so cars drive under it, not through it
+- Smoother highway ramps, walls on highways, rails on bridges, and cars that steer with a front and rear axle in the 3D view
+- Road, building and tool previews are always visible, even under a highway
+
 ## 1.27.2 — 3D view: headroom under highways and bridges [experimental]
 - Where a road passes underneath a highway or a bridge, the deck is now lifted high enough that cars drive under it instead of through it
 

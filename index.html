@@ -342,7 +342,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.27.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.28.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -5676,7 +5676,8 @@ R3D.init=function(){
   r.setClearColor(0x000000,0);r.shadowMap.enabled=true;r.shadowMap.type=THREE.PCFSoftShadowMap;
   const sc=this.scene=new THREE.Scene();
   this.cam=new THREE.PerspectiveCamera(this.fov,1,.2,500);
-  this.amb=new THREE.AmbientLight(0xffffff,.66);sc.add(this.amb);
+  this.amb=new THREE.AmbientLight(0xffffff,.16);sc.add(this.amb);
+  this.hemi=new THREE.HemisphereLight(0xdfeaff,0x9a9484,.5);sc.add(this.hemi);   // sky light from above, bounce light from the ground
   const sun=this.sun=new THREE.DirectionalLight(0xfff0d8,.62);sun.castShadow=true;
   sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-.0006;sun.shadow.normalBias=.02;sc.add(sun);sc.add(sun.target);
   this.fill=new THREE.DirectionalLight(0xbcd0ff,.16);this.fill.position.set(-30,40,-20);sc.add(this.fill);
@@ -5729,16 +5730,44 @@ R3D.ensureGround=function(){   // the flat map (ground, water, roads, markings) 
     this.groundNew=false;
   }
 };
-R3D.updateLights=function(){   // day, dusk and night
+R3D.solar=function(){   // where the sun is: theta 0 = sunrise in the east, PI/2 = noon, PI = sunset in the west
+  const v=Settings.v;let th;
+  if(D.clock){const h=hourNow();th=Math.PI*2*(h-6)/24;}
+  else if(v.cycle)th=Math.PI*2*((.12+time/v.cycleLen)%1);
+  else th=v.tod==='night'?Math.PI*1.5:v.tod==='dusk'?Math.PI-.13:Math.PI*.4;
+  return {th,el:Math.sin(th)};
+};
+const sstep=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
+R3D.updateLights=function(){   // a sun that crosses the sky, a moon, sky and ground bounce light, and weather
   const am=ambient(),n=am.n,warm=am.warm,cx=(GC.rx0+GC.rx1)/2,cy=(GC.ry0+GC.ry1)/2;
-  const day=new THREE.Color(0xffffff),night=new THREE.Color(0x4a5a9a),dusk=new THREE.Color(0xffc890);
-  const a=day.clone().lerp(night,Math.min(1,n*1.15));if(warm>.01)a.lerp(dusk,Math.min(.5,warm*.5));
-  this.amb.color.copy(a);this.amb.intensity=.66-.2*n;
-  this.sun.color.setRGB(1,.95-.1*warm-.25*n,.85-.25*warm-.1*n);this.sun.intensity=.62*(1-.8*n);
-  this.sun.position.set(cx-26,56,cy-30);this.sun.target.position.set(cx,0,cy);this.sun.target.updateMatrixWorld();
-  this.fill.intensity=.16+.18*n;
-  this.night=n;
-  this.sun.castShadow=this.shadows&&n<.85;
+  const sl=this.solar(),el=sl.el,C=THREE.Color;
+  const w=(typeof wxNow==='function'&&!wxOff&&mode!=='tut')?wxNow():null,wa=w&&w.amt>.02?w.amt:0;
+  const wd=wa?({rain:.45,storm:.65,fog:.4,snow:.25}[w.kind]||0)*wa:0;   // cloud cover thins the direct light
+  // the direct light: the sun by day, the moon by night (one light, so one shadow map)
+  const dayK=sstep(-.06,.2,el),moonK=sstep(.02,.3,-el);
+  const sunCol=new C(1,.52,.28).lerp(new C(1,.8,.62),sstep(0,.18,el)).lerp(new C(1,.96,.9),sstep(.15,.6,el));
+  const moonCol=new C(.58,.68,1);
+  const useSun=el>=-.03,ek=Math.max(useSun?el:-el,.24);   // low sun/moon keep a stubby-enough shadow
+  const dx=Math.cos(sl.th)*(useSun?1:-1),dz=.2,dy=ek;let L=Math.hypot(dx,dy,dz);
+  this.sun.position.set(cx+dx/L*60,dy/L*60,cy+dz/L*60);this.sun.target.position.set(cx,0,cy);this.sun.target.updateMatrixWorld();
+  this.sun.color.copy(useSun?sunCol:moonCol);
+  this.sun.intensity=useSun?.78*dayK*(1-wd):.3*moonK*(1-wd*.6);
+  // sky and ground bounce
+  const skyDay=new C(.87,.92,1),skyDusk=new C(1,.72,.54),skyNight=new C(.2,.27,.55);
+  const sky=skyDay.clone().lerp(skyDusk,Math.min(1,warm*.9)).lerp(skyNight,Math.min(1,n*1.1));
+  if(wd)sky.lerp(new C(.72,.76,.82),wd*.8);
+  const gnd=new C(.6,.58,.5).lerp(new C(.34,.3,.3),warm*.7).lerp(new C(.05,.07,.13),n);
+  this.hemi.color.copy(sky);this.hemi.groundColor.copy(gnd);
+  this.hemi.intensity=(.52-.1*n)*(1-.2*wd)+.1*moonK;
+  this.amb.color.set(0xffffff).lerp(new C(.55,.62,1),n);this.amb.intensity=.14+.06*n;
+  // a rim light from the side away from the sun lifts the shaded faces
+  this.fill.position.set(cx-dx/L*30,34,cy-26);this.fill.color.copy(new C(.74,.82,1).lerp(new C(.55,.65,1),n));this.fill.intensity=.12+.1*n+.05*wd;
+  // lightning lights the whole city for a moment
+  const fl=typeof wxFlash==='number'?wxFlash:0;if(fl>.01){this.hemi.intensity+=fl*1.6;this.sun.intensity+=fl*.5;}
+  this.night=n;this.sunEl=el;this.wet=wa&&(w.kind==='rain'||w.kind==='storm')?wa:0;
+  this.sun.castShadow=this.shadows&&(useSun?el>.015:-el>.05);
+  this.sun.shadow.radius=useSun?2+3*(1-sstep(0,.5,el)):4;
+  {const k=1-.68*n;this.mat('marks').color.setRGB(k*(1-.1*n),k*(1-.05*n),k*(1+.1*n));}
 };
 R3D.frame=function(){
   if(!this.ready&&!this.init())return false;
@@ -5795,6 +5824,7 @@ R3D.mat=function(name){
   const make={
     lit:()=>new M.MeshLambertMaterial({vertexColors:true}),
     glow:()=>new M.MeshBasicMaterial({vertexColors:true}),
+    marks:()=>new M.MeshBasicMaterial({vertexColors:true}),   // lane dashes: dimmed by updateLights at night
     wreck:()=>new M.MeshLambertMaterial({vertexColors:true,color:0x6b6560}),
     amber:()=>new M.MeshBasicMaterial({color:0xffb020}),
     red:()=>new M.MeshBasicMaterial({color:0xff3b30}),
@@ -6145,7 +6175,7 @@ R3D.buildLamps=function(){
 R3D.syncLamps=function(){
   const n=this.night||0;
   if(this.bulbMat)this.bulbMat.color.setRGB(.6+.4*n,.62+.38*n,.68+.1*n);
-  if(this.poolMat)this.poolMat.opacity=Math.max(0,Math.min(.55,(n-.1)*.9));
+  if(this.poolMat)this.poolMat.opacity=Math.max(0,Math.min(.7,(Math.max(n,(this.sunEl<.12?.35*(1-Math.max(0,this.sunEl)/.12):0))-.1)*.9+(this.wet||0)*.2*n));
 };
 
 /* ---- signs and traffic lights ---- */
@@ -6315,7 +6345,7 @@ R3D.buildElevated=function(){
   }
   if(!any)return;
   const m=new THREE.Mesh(g.finish(),this.mat('lit'));m.castShadow=m.receiveShadow=true;gr.add(m);
-  const mk=new THREE.Mesh(marks.finish(),this.mat('glow'));gr.add(mk);
+  const mk=new THREE.Mesh(marks.finish(),this.mat('marks'));gr.add(mk);
 };
 
 /* ---- groups, crash scenes, tow trucks, weather, overlays and the frame ---- */
