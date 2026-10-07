@@ -222,6 +222,8 @@ body.app #menu{padding-top:44px}
 .best:first-of-type{border-top:0}
 .best .sc{margin-left:auto;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
 .best .sc small{display:block;color:var(--muted);font-weight:600;font-size:11.5px}
+.glass#drivebar,#drivebar{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);z-index:30;display:none;align-items:center;gap:12px;padding:9px 12px 9px 18px;border-radius:99px;background:rgba(24,27,38,.78);backdrop-filter:blur(14px);color:#fff;font-size:14px;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+#drivebar span{font-weight:850}#drivebar small{opacity:.7;font-weight:600}#drivebar button{border:0;border-radius:99px;padding:6px 14px;font:inherit;font-weight:800;background:#fff;color:#1b1f2c;cursor:pointer}
 .lbtabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
 .lbtab{border:2px solid transparent;background:rgba(35,39,51,.07);color:var(--ink);font:inherit;font-size:13px;font-weight:800;padding:7px 14px;border-radius:99px;cursor:pointer;transition:background .12s,transform .12s}
 .lbtab:hover{transform:translateY(-1px)}.lbtab.sel{background:var(--chipc);color:#fff}
@@ -371,7 +373,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.30.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.31.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -499,6 +501,7 @@ function bindKey(a,k){   // one key per action; a key can only do one thing, so 
   Settings.set('keys',JSON.stringify(ov));buildKeymap();
 }
 let rebinding=null;
+addEventListener('keydown',e=>{if(R3D.drive&&e.key==='Escape'){R3D.driveStop();e.stopImmediatePropagation();e.preventDefault();}},true);   // Escape leaves the driver's seat first
 addEventListener('keydown',e=>{   // while a key is being chosen, nothing else sees the keystroke
   if(!rebinding)return;
   e.preventDefault();e.stopPropagation();
@@ -3007,10 +3010,13 @@ function drawArrow(cx,y0,t){
 /* ---------- input ---------- */
 function worldPos(e){if(R3D.on&&R3D.ready)return R3D.pick(e.clientX,e.clientY);return [(e.clientX-ox)/cs,(e.clientY-oy)/(cs*TY)];}
 cv.addEventListener('contextmenu',e=>e.preventDefault());
+let carDown=null;
 const gameDown=e=>{
+  if(R3D.drive){R3D.driveStop();carDown=null;return;}   // any click leaves the driver's seat
   if(S.modal)return;
   if(locEdgeHits.length){const r=cv.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;const h=locEdgeHits.find(q=>Math.hypot(q.x-px,q.y-py)<20);if(h&&blds.includes(h.b)){focusOn(h.b);return;}}   // an edge arrow: jump to that buildingtry{cv.setPointerCapture(e.pointerId);}catch(_){}
   const [fx,fy]=worldPos(e),x=Math.floor(fx),y=Math.floor(fy);if(!inB(x,y))return;
+  carDown=(e.button===0&&R3D.on&&mode==='play'&&!S.demo&&PK[tool])?{x:e.clientX,y:e.clientY,fx,fy,t:performance.now()}:null;   // a plain click on a car (with a road tool) gets its driver's view
   if(isSb()&&tool.startsWith('sb:')&&e.button===0){sbPaint=true;sbAct(fx,fy,true);return;}
   if(e.button===2&&lineA!==null){lineA=null;lineDrag=false;return;}
   if(layerMode==='routes'&&e.button===0&&tool!=='erase'&&!(isSb()&&tool.startsWith('sb:'))){probeAt(fx,fy);return;}   // in the Routes view a click inspects a road instead of building
@@ -3068,7 +3074,8 @@ cv.addEventListener('pointermove',e=>{
   if(sbPaint&&tool.startsWith('sb:')){sbAct(fx,fy,false);return;}
   if(stroke)advance(fx,fy);
 });
-addEventListener('pointerup',()=>{erasing=false;if(sbPaint){sbPaint=false;sbFinish();}finishStroke();
+addEventListener('pointerup',e=>{erasing=false;if(sbPaint){sbPaint=false;sbFinish();}finishStroke();
+  if(carDown){const cd=carDown;carDown=null;if(Math.hypot(e.clientX-cd.x,e.clientY-cd.y)<7&&performance.now()-cd.t<700){const c=R3D.carAt(cd.fx,cd.fy);if(c)R3D.driveStart(c);}}
   if(lineA!==null&&lineDrag){lineDrag=false;const hc=hover?cellIdx(hover[0],hover[1]):-1;if(hc>=0&&hc!==lineA){lineCommit(lineA,hc);lineA=null;}}else lineDrag=false;   // dragging out a straight road works too
 });
 cv.addEventListener('pointerleave',()=>{hover=null;hoverF=null;});
@@ -5166,6 +5173,7 @@ function startNew(){
 function loadSave(sv){if(!sv||!sv.state)return;document.getElementById('modal').className='hidden';restore(sv);Menu.hide();setPlay();}
 function openPause(){
   if(mode!=='play'||S.over)return;
+  if(R3D.drive){R3D.driveStop();return;}   // Escape leaves the driver's seat before it opens the menu
   if(S.modal==='pause'){closePause();return;}
   if(S.modal)return;
   stroke=null;erasing=false;S.modal='pause';MS.confirm=null;Menu.show('pause');
@@ -5811,8 +5819,41 @@ R3D.size=function(){
   const pr=Math.min(dpr,2);
   if(this.w!==cw||this.h!==ch||this.pr!==pr){this.w=cw;this.h=ch;this.pr=pr;this.renderer.setPixelRatio(pr);this.renderer.setSize(cw,ch,false);}
 };
+R3D.driveCam=function(){   // driver's seat: the camera rides in the clicked car and looks down the road
+  const c=this.drive,o=c&&!c.dead?this.objs.cars.get(c):null;
+  if(!o||mode!=='play'||S.over||!o.visible){this.driveStop();return false;}
+  const cam=this.cam,yaw=-o.rotation.y;
+  if(this.dYaw===undefined)this.dYaw=yaw;
+  let df=yaw-this.dYaw;df=Math.atan2(Math.sin(df),Math.cos(df));this.dYaw+=df*.22;   // a little smoothing so bends do not jerk the view
+  const L=(o.userData.g&&o.userData.g.len)||.58,fx=Math.cos(this.dYaw),fz=Math.sin(this.dYaw);
+  const ex=o.position.x+Math.cos(yaw)*L*.02,ez=o.position.z+Math.sin(yaw)*L*.02,ey=o.position.y+(o.userData.isT?.3:.175);
+  cam.fov=64;cam.near=.015;cam.far=500;cam.aspect=cw/ch;cam.clearViewOffset();
+  cam.position.set(ex,ey,ez);cam.lookAt(ex+fx*4,ey-.22,ez+fz*4);
+  cam.updateProjectionMatrix();cam.updateMatrixWorld(true);
+  const n=this.night||0;this.scene.background=this.hemi.color.clone().multiplyScalar(1-.55*n);   // a sky for the horizon
+  this.tx=ex;this.ty=ez;this.dist=24;return true;
+};
+R3D.driveStart=function(c){
+  this.drive=c;this.dYaw=undefined;
+  let bar=document.getElementById('drivebar');
+  if(!bar){bar=document.createElement('div');bar.id='drivebar';bar.className='glass';bar.innerHTML='<span>Driver view</span><small>click anywhere or press Esc to leave</small><button type="button">Exit</button>';document.body.appendChild(bar);bar.querySelector('button').onclick=()=>R3D.driveStop();}
+  bar.style.display='flex';
+};
+R3D.driveStop=function(){
+  if(!this.drive)return;this.drive=null;this.dYaw=undefined;
+  const bar=document.getElementById('drivebar');if(bar)bar.style.display='none';
+  if(this.scene)this.scene.background=null;
+  if(this.cam){this.cam.fov=this.fov;this.cam.near=.2;this.cam.updateProjectionMatrix();}
+};
+R3D.carAt=function(fx,fy){   // the car under a spot on the map (for a click)
+  let best=null,bd=.5;
+  for(const [c,o] of this.objs.cars){if(c.dead||!o.visible)continue;const d=Math.hypot(o.position.x-fx,o.position.z-fy);if(d<bd){bd=d;best=c;}}
+  return best;
+};
 R3D.updateCamera=function(){   // the camera looks at the point of the map that the flat view has in the middle of the screen
-  const cam=this.cam,vy=(ch+VTOP-VBOT)/2,tx=(cw/2-ox)/cs,ty=(vy-oy)/cs;
+  if(this.drive&&this.driveCam())return;
+  const cam=this.cam;cam.near=.2;cam.far=500;if(cam.fov!==this.fov)cam.fov=this.fov;
+  const vy=(ch+VTOP-VBOT)/2,tx=(cw/2-ox)/cs,ty=(vy-oy)/cs;
   const dist=(ch/cs)/(2*Math.tan(this.fov*Math.PI/360)),p=this.pitch;
   cam.aspect=cw/ch;
   cam.setViewOffset(cw,ch,0,-(VTOP-VBOT)/2,cw,ch);   // (keeps the map clear of the bars at the top and bottom)
@@ -6010,7 +6051,7 @@ R3D.carObj=function(c){
   const role=c.dot?(c.dot==='cone'?'cone':'rec'):'fire',g=isT?truckGeo(role,c.rk):carGeo(['sedan','hatch','suv'][(c.id||c.color||0)%3],c.color||0);
   const m=new THREE.Mesh(g.body,this.mat('lit'));m.castShadow=true;m.receiveShadow=false;o.add(m);
   const lm=new THREE.Mesh(g.lights,this.mat('glow'));o.add(lm);
-  o.userData={body:m,isT,g};
+  o.userData={body:m,lm,isT,g};
   if(g.left){o.userData.left=new THREE.Mesh(g.left,this.mat('amber'));o.userData.right=new THREE.Mesh(g.right,this.mat('amber'));o.add(o.userData.left,o.userData.right);o.userData.left.visible=o.userData.right.visible=false;}
   if(g.bar){o.userData.bar=new THREE.Mesh(g.bar,this.mat('amber'));o.add(o.userData.bar);}
   if(g.brake){o.userData.brake=new THREE.Mesh(g.brake,this.mat('red'));o.userData.brake.visible=false;o.add(o.userData.brake);}
@@ -6046,6 +6087,11 @@ R3D.syncCars=function(){
     u.tn=!u.isT?turnSignal(c):null;u.flash=flash;
     if(u.left){const tn=!u.isT?turnSignal(c):null;u.left.visible=tn==='L'&&flash;u.right.visible=tn==='R'&&flash;}
     if(u.bar){const lit=c.truck&&(c.ph==='go'||c.ph==='gout'||c.ph==='work'||c.ph==='wait'||c.ph==='spray');u.bar.visible=!!lit&&Math.floor(T/220)%2===0;}
+  }
+  for(const [c,o] of this.objs.cars){
+    const me=this.drive===c,u=o.userData;   // the car being driven is not drawn (you are inside it)
+    if(u.body)u.body.visible=!me;if(u.lm)u.lm.visible=!me;
+    if(me){for(const k of ['left','right','bar','brake'])if(u[k])u[k].visible=false;}
   }
   for(const [c,o] of this.objs.cars)if(!seen.has(c)){this.carGroup.remove(o);this.objs.cars.delete(c);}
 };
@@ -6689,6 +6735,7 @@ R3D.screenParticles=function(wxw){
   ctx.lineCap='butt';
 };
 R3D.overlay=function(wxw){
+  if(this.drive){if(this.ovMesh)this.ovMesh.visible=false;ctx=mainCtx;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,cw,ch);this.screenParticles(wxw);ctx.setTransform(dpr,0,0,dpr,0,0);drawWeather();return;}   // (the map's markers stay out of the driver's view)
   this.groundOverlay();
   ctx=mainCtx;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,cw,ch);
   this.screenDots();

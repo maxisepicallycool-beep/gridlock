@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.31.0 — Driver's view
+- Click a car (with a road tool selected) in the 3D view to ride along: the camera sits in the driver's seat and looks down the road, with real lights, shadows, other cars and signs. Click anywhere, press Esc or use the Exit button to leave; it also ends when the car finishes its trip
+
 ## 1.30.2 — Menu cleanup
 - Removed the "AI playing · difficulty · week · trips" pill from the main menu
 
