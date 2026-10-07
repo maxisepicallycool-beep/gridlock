@@ -373,7 +373,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.32.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.33.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1246,7 +1246,7 @@ function updateCrew(c,dt){
   if(!s.last){
     const nx=c.path[c.i+1];
     if(ET[c.path[c.i]*8+s.dout]!==nx){const p=crewPath(c.path[c.i],sc,c.dot);if(!p){truckReturn(c);return;}c.path=p;c.i=0;return;}   // the road changed under us
-    c.u+=dt*rate;if(c.u>=1){c.u-=1;c.i++;}
+    c.tsv=Math.min(1,(c.tsv||.1)+dt*.55);c.u+=dt*rate*c.tsv;if(c.u>=1){c.u-=1;c.i++;}   // (a truck takes a few seconds to get going too)
     return;
   }
   c.u+=dt*rate*1.5;
@@ -1400,7 +1400,7 @@ function tryEnter(c,nx,d){
   if(lg&&lg.st!==2){c.redHold=true;return 0;}   // red or amber: wait at the line (never forced through, and it does not feed the deadlock timer)
   const give=yl||fromBld||toBld||(lg&&lg.perm),force=c.force||c.wait>(sg?12:5);
   const mine=chord(nx,d,after!==undefined?dirOf(nx,after):-1);
-  const crosses=(din,dout)=>chordDist(mine,chord(nx,din,dout))<.26;
+  const crosses=(din,dout)=>chordDist(mine,chord(nx,din,dout))<TUNE.chord;
   let q=null;
   if(sg){   // join the queue of stopped cars in the order they finished stopping
     q=queue[nx]||(queue[nx]=[]);
@@ -1552,7 +1552,7 @@ function updateTruck(c,dt){
       if(!p){if(c.ph==='go')truckReturn(c);else truckDone(c);return;}
       c.path=p;c.i=0;return;
     }
-    c.u+=dt*rate;if(c.u>=1){c.u-=1;c.i++;}
+    c.tsv=Math.min(1,(c.tsv||.1)+dt*.55);c.u+=dt*rate*c.tsv;if(c.u>=1){c.u-=1;c.i++;}
     return;
   }
   c.u+=dt*rate*1.5;
@@ -1801,27 +1801,48 @@ function backOutPath(b,sp,X){   // reverse out of the bay while steering toward 
   let rl=0;for(let i=0;i<rev;i++)rl+=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);
   return {pts:pts.map(p=>toWorld(b,p[0],p[1])),heads:hs.map(h=>h+f),rev:rl};
 }
-function startParking(c,b){
+function planParking(c,b){   // pick the nearest free bay and work out the way in (nothing is changed yet)
   if(!b.spots)b.spots=makeSpots(b);
   const q=pose(c),f=faceAng(faceOf(b)),ql=toLocal(b,q.x,q.y),vin=SPEED*stepInfo(c).spd*stepInfo(c).tf;
   let sp=null,bd=1e9;for(const s2 of b.spots){if(s2.car)continue;const dd=Math.hypot(s2.u-ql[0],s2.v-ql[1]);if(dd<bd){bd=dd;sp=s2;}}
-  if(!sp){c.ph='dwell';c.dwell=.6;c.wantSpot=b;return;}    // lot full: wait at the gate
-  sp.car=c;c.spot=sp;c.wantSpot=null;c.lotB=b;
+  if(!sp)return {sp:null};
   const cl=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));let L;
   if(b.kind===2){const lane=ql[0]<1?.22:1.78;L=[ql,[lane,1.62],[lane,.8],[sp.u,.8],[sp.u,sp.v]];}   // in along a side lane, then along the aisle
   else L=[ql,[cl(ql[0],.3,1.7),1.62],[sp.u,1.62],[sp.u,sp.v]];                                      // along the front aisle, then nose into the bay
   const sm=smoothPath(L,q.a-f,.3),P=sm.pts.map(p=>toWorld(b,p[0],p[1]));
-  c.pk={pts:P,heads:sm.heads.map(h=>h+f),d:0,len:polyLen(P),v:vin};c.ph='pin';
+  return {sp,P,heads:sm.heads.map(h=>h+f),vin};
+}
+function startParking(c,b){
+  const pl=planParking(c,b);
+  if(!pl.sp){c.ph='dwell';c.dwell=.6;c.wantSpot=b;return;}    // lot full: wait at the gate
+  pl.sp.car=c;c.spot=pl.sp;c.wantSpot=null;c.lotB=b;
+  c.pk={pts:pl.P,heads:pl.heads,d:0,len:polyLen(pl.P),v:pl.vin};c.ph='pin';
 }
 function curveCap(pk){   // slow down where the path bends sharply
   const H=pk.heads,a=polyAtH(pk.pts,H,pk.d)[2],b=polyAtH(pk.pts,H,Math.min(pk.len,pk.d+.2))[2],k=Math.abs(((b-a+Math.PI*3)%(Math.PI*2))-Math.PI)/.2;
   return .3+1.5/(1+k*.8);
 }
+function ptsAlong(P,from,step){   // points spaced along a waypoint path, starting a distance from its beginning
+  const out=[];let acc=0,next=Math.max(0,from);
+  for(let i=0;i<P.length-1;i++){const dx=P[i+1][0]-P[i][0],dy=P[i+1][1]-P[i][1],l=Math.hypot(dx,dy);
+    while(next<=acc+l+1e-9){const t=l>1e-9?(next-acc)/l:0;out.push([P[i][0]+dx*t,P[i][1]+dy*t]);next+=step;}
+    acc+=l;}
+  return out;
+}
+function lotConflict(me,b,P){   // would a manoeuvre along P run into one already under way in this lot? (cars take their turn in the order they start)
+  const mine=ptsAlong(P,0,.12);
+  for(const o of cars){
+    if(o===me||o.dead||o.lotB!==b||!o.pk||!(o.ph==='pin'||o.ph==='pout'))continue;
+    const theirs=ptsAlong(o.pk.pts,o.pk.d-.3,.12);
+    for(const a of mine)for(const t of theirs)if(Math.hypot(a[0]-t[0],a[1]-t[1])<.46)return true;
+  }
+  return false;
+}
 function updatePark(c,dt){
-  const pk=c.pk;
+  const pk=c.pk;c.rev=false;
   if(c.ph==='pin'){
     const tgt=Math.max(.55,Math.min(SPEED,.5+(pk.len-pk.d)*1.7));   // carries the road speed in, eases off toward the bay
-    pk.v+=(Math.min(tgt,curveCap(pk))-pk.v)*Math.min(1,dt*5);pk.d+=pk.v*dt;
+    pk.v+=(Math.min(tgt,curveCap(pk))-pk.v)*Math.min(1,dt*2.2);pk.d+=pk.v*dt;
     if(pk.d>=pk.len){pk.d=pk.len;c.ph='pstay';c.dwell=LOT_REST;}
   }
   else if(c.ph==='pstay'){
@@ -1831,12 +1852,14 @@ function updatePark(c,dt){
       if(p){
         const keep=[c.path,c.i,c.u];c.path=p;c.i=0;c.u=.9;const X=pose(c);c.path=keep[0];c.i=keep[1];c.u=keep[2];
         const bp=backOutPath(c.lotB,c.spot,X);
+        if(lotConflict(c,c.lotB,bp.pts)){c.dwell=.25;return;}   // wait in the bay until the way out is clear
         c.ret=p;c.pk={pts:bp.pts,heads:bp.heads,rev:bp.rev,d:0,len:polyLen(bp.pts),v:0};c.ph='pout';
       } else c.dwell=.7;
     }
   } else if(c.ph==='pout'){
     const cap=Math.min(pk.d<pk.rev?.95:SPEED,curveCap(pk));
-    pk.v+=(cap-pk.v)*Math.min(1,dt*(pk.d<pk.rev?3:2.2));pk.v=Math.max(pk.v,.25);pk.d+=pk.v*dt;
+    c.rev=pk.d<pk.rev;   // backing out of the bay
+    pk.v+=(cap-pk.v)*Math.min(1,dt*(pk.d<pk.rev?1.6:1.4));pk.v=Math.max(pk.v,.15);pk.d+=pk.v*dt;
     if(pk.d>=pk.len){
       if(c.spot){c.spot.car=null;c.spot=null;}
       c.sv=Math.min(1.2,pk.v/SPEED);c.leg=1;c.dest=null;c.path=c.ret;c.i=0;c.u=.9;c.ph='drive';c.din=-1;c.res=false;c.stopped=-1;c.wait=0;c.pk=null;
@@ -1844,6 +1867,8 @@ function updatePark(c,dt){
   }
 }
 function parkPose(c){const pk=c.pk,r=pk.heads?polyAtH(pk.pts,pk.heads,pk.d):polyAt(pk.pts,pk.d,pk.ang0);return {x:r[0],y:r[1],a:r[2],br:0,h:0};}
+const STOPU=.82;   // where in its cell a car waits for a junction
+var TUNE={up:.5,dn:2.2,brk:1.6,chord:.26};   // how quickly cars speed up and brake (fractions of full speed per second)
 /* ---------- lanes: cars line up behind the car ahead instead of stacking on one spot ---------- */
 const vpose=c=>{try{return (isPark(c.ph)||c.ph==='gout'||c.ph==='gin')?parkPose(c):pose(c);}catch(e){return null;}};
 const vsize=c=>c.big?[.49,.15]:c.truck?[.44,.15]:[.29,.135];   // half length, half width of the body
@@ -1896,13 +1921,16 @@ function updateCar(c,dt){
   const s=stepInfo(c);
   let tgt=s.spd*s.tf;   // speed follows the limit and the bend, but eases between them instead of jumping
   if(!s.last&&c.i+2<c.path.length&&c.u>.35){const nn=c.path[c.i+1],d2=dirOf(nn,c.path[c.i+2]),k=(d2-s.dout)&7,t2=k>4?8-k:k;tgt=Math.min(tgt,espd[nn*8+d2]*[1,.85,.55,.4,.3][t2]);}   // brake early for what is coming
-  if(c.sv===undefined)c.sv=Math.min(tgt,.45);
-  c.sv+=Math.max(-dt*3.2,Math.min(dt*1.5,tgt-c.sv));
+  const lim=uLimit(c,s.L),gapC=Math.max(0,(lim-c.u)*s.L);   // how far it can roll before touching the car ahead in its lane
+  tgt=Math.min(tgt,.92*Math.sqrt(2*TUNE.brk*gapC/SPEED));          // slow down early enough to stop in time (about 1.6 of full speed per second of braking)
+  if(c.sv===undefined)c.sv=Math.min(tgt,.12);                 // a new car sets off from rest
+  c.sv+=Math.max(-dt*TUNE.dn,Math.min(dt*TUNE.up,tgt-c.sv));           // it takes a couple of seconds to get up to speed; braking is firmer
   let sp=SPEED*c.sv*(c.pv>0?Math.max(.12,1-c.pv*1.1):1)/s.L;   // slows as it eases over
   if(s.last){
     if(c.leg===0){   // reached the destination's lot
       const bb=cells[n>>1].bld;
       if(bb&&bb.busy>time)return;                      // the lot gate lets one car in at a time
+      if(bb&&bb.dest){const pl=planParking(c,bb);if(pl.sp&&lotConflict(c,bb,pl.P))return;}   // wait at the gate until there is room to manoeuvre
       if(bb)bb.busy=time+.9;
       S.score++;c.home.lastProg=time;if(bb)bb.pulse=1;
       const px=(n>>1)%W+.5,py=(((n>>1)/W)|0)+.5;
@@ -1920,13 +1948,12 @@ function updateCar(c,dt){
     else if(c.u>.6&&yieldAt(nn,s.dout))sp*=.65;   // ease off at a yield sign
     const scz=SCN[nn];if(scz&&scz.open&&c.u>.3)sp*=.5;   // creeping past a coned-off wreck
   }
-  const lim=uLimit(c,s.L),gapC=(lim-c.u)*s.L;if(gapC<1.1)sp*=Math.max(0,gapC/1.1);   // queue up behind the car ahead in the same lane
   const u0=c.u;c.u+=dt*sp;
   if(c.u>lim){c.u=Math.max(u0,lim);c.sv=Math.min(c.sv,.15);}
-  if(c.u<.9)c.by=null;
+  if(c.u<STOPU)c.by=null;
   const nx=c.path[c.i+1];
-  if(!c.res&&c.u>=.9){
-    c.u=.9;
+  if(!c.res&&c.u>=STOPU){
+    c.u=Math.max(STOPU,Math.min(c.u,u0));   // the stop line is a little way before the junction, so a car waiting there is clear of the cars crossing it
     if(c.blocked<0){c.blocked+=dt;if(c.blocked<0)return;c.blocked=0;reroute(c);return;}
     const d=s.dout;
     if(edgeTo[n*8+d]!==nx){if(!reroute(c)){c.lost=(c.lost||0)+1;if(c.lost>6){c.home.demand++;killCar(c);}}return;}
@@ -3036,7 +3063,7 @@ function worldPos(e){if(R3D.on&&R3D.ready)return R3D.pick(e.clientX,e.clientY);r
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 let carDown=null;
 const gameDown=e=>{
-  if(R3D.drive){R3D.driveStop();carDown=null;return;}   // any click leaves the driver's seat
+  if(R3D.drive){R3D.driveLook={x:e.clientX,y:e.clientY,ly:R3D.lookYaw||0,lp:R3D.lookPitch||0,moved:false};carDown=null;return;}   // a drag looks around; a plain click leaves the driver's seat
   if(S.modal)return;
   if(locEdgeHits.length){const r=cv.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;const h=locEdgeHits.find(q=>Math.hypot(q.x-px,q.y-py)<20);if(h&&blds.includes(h.b)){focusOn(h.b);return;}}   // an edge arrow: jump to that buildingtry{cv.setPointerCapture(e.pointerId);}catch(_){}
   const [fx,fy]=worldPos(e),x=Math.floor(fx),y=Math.floor(fy);if(!inB(x,y))return;
@@ -3103,6 +3130,8 @@ addEventListener('pointerup',e=>{erasing=false;if(sbPaint){sbPaint=false;sbFinis
   if(lineA!==null&&lineDrag){lineDrag=false;const hc=hover?cellIdx(hover[0],hover[1]):-1;if(hc>=0&&hc!==lineA){lineCommit(lineA,hc);lineA=null;}}else lineDrag=false;   // dragging out a straight road works too
 });
 cv.addEventListener('pointerleave',()=>{hover=null;hoverF=null;});
+cv.addEventListener('pointermove',e=>{const d=R3D.driveLook;if(!d||!R3D.drive)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(Math.hypot(dx,dy)>6)d.moved=true;if(d.moved){R3D.lookYaw=Math.max(-2.2,Math.min(2.2,d.ly+dx*.006));R3D.lookPitch=Math.max(-.9,Math.min(.8,d.lp-dy*.005));}});
+addEventListener('pointerup',()=>{const d=R3D.driveLook;if(!d)return;R3D.driveLook=null;if(!d.moved&&R3D.drive)R3D.driveStop();});
 addEventListener('keydown',e=>{
   const typing=e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA');
   if(!typing&&!e.metaKey&&!e.ctrlKey)e.preventDefault();   // the game owns the keyboard: no system beep, Esc never leaves full screen
@@ -4143,6 +4172,9 @@ function drawGround(){
   if(WX.gq>0){ctx.globalAlpha=Math.min(1,WX.gq/20);ctx.fillStyle='#f8faff';ctx.fillRect(RX0-1,RY0-1,RX1-RX0+2,RY1-RY0+2);ctx.globalAlpha=1;}   // the grass turns the colour of the snow (underneath the roads, trees and props, which are drawn after this)
   ctx.strokeStyle=TH.grid;ctx.lineWidth=.02;ctx.beginPath();
   for(let x=vx0;x<=vx1;x++){ctx.moveTo(x,vy0);ctx.lineTo(x,vy1);}for(let y=vy0;y<=vy1;y++){ctx.moveTo(vx0,y);ctx.lineTo(vx1,y);}ctx.stroke();
+  if(R3D.on){   // the 3D view draws the water itself (R3D.buildWater): the ground is cut away where it is
+    for(let y=vy0;y<vy1;y++)for(let x=vx0;x<vx1;x++)if(cells[cellIdx(x,y)].water)ctx.clearRect(x-.005,y-.005,1.01,1.01);
+  } else {
   ctx.fillStyle=TH.water;
   for(let y=vy0;y<vy1;y++)for(let x=vx0;x<vx1;x++)if(cells[cellIdx(x,y)].water)ctx.fillRect(x-.01,y-.01,1.02,1.02);
   ctx.fillStyle=TH.deep;   // deeper water away from the shore
@@ -4158,6 +4190,7 @@ function drawGround(){
     ctx.stroke();
   }
   ctx.lineCap='butt';
+  }
   if(TY===1&&!R3D.on)for(const t of trees){
     if(t.x<vx0-1||t.x>vx1+1||t.y<vy0-1||t.y>vy1+1)continue;
     const c=cells[cellIdx(Math.floor(t.x),Math.floor(t.y))];if(c.e||c.f||c.bld)continue;
@@ -5844,24 +5877,48 @@ R3D.size=function(){
   const pr=Math.min(dpr,2);
   if(this.w!==cw||this.h!==ch||this.pr!==pr){this.w=cw;this.h=ch;this.pr=pr;this.renderer.setPixelRatio(pr);this.renderer.setSize(cw,ch,false);}
 };
-R3D.driveCam=function(){   // driver's seat: the camera rides in the clicked car and looks down the road
+/* ---- the inside of a car, seen from the driver's seat ---- */
+const INT_GEO={};
+const L0=g=>(g&&g.len)||.58;
+function interiorGeo(paintIdx){
+  const key='i:'+paintIdx;if(INT_GEO[key])return INT_GEO[key];
+  const p=PAL[paintIdx]||PAL[0],paint=new THREE.Color(p.c),dark=new THREE.Color(0x24262d),dash=new THREE.Color(0x30333c),grey=new THREE.Color(0x4a4e58),seat=new THREE.Color(0x3b3f4a),liner=new THREE.Color(0x6d717c),trim=new THREE.Color(0x12141a);
+  const g=new GB(),gl=new GB(),X=-.04;
+  // dashboard, instrument hood and centre console
+  g.box(.1,.028,.236,.075,.119,0,dash);g.box(.034,.018,.075,.052,.143,-.065,trim);g.box(.07,.024,.03,.01,.096,0,grey);
+  // steering wheel: a ring facing the driver, a hub and two spokes
+  g.add(new THREE.TorusGeometry(.028,.005,8,20),.034,.138,-.065,1,1,1,trim,0,Math.PI/2,.5);g.box(.012,.012,.012,.037,.137,-.065,trim,0,0,.5);
+  g.box(.004,.004,.052,.035,.137,-.065,trim,0,0,.5);g.box(.004,.046,.004,.035,.137,-.065,trim,0,0,.5);
+  // pillars, header, roof lining and the tops of the doors
+  for(const sz of [-1,1]){g.box(.011,.092,.012,.097,.183,sz*.108,paint,0,0,-.35);g.box(.011,.08,.012,-.172,.188,sz*.108,paint,0,0,.2);g.box(.27,.045,.012,X,.134,sz*.116,dark);g.box(.26,.012,.012,X,.232,sz*.108,paint);}
+  g.box(.012,.014,.228,.087,.229,0,paint);g.box(.27,.006,.226,X,.2365,0,liner);
+  // the bonnet ahead of the windscreen, and the wing mirrors
+  g.box(.2,.012,.25,.195,.132,0,paint);for(const sz of [-1,1]){g.box(.02,.02,.012,.07,.155,sz*.15,paint);g.box(.006,.014,.04,.082,.198,0,trim);}
+  // seats
+  for(const sz of [-1,1]){g.box(.014,.07,.07,-.1,.12,sz*.065,seat);g.box(.012,.024,.04,-.1,.175,sz*.065,seat);g.box(.07,.02,.07,-.062,.082,sz*.065,seat);}
+  g.box(.014,.07,.215,-.168,.115,0,seat);
+  // gauges glow
+  for(const dz of [-.082,-.048])gl.box(.003,.016,.016,.0715,.15,dz,new THREE.Color(0x9dff7a));gl.box(.003,.01,.03,.0715,.1385,0,new THREE.Color(0xffb020));
+  return INT_GEO[key]={body:g.finish(),glow:gl.finish()};
+}
+R3D.driveCam=function(){   // driver's seat: the camera sits in the clicked car, looks where you drag, and starts out looking down the road
   const c=this.drive,o=c&&!c.dead?this.objs.cars.get(c):null;
   if(!o||mode!=='play'||S.over||!o.visible){this.driveStop();return false;}
-  const cam=this.cam,yaw=-o.rotation.y;
-  if(this.dYaw===undefined)this.dYaw=yaw;
-  let df=yaw-this.dYaw;df=Math.atan2(Math.sin(df),Math.cos(df));this.dYaw+=df*.22;   // a little smoothing so bends do not jerk the view
-  const L=(o.userData.g&&o.userData.g.len)||.58,fx=Math.cos(this.dYaw),fz=Math.sin(this.dYaw);
-  const ex=o.position.x+Math.cos(yaw)*L*.02,ez=o.position.z+Math.sin(yaw)*L*.02,ey=o.position.y+(o.userData.isT?.3:.175);
-  cam.fov=64;cam.near=.015;cam.far=500;cam.aspect=cw/ch;cam.clearViewOffset();
-  cam.position.set(ex,ey,ez);cam.lookAt(ex+fx*4,ey-.22,ez+fz*4);
+  const cam=this.cam,yaw=-o.rotation.y,u=o.userData,tr=u.isT,L=(u.g&&u.g.len)||.58;
+  const ly=this.lookYaw||0,lp=this.lookPitch||0,hy=yaw+ly,hp=-.07+lp;
+  o.updateMatrixWorld(true);
+  const eye=tr?new THREE.Vector3(L/2-.17,.3,-.075):new THREE.Vector3(-.018,.186,-.065);   // the driver's seat (the left one: they drive on the right)
+  o.localToWorld(eye);
+  cam.fov=70;cam.near=.012;cam.far=500;cam.aspect=cw/ch;cam.clearViewOffset();
+  cam.position.copy(eye);cam.lookAt(eye.x+Math.cos(hy)*Math.cos(hp)*4,eye.y+Math.sin(hp)*4,eye.z+Math.sin(hy)*Math.cos(hp)*4);
   cam.updateProjectionMatrix();cam.updateMatrixWorld(true);
   const n=this.night||0;this.scene.background=this.hemi.color.clone().multiplyScalar(1-.55*n);   // a sky for the horizon
-  this.tx=ex;this.ty=ez;this.dist=24;return true;
+  this.tx=eye.x;this.ty=eye.z;this.dist=24;return true;
 };
 R3D.driveStart=function(c){
-  this.drive=c;this.dYaw=undefined;
+  this.drive=c;this.dYaw=undefined;this.lookYaw=0;this.lookPitch=0;
   let bar=document.getElementById('drivebar');
-  if(!bar){bar=document.createElement('div');bar.id='drivebar';bar.className='glass';bar.innerHTML='<span>Driver view</span><small>click anywhere or press Esc to leave</small><button type="button">Exit</button>';document.body.appendChild(bar);bar.querySelector('button').onclick=()=>R3D.driveStop();}
+  if(!bar){bar=document.createElement('div');bar.id='drivebar';bar.className='glass';bar.innerHTML='<span>Driver view</span><small>drag to look around · click or press Esc to leave</small><button type="button">Exit</button>';document.body.appendChild(bar);bar.querySelector('button').onclick=()=>R3D.driveStop();}
   bar.style.display='flex';
 };
 R3D.driveStop=function(){
@@ -6089,6 +6146,7 @@ R3D.carObj=function(c){
   if(g.left){o.userData.left=new THREE.Mesh(g.left,this.mat('amber'));o.userData.right=new THREE.Mesh(g.right,this.mat('amber'));o.add(o.userData.left,o.userData.right);o.userData.left.visible=o.userData.right.visible=false;}
   if(g.bar){o.userData.bar=new THREE.Mesh(g.bar,this.mat('amber'));o.add(o.userData.bar);}
   if(g.brake){o.userData.brake=new THREE.Mesh(g.brake,this.mat('red'));o.userData.brake.visible=false;o.add(o.userData.brake);}
+  {const ig=interiorGeo(c.color||0),im=new THREE.Group();im.add(new THREE.Mesh(ig.body,this.mat('lit')),new THREE.Mesh(ig.glow,this.mat('glow')));if(isT){im.scale.setScalar(1.22);im.position.set(L0(g)/2-.17+.04*1.22,.1,0);}im.visible=false;o.add(im);o.userData.int=im;}
   if(g.rev){o.userData.rev=new THREE.Mesh(g.rev,this.mat('glow'));o.userData.rev.visible=false;o.add(o.userData.rev);}
   this.objs.cars.set(c,o);this.carGroup.add(o);return o;
 };
@@ -6104,56 +6162,8 @@ R3D.steer=function(c,o,q){   // the front axle follows the path, the rear axle t
   return {x:(fx+rx)/2,y:(fy+ry)/2,a:Math.atan2(fy-ry,fx-rx)};
 };
 /* ---- no two vehicles are ever drawn inside each other: overlaps are pushed apart, the car behind giving way (and backing up when two meet head-on) ---- */
-function vMtv(A,B){   // the smallest push that separates two rotated rectangles: {pen, n} with n pointing from A to B
-  const ca=Math.cos(A.a),sa=Math.sin(A.a),cb=Math.cos(B.a),sb=Math.sin(B.a),dx=B.x-A.x,dy=B.y-A.y;let pen=1e9,nx=0,ny=0;
-  for(const [ux,uy] of [[ca,sa],[-sa,ca],[cb,sb],[-sb,cb]]){
-    const ra=A.h[0]*Math.abs(ca*ux+sa*uy)+A.h[1]*Math.abs(-sa*ux+ca*uy),rb=B.h[0]*Math.abs(cb*ux+sb*uy)+B.h[1]*Math.abs(-sb*ux+cb*uy);
-    const d=dx*ux+dy*uy,o=ra+rb-Math.abs(d);if(o<=0)return null;
-    if(o<pen){pen=o;const sg=d>=0?1:-1;nx=ux*sg;ny=uy*sg;}
-  }
-  return {pen,nx,ny};
-}
-R3D.separate=function(items0){
-  const cell=1.6,grid=new Map(),items=items0.slice();let fresh=false;
-  for(const it of items0)if(it.u.ox===undefined)fresh=true;   // (a car that has just appeared gets sorted out before it is first drawn)
-  for(const w of this._wk||[])items.push({c:{id:-1,ph:'pstay'},u:{},pq:{x:w.x,y:w.y,a:w.a},z:0,idx:items.length,wreck:true});
-  for(const it of items){const u=it.u;it.x=it.pq.x+(u.ox||0);it.y=it.pq.y+(u.oy||0);it.a=it.pq.a;{const h=vsize(it.c);it.h=[h[0]+.012,h[1]+.012];}   // (a hair of clearance)
-    it.fixed=it.c.ph==='pstay';it.hit=false;it.head=false;
-    it.cx=Math.floor(it.x/cell);it.cy=Math.floor(it.y/cell);const k=it.cx+','+it.cy;let l=grid.get(k);if(!l)grid.set(k,l=[]);l.push(it);}
-  const ahead=(A,B)=>{const dx=B.x-A.x,dy=B.y-A.y,l=Math.hypot(dx,dy)||1;return (dx*Math.cos(A.a)+dy*Math.sin(A.a))/l>.3;};   // is B in front of A?
-  for(let iter=0;iter<(fresh?40:9);iter++){
-    for(const A of items){
-      for(let gx=-1;gx<=1;gx++)for(let gy=-1;gy<=1;gy++){const l=grid.get((A.cx+gx)+','+(A.cy+gy));if(!l)continue;
-        for(const B of l){
-          if(B.idx<=A.idx||(A.fixed&&B.fixed))continue;
-          if(Math.abs(A.x-B.x)>1.2||Math.abs(A.y-B.y)>1.2)continue;
-          const m=vMtv(A,B);if(!m||m.pen<.004)continue;
-          A.hit=B.hit=true;
-          let wA,wB;
-          if(A.fixed){wA=0;wB=1;}else if(B.fixed){wA=1;wB=0;}
-          else{const a=ahead(A,B),b=ahead(B,A);
-            if(a&&!b){wA=1;wB=0;}else if(b&&!a){wA=0;wB=1;}   // the car behind gives way
-            else if(a&&b){wA=wB=.5;A.head=B.head=true;}      // head-on: both back off
-            else if((A.c.id||0)>(B.c.id||0)){wA=.8;wB=.2;}else{wA=.2;wB=.8;}}
-          let nx=m.nx,ny=m.ny;
-          if(m.pen>.3){nx=Math.cos(A.a);ny=Math.sin(A.a);if(wA===0||!ahead(A,B)){nx=-nx;ny=-ny;}}   // (stacked on one spot: spread along the lane)
-          const k=Math.min(m.pen,.15)+.004;
-          A.x-=nx*k*wA;A.y-=ny*k*wA;B.x+=nx*k*wB;B.y+=ny*k*wB;
-          A.u.ox=(A.u.ox||0)-nx*k*wA;A.u.oy=(A.u.oy||0)-ny*k*wA;B.u.ox=(B.u.ox||0)+nx*k*wB;B.u.oy=(B.u.oy||0)+ny*k*wB;
-        }}
-    }
-  }
-  for(const it of items0){
-    const u=it.u;let ox=u.ox||0,oy=u.oy||0;
-    if(!it.hit){ox*=.9;oy*=.9;}
-    const ml=Math.hypot(ox,oy);if(ml>.95){ox*=.95/ml;oy*=.95/ml;}
-    const along=ox*Math.cos(it.a)+oy*Math.sin(it.a);   // backing up: pushed back against the way the car faces
-    if(u.pAlong!==undefined&&along-u.pAlong<-.0035&&it.head)u.rvT=.5;   // (only when two cars meet head-on: the one backing off shows its reversing lamps)
-    u.pAlong=along;u.rvT=Math.max(0,(u.rvT||0)-.016);u.rv=u.rvT>0&&it.c.ph!=='pstay';
-    u.ox=ox;u.oy=oy;
-    it.o.position.set(it.pq.x+ox,it.z,it.pq.y+oy);
-    if(u.rev)u.rev.visible=u.rv&&this.drive!==it.c;
-  }
+R3D.separate=function(items){   // cars are drawn exactly where the game puts them; the reversing lamps follow the game's own reversing
+  for(const it of items){const u=it.u;it.o.position.set(it.pq.x,it.z,it.pq.y);u.rv=!!it.c.rev&&it.c.ph!=='pstay';if(u.rev)u.rev.visible=u.rv&&this.drive!==it.c;}
 };
 R3D.syncCars=function(){
   const seen=new Set(),T=performance.now(),flash=Math.floor(T/380)%2===0,items=[];
@@ -6178,7 +6188,7 @@ R3D.syncCars=function(){
   this.separate(items);
   for(const [c,o] of this.objs.cars){
     const me=this.drive===c,u=o.userData;   // the car being driven is not drawn (you are inside it)
-    if(u.body)u.body.visible=!me;if(u.lm)u.lm.visible=!me;
+    if(u.body)u.body.visible=!me;if(u.lm)u.lm.visible=!me;if(u.int)u.int.visible=me;
     if(me){for(const k of ['left','right','bar','brake','rev'])if(u[k])u[k].visible=false;}
   }
   for(const [c,o] of this.objs.cars)if(!seen.has(c)){this.carGroup.remove(o);this.objs.cars.delete(c);}
@@ -6623,6 +6633,79 @@ R3D.walls=function(g,pts,w,h,t,color,top){   // a wall along each edge of a deck
     }
   }
 };
+const WATER_Y=-.13;
+R3D.waterKey=function(){let h=0;for(let i=0;i<W*H;i++)if(cells[i].water)h=(h*31+i)|0;return h;};
+R3D.buildWater=function(){   // rivers and lakes as real water: sunken surface, banks, flow direction and shore distance per vertex
+  const gr=this.waterGroup;while(gr.children.length)gr.remove(gr.children[0]);
+  const inR=(x,y)=>x>=RX0&&y>=RY0&&x<RX1&&y<RY1,isW0=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&cells[cellIdx(x,y)].water;
+  const isW=(x,y)=>inR(x,y)?isW0(x,y):(x>=0&&y>=0&&x<W&&y<H);   // (beyond the edge of the open land counts as more water: no shore there)
+  let any=false;for(let i=0;i<W*H;i++)if(cells[i].water&&inR(i%W,(i/W)|0)){any=true;break;}
+  if(!any)return;
+  // which body of water is each cell in, and which way does it run? (a long thin one is a river and flows along its length)
+  const comp=new Int32Array(W*H).fill(-1),flow=new Float32Array(W*H*2);let nc=0;
+  for(let i=0;i<W*H;i++){
+    if(!cells[i].water||comp[i]>=0||!inR(i%W,(i/W)|0))continue;
+    const q=[i];comp[i]=nc;let sx=0,sy=0,sxx=0,syy=0,sxy=0,n=0;
+    for(let h=0;h<q.length;h++){const j=q[h],x=j%W,y=(j/W)|0;sx+=x;sy+=y;sxx+=x*x;syy+=y*y;sxy+=x*y;n++;
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])if(isW0(x+dx,y+dy)&&inR(x+dx,y+dy)){const k=cellIdx(x+dx,y+dy);if(comp[k]<0){comp[k]=nc;q.push(k);}}}
+    const mx=sx/n,my=sy/n,cxx=sxx/n-mx*mx,cyy=syy/n-my*my,cxy=sxy/n-mx*my;
+    const tr=cxx+cyy,det=cxx*cyy-cxy*cxy,disc=Math.sqrt(Math.max(0,tr*tr/4-det)),l1=tr/2+disc,l2=Math.max(1e-6,tr/2-disc);
+    let fx=0,fy=0;
+    if(n>=10&&Math.sqrt(l1/l2)>2.2){let vx=cxy,vy=l1-cxx;if(Math.abs(vx)+Math.abs(vy)<1e-6){vx=l1>cxx?0:1;vy=l1>cxx?1:0;}const vl=Math.hypot(vx,vy);vx/=vl;vy/=vl;if(vy<-.1||(Math.abs(vy)<=.1&&vx<0)){vx=-vx;vy=-vy;}fx=vx;fy=vy;}
+    for(const j of q){flow[j*2]=fx;flow[j*2+1]=fy;}
+    nc++;
+  }
+  // distance from the shore at every corner of a cell
+  const VW=W+1,VH=H+1,dist=new Float32Array(VW*VH).fill(99),vq=[];
+  for(let vy=0;vy<VH;vy++)for(let vx=0;vx<VW;vx++){if(!(isW(vx-1,vy-1)&&isW(vx,vy-1)&&isW(vx-1,vy)&&isW(vx,vy))){dist[vy*VW+vx]=0;vq.push(vy*VW+vx);}}
+  for(let h=0;h<vq.length;h++){const v=vq[h],vx=v%VW,vy=(v/VW)|0;for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){const a=vx+dx,b=vy+dy;if(a<0||b<0||a>=VW||b>=VH)continue;const k=b*VW+a,nd=dist[v]+(dx&&dy?1.414:1);if(nd<dist[k]){dist[k]=nd;vq.push(k);}}}
+  const pos=[],fl=[],dp=[],idx=[],walls=new GB(),soil=C3('#5b4a3a'),soil2=C3('#7a6850'),lip=C3('#8a7a5e');
+  const top=0,bot=WATER_Y-.05;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    if(!cells[cellIdx(x,y)].water||!inR(x,y))continue;
+    const i=cellIdx(x,y),b=pos.length/3,fx=flow[i*2],fy=flow[i*2+1];
+    for(const [cx,cy] of [[x,y],[x+1,y],[x+1,y+1],[x,y+1]]){pos.push(cx,WATER_Y,cy);fl.push(fx,fy);dp.push(Math.min(1,dist[cy*VW+cx]/2.4));}
+    idx.push(b,b+2,b+1,b,b+3,b+2);
+    // the banks: a wall down from the grass to the water on every side that meets land
+    for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){
+      if(isW(x+dx,y+dy)||!inR(x+dx,y+dy))continue;
+      const ax=dx===0?x:(dx>0?x+1:x),az=dy===0?y:(dy>0?y+1:y),ex=dx===0?x+1:ax,ez=dy===0?y+1:az,hint=[-dx,0,-dy];
+      walls.quad([ax,top,az],[ex,top,ez],[ex,bot,ez],[ax,bot,az],soil2,hint);
+      walls.quad([ax,top-.0,az],[ex,top,ez],[ex+dx*.012,top,ez+dy*.012],[ax+dx*.012,top,az+dy*.012],lip,[0,1,0]);   // the lip of the bank
+    }
+  }
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('aFlow',new THREE.Float32BufferAttribute(fl,2));geo.setAttribute('aDepth',new THREE.Float32BufferAttribute(dp,1));geo.setIndex(idx);
+  if(!this.waterMat)this.waterMat=new THREE.ShaderMaterial({
+    uniforms:{uTime:{value:0},uLight:{value:new THREE.Color(1,1,1)},uShallow:{value:new THREE.Color(.27,.62,.72)},uDeep:{value:new THREE.Color(.08,.27,.46)},uGlint:{value:.4},uNight:{value:0}},
+    vertexShader:`attribute vec2 aFlow;attribute float aDepth;varying vec2 vW;varying vec2 vF;varying float vD;
+      void main(){vW=position.xz;vF=aFlow;vD=aDepth;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader:`uniform float uTime;uniform vec3 uLight,uShallow,uDeep;uniform float uGlint,uNight;varying vec2 vW;varying vec2 vF;varying float vD;
+      float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      float nz(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
+      void main(){
+        float run=length(vF)>.01?1.:0.;
+        vec2 q=vW-vF*uTime*.55;                       // the whole surface slides downstream
+        vec2 st=vec2(dot(q,vec2(vF.y,-vF.x)),dot(q,vF)); // across and along the flow
+        float n1=nz(vec2(st.x*2.6,st.y*.9+uTime*.1))*.55+nz(vec2(st.x*5.2+3.,st.y*1.8-uTime*.15))*.3+nz(vW*3.+uTime*.2)*.15*(1.-run);
+        float streak=run*smoothstep(.55,.9,nz(vec2(st.x*7.,st.y*.5)));
+        vec3 c=mix(uShallow,uDeep,smoothstep(0.,1.,vD));
+        c+=(n1-.5)*.16+streak*.12;
+        float g=smoothstep(.84,.96,nz(vec2(st.x*9.+uTime*.2,st.y*9.-uTime*.8)))*uGlint;c+=vec3(g)*.35;        // sparkles
+        float foam=(1.-smoothstep(0.,.2,vD))*(.3+.7*nz(vW*3.-vF*uTime*1.1+uTime*.25));c=mix(c,vec3(.82,.92,.94),clamp(foam*.5,0.,1.));
+        gl_FragColor=vec4(c*uLight,1.);}`,
+    transparent:false});
+  try{this.waterMat.uniforms.uShallow.value.set(TH.water).multiplyScalar(1.12);this.waterMat.uniforms.uDeep.value.set(TH.deep).multiplyScalar(.9);}catch(e){}
+  const wm=new THREE.Mesh(geo,this.waterMat);wm.renderOrder=0;gr.add(wm);
+  if(!this.bankMat)this.bankMat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
+  const bm=new THREE.Mesh(walls.finish(),this.bankMat);bm.receiveShadow=true;gr.add(bm);
+};
+R3D.syncWater=function(){
+  const m=this.waterMat;if(!m)return;
+  m.uniforms.uTime.value=performance.now()/1000;
+  const n=this.night||0,L=new THREE.Color().copy(this.hemi.color).multiplyScalar(this.hemi.intensity*.9).add(new THREE.Color().copy(this.sun.color).multiplyScalar(this.sun.intensity*.7));
+  L.r=Math.min(1.15,L.r+.12);L.g=Math.min(1.15,L.g+.12);L.b=Math.min(1.15,L.b+.14);m.uniforms.uLight.value.copy(L);
+  m.uniforms.uGlint.value=.25+.6*Math.max(0,this.sunEl||0)+.5*n;
+};
 const ROAD_Y=.034;   // the top of the asphalt: cars drive at this height
 R3D.buildRoads=function(){   // every ground road and driveway as real geometry: sidewalk, kerb, edge band, asphalt, lane marks
   const gr=this.roadGroup;while(gr.children.length)gr.remove(gr.children[0]);
@@ -6686,7 +6769,7 @@ R3D.buildElevated=function(){
     // pillars
     const z=elevZ(i);
     if(z>.09&&!cells[i].e&&!cells[i].bld){   // (never on a road underneath, or on a building)
-      const p=ctr(i);g.cyl(k===1?.075:.05,k===1?.1:.07,z-.08,10,p[0],(z-.08)/2,p[1],C3(k===1?'#7e7b74':'#5e5546'));}
+      const p=ctr(i);{const wd=cells[i].water?.14:0;g.cyl(k===1?.075:.05,k===1?.1:.07,z-.08+wd,10,p[0],(z-.08)/2-wd/2,p[1],C3(k===1?'#7e7b74':'#5e5546'));}}
   }
   if(!any)return;
   const m=new THREE.Mesh(g.finish(),this.mat('lit'));m.castShadow=m.receiveShadow=true;gr.add(m);
@@ -6703,7 +6786,7 @@ R3D.initGroups=function(){
   if(this.groups)return;
   this.groups=true;
   const sc=this.scene;
-  for(const n of ['roadGroup','bldGroup','natGroup','lampGroup','signGroup','carGroup','elevGroup','sceneGroup','wxGroup']){this[n]=new THREE.Group();sc.add(this[n]);}
+  for(const n of ['waterGroup','roadGroup','bldGroup','natGroup','lampGroup','signGroup','carGroup','elevGroup','sceneGroup','wxGroup']){this[n]=new THREE.Group();sc.add(this[n]);}
   this.objs={cars:new Map(),bld:new Map(),scenes:new Map()};
   this.mats.conem=new THREE.MeshLambertMaterial({vertexColors:true});
   this.beamTex=new THREE.CanvasTexture(beam());
@@ -6783,9 +6866,9 @@ R3D.syncWeather=function(w){
 };
 R3D.sync=function(w){
   this.initGroups();
-  const key=[gfxVer,blds.length,depts.length,hwLook()?1:0,Settings.v.noHw?1:0,TH.snow?1:0,TH.fill[0],trees.length,props.length,RX0,RX1,RY0,RY1].join(':');
-  if(key!==this.sceneKey){this.sceneKey=key;this.buildBuildings();this.buildNature();this.buildRoads();this.buildLamps();this.buildSigns();this.buildElevated();}
-  this.syncBuildings();this.syncLamps();this.syncSigns();this.syncCars();this.syncSpots(this.lampOn||0,this.night||0);this.syncCargo();this.syncBeams();this.syncScenes();this.syncWeather(w);
+  const key=[gfxVer,blds.length,depts.length,hwLook()?1:0,Settings.v.noHw?1:0,TH.snow?1:0,TH.fill[0],R3D.waterKey(),trees.length,props.length,RX0,RX1,RY0,RY1].join(':');
+  if(key!==this.sceneKey){this.sceneKey=key;this.buildBuildings();this.buildNature();this.buildWater();this.buildRoads();this.buildLamps();this.buildSigns();this.buildElevated();}
+  this.syncBuildings();this.syncLamps();this.syncWater();this.syncSigns();this.syncCars();this.syncSpots(this.lampOn||0,this.night||0);this.syncCargo();this.syncBeams();this.syncScenes();this.syncWeather(w);
 };
 
 /* ---- the flat overlays (tool previews, layer views, ghost roads) are painted into a transparent texture on the ground ---- */

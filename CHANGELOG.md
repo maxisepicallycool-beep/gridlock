@@ -1,5 +1,11 @@
 # Gridlock changelog
 
+## 1.33.0 — Rivers that run, an inside view of the car, and cars that behave
+- Rivers and lakes are real 3D water: sunken below the ground with banks, a flowing animated surface (long rivers run along their length, lakes stay still), sparkles, foam at the shore and lighting that follows the time of day. Bridge pillars reach down into the water
+- Driver's view is now from inside the car: the dashboard, steering wheel, pillars, roof, bonnet, mirrors and seats. Drag to look around; click without dragging, press Esc or use Exit to leave
+- Cars no longer get pushed sideways to avoid each other (that looked impossible). Instead they queue properly: they keep a gap to the car ahead, brake early enough to stop, wait a little before the junction, and get up to speed gradually instead of instantly. Fire and crew trucks accelerate gradually too
+- Car parks: a car only starts to park or leave when its path is clear of cars already moving in the lot, so cars no longer drive through each other at the gate. A car backing out of its bay shows white reversing lamps
+
 ## 1.32.0 — Real 3D roads, no more cars through each other
 - Every ground road and driveway is now real 3D geometry in the 3D view: a raised kerb and sidewalk, an edge band, the asphalt, lane dashes, one-way arrows and junction surfaces. Cars, signs, wet roads, snow and the lamp glows sit on top of it
 - Bridges and highways now meet the road at its surface and climb in one smooth ramp (bridges had a step: a low land height and a higher water height)
