@@ -1,5 +1,14 @@
 # Gridlock changelog
 
+## 1.33.4 — Traffic rules: stops, gaps and junctions
+- Cars stop further back from the junction at stop signs and red lights, so a waiting car no longer pokes into the junction or into the cars crossing it
+- Cars at a stop or a give-way sign now wait for a safe gap in the traffic (a car arriving within about two and a half seconds), instead of waiting for every car that is on the road
+- Cars no longer drive into a junction unless the road beyond has room for them, so they don't block the junction
+- Cars that came into a cell by the same side now queue behind each other whichever way they turn, so cars turning left and going straight no longer sit on top of each other
+- New cars only leave a house or a car park when the lane outside is clear, and they start in their own lane
+- Fixed cars jumping into each other after waiting a few seconds: they used to be re-routed and snapped to the middle of the junction; now a re-route keeps the car where it is
+- A car never moves so that it would touch the car ahead in its lane, even round a bend
+
 ## 1.33.3 — Full stops, visible signs
 - Cars now brake smoothly right down to a full stop at a stop sign or a red light, and wait there, instead of creeping through at a crawl
 - Signs now show up as soon as you place them (the 3D view only drew them after some other change), they are bigger on a taller pole, and each has a white stop line across its lane

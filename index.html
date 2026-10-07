@@ -373,7 +373,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.33.3';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.33.4';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1126,8 +1126,10 @@ function dispatch(h){
   if(!blds.some(b=>acc(b,h.color)))return false;
   const p=routeOut(h.an*2,h.color,h);
   if(!p||p.length<2)return false;
+  if(!spawnClear(p,0))return false;   // wait for the driveway to clear
   h.want=null;
   cars.push({id:++carId,color:h.color,home:h,leg:0,path:p,i:0,u:0,ph:'drive',dwell:0,res:false,resDin:-1,din:-1,stopWait:-1,stopped:-1,blocked:0,wait:0,rrDone:false,qn:-1,force:false,by:null,dest:destOf(p),dead:false,t0:time,eta:etaOf(p)});
+  trkAdd(cars[cars.length-1]);
   h.lastEta=etaOf(p);
   h.out++;h.demand--;if(D.fleet)h.gar--;h.lastProg=time;return true;
 }
@@ -1136,7 +1138,10 @@ function reroute(c){
   leaveQueue(c);
   const n=c.path[c.i];
   const p=c.leg===0?(needAll()&&c.dest&&blds.includes(c.dest)?(routeTo(n,c.dest.an*2)||routeAny(n,c.color)):routeOut(n,c.color,c.home)):routeTo(n,c.home.an*2,true);
-  if(p&&p.length>=1){c.path=p;c.i=0;c.stopped=-1;c.stopWait=-1;c.lost=0;if(c.leg===0){c.dest=destOf(p);if(c.t0!==undefined)c.eta=(time-c.t0)+etaOf(p);}return true;}
+  if(p&&p.length>=1){
+    if(c.i>0&&p[0]===n&&c.path[c.i-1]!==undefined){c.path=[c.path[c.i-1]].concat(p);c.i=1;}   // (the car keeps the side it came in by, so it does not jump)
+    else{c.path=p;c.i=0;}
+    c.stopped=-1;c.stopWait=-1;c.lost=0;if(c.leg===0){c.dest=destOf(p);if(c.t0!==undefined)c.eta=(time-c.t0)+etaOf(p);}return true;}
   c.blocked=-1.5;return false;
 }
 // --- junction logic: a car enters a node only if its path through it doesn't cross anyone already inside ---
@@ -1396,10 +1401,17 @@ function drawScenes(){
 function tryEnter(c,nx,d){
   c.by=null;c.redHold=false;
   if(isBld(nx))return 1;
+  {   // never drive into a junction that the road beyond has no room to receive (that would block everyone else)
+    const af=c.path[c.i+2];
+    if(af!==undefined&&!isBld(af)&&!isBld(nx)&&signSides(cells[nx>>1]).length>=3){
+      const k2=laneKey(af,dirOf(nx,af),c.path[c.i+3]!==undefined?dirOf(af,c.path[c.i+3]):-1);
+      for(const o of TRK.get(k2)||[]){if(o===c||o.dead)continue;if(o.u*(stepInfo(o).L||1)<.7&&!(c.wait>8)){c.by=o;return 0;}}
+    }
+  }
   if(crashUntil[nx]>time)return 0;   // wreck still blocking the junction
   const after=c.path[c.i+2],sc=sgAt(nx,d),sg=sc===1,yl=sc===2,lg=lightGate(nx,d,after),fromBld=isBld(c.path[c.i]),toBld=after!==undefined&&isBld(after),ctl=!!sc||fromBld||toBld;   // a car pulling out of a driveway or lot, or turning into one, always gives way (those cannot be signed)
   if(lg&&lg.st!==2){c.redHold=true;return 0;}   // red or amber: wait at the line (never forced through, and it does not feed the deadlock timer)
-  const give=yl||fromBld||toBld||(lg&&lg.perm),force=c.force||c.wait>(sg?12:5);
+  const give=yl||fromBld||toBld||(lg&&lg.perm),force=c.force||c.wait>(sg?TUNE.sgForce:TUNE.yForce);
   const mine=chord(nx,d,after!==undefined?dirOf(nx,after):-1);
   const crosses=(din,dout)=>chordDist(mine,chord(nx,din,dout))<TUNE.chord;
   let q=null;
@@ -1423,6 +1435,8 @@ function tryEnter(c,nx,d){
       // 2) stop / yield / a permissive turn: give way to traffic that is about to arrive and has the right of way
       for(const o of cars){
         if(o===c||o.dead||o.truck||o.ph!=='drive'||o.res||o.path[o.i+1]!==nx||o.u<.3)continue;
+        const so=stepInfo(o),eta=((1-o.u)*so.L)/(SPEED*Math.max(.25,o.sv||.3));
+        if(eta>2.4)continue;   // it is far enough away for me to go first: wait for a gap, not for every car
         const d2=dirOf(o.path[o.i],nx),c2=sgAt(nx,d2),a2=o.path[o.i+2];
         if(c2===1||c2===2)continue;   // they have to give way too
         const l2=lightGate(nx,d2,a2);if(l2&&l2.st!==2)continue;   // their light is red: they are not coming
@@ -1862,14 +1876,15 @@ function updatePark(c,dt){
     c.rev=pk.d<pk.rev;   // backing out of the bay
     pk.v+=(cap-pk.v)*Math.min(1,dt*(pk.d<pk.rev?1.6:1.4));pk.v=Math.max(pk.v,.15);pk.d+=pk.v*dt;
     if(pk.d>=pk.len){
+      if(!spawnClear(c.ret,.9)){pk.d=pk.len;pk.v=0;return;}   // wait at the gate until the lane outside is clear
       if(c.spot){c.spot.car=null;c.spot=null;}
-      c.sv=Math.min(1.2,pk.v/SPEED);c.leg=1;c.dest=null;c.path=c.ret;c.i=0;c.u=.9;c.ph='drive';c.din=-1;c.res=false;c.stopped=-1;c.wait=0;c.pk=null;
+      c.sv=Math.min(1.2,pk.v/SPEED);c.leg=1;c.dest=null;c.path=c.ret;c.i=0;c.u=.9;c.ph='drive';c.din=-1;c.res=false;c.stopped=-1;c.wait=0;c.pk=null;trkAdd(c);
     }
   }
 }
 function parkPose(c){const pk=c.pk,r=pk.heads?polyAtH(pk.pts,pk.heads,pk.d):polyAt(pk.pts,pk.d,pk.ang0);return {x:r[0],y:r[1],a:r[2],br:0,h:0};}
-const STOPU=.82;   // where in its cell a car waits for a junction
-var TUNE={up:.5,dn:2.2,brk:1.6,chord:.26};   // how quickly cars speed up and brake (fractions of full speed per second)
+const STOPU=.66;   // where in its cell a car waits for a junction
+var TUNE={up:.5,dn:2.2,brk:1.6,chord:.26,sgForce:12,yForce:5};   // how quickly cars speed up and brake (fractions of full speed per second)
 /* ---------- lanes: cars line up behind the car ahead instead of stacking on one spot ---------- */
 const vpose=c=>{try{return (isPark(c.ph)||c.ph==='gout'||c.ph==='gin')?parkPose(c):pose(c);}catch(e){return null;}};
 const vsize=c=>c.big?[.49,.15]:c.truck?[.44,.15]:[.29,.135];   // half length, half width of the body
@@ -1882,14 +1897,28 @@ function vPen(ax,ay,aa,ah,bx,by,ba,bh){   // how far two rotated rectangles over
   return pen;
 }
 let TRK=new Map();   // vehicles grouped by the lane they are in (the same cell, coming from and going to the same sides)
-const trackKey=c=>{const p=c.path,i=c.i;return p[i]+':'+(i>0?dirOf(p[i-1],p[i]):-1)+':'+(i<p.length-1?dirOf(p[i],p[i+1]):-1);};
+const laneKey=(n,din,dout)=>din>=0?n+':'+din:n+':-1:'+dout;   // cars that came in by the same side of a cell share its lane, whichever way they leave
+const trackKey=c=>{const p=c.path,i=c.i;return laneKey(p[i],i>0?dirOf(p[i-1],p[i]):-1,i<p.length-1?dirOf(p[i],p[i+1]):-1);};
+function trkAdd(c){c.tk=trackKey(c);let l=TRK.get(c.tk);if(!l)TRK.set(c.tk,l=[]);l.push(c);}
 function trkBuild(){TRK=new Map();for(const c of cars){if(c.dead||c.ph!=='drive'||!c.path||(c.truck&&!c.big))continue;const k=c.tk=trackKey(c);let l=TRK.get(k);if(!l)TRK.set(k,l=[]);l.push(c);}}
+function laneLeaders(c){   // the cars ahead of this one in its lane and in the lane it is about to enter
+  const out=[],p=c.path,i=c.i;
+  for(const o of TRK.get(c.tk)||[]){if(o===c||o.dead||(o.pulled&&(o.pv||0)>.5))continue;if(o.u>c.u+1e-6||(Math.abs(o.u-c.u)<=1e-6&&o.id<c.id))out.push(o);}
+  if(i+1<p.length){const k2=laneKey(p[i+1],dirOf(p[i],p[i+1]),i+2<p.length?dirOf(p[i+1],p[i+2]):-1);for(const o of TRK.get(k2)||[])if(!o.dead&&!(o.pulled&&(o.pv||0)>.5))out.push(o);}
+  return out;
+}
 function uLimit(c,L){   // the furthest this car may roll along its lane without touching the one ahead
   let lim=1e9;const need=.66/L,p=c.path,i=c.i;
   const away=o=>o.dead||(o.pulled&&(o.pv||0)>.5);
   for(const o of TRK.get(c.tk)||[]){if(o===c||away(o))continue;if(o.u>c.u+1e-6||(Math.abs(o.u-c.u)<=1e-6&&o.id<c.id))lim=Math.min(lim,o.u-need);}
-  if(i+1<p.length){const k2=p[i+1]+':'+dirOf(p[i],p[i+1])+':'+(i+2<p.length?dirOf(p[i+1],p[i+2]):-1);for(const o of TRK.get(k2)||[]){if(away(o))continue;lim=Math.min(lim,1+o.u-need);}}
+  if(i+1<p.length){const k2=laneKey(p[i+1],dirOf(p[i],p[i+1]),i+2<p.length?dirOf(p[i+1],p[i+2]):-1);for(const o of TRK.get(k2)||[]){if(away(o))continue;lim=Math.min(lim,1+o.u-need);}}
   return lim;
+}
+function spawnClear(p,u){   // is there room in the lane at the start of this route for a new car at progress u?
+  if(!p||p.length<2)return true;
+  const dout=dirOf(p[0],p[1]);let L=.5*LEN[dout];if(L<.3)L=.5;
+  for(const o of TRK.get(laneKey(p[0],-1,dout))||[])if(!o.dead&&Math.abs(o.u-u)*L<.7)return false;
+  return true;
 }
 function updateCar(c,dt){
   if(c.dead)return;
@@ -1903,7 +1932,8 @@ function updateCar(c,dt){
     if(c.dwell<=0){
       if(c.wantSpot){const wb=c.wantSpot;c.wantSpot=null;c.ph='drive';startParking(c,wb);return;}
       const p=routeTo(n,c.home.an*2,true);   // heading home may use ghost roads
-      if(p){c.leg=1;c.dest=null;c.path=p;c.i=0;c.u=0;c.ph='drive';c.din=-1;c.res=false;c.stopped=-1;c.wait=0;}
+      if(p&&!spawnClear(p,0)){c.dwell=.2;return;}   // wait for the lane to clear
+      if(p){c.leg=1;c.dest=null;c.path=p;c.i=0;c.u=0;c.ph='drive';trkAdd(c);c.din=-1;c.res=false;c.stopped=-1;c.wait=0;}
       else{c.dwell=.7;c.lost=(c.lost||0)+1;if(c.lost>12)killCar(c);}
     }
     return;
@@ -1952,6 +1982,13 @@ function updateCar(c,dt){
   }
   const u0=c.u;c.u+=dt*sp;
   if(c.u>lim){c.u=Math.max(u0,lim);c.sv=Math.min(c.sv,.15);}
+  if(c.u>u0){   // and never so that the bodies touch (round a bend the gap along the lane is longer than the gap between the cars)
+    const nu=c.u,h1=vsize(c),q1=pose(c);c.u=u0;const q0=pose(c);c.u=nu;
+    for(const o of laneLeaders(c)){const qo=pose(o);
+      if(Math.abs(qo.x-q1.x)>=1||Math.abs(qo.y-q1.y)>=1)continue;
+      const p1=vPen(q1.x,q1.y,q1.a,h1,qo.x,qo.y,qo.a,vsize(o));
+      if(p1>.008&&p1>vPen(q0.x,q0.y,q0.a,h1,qo.x,qo.y,qo.a,vsize(o))+1e-4){c.u=u0;c.sv=Math.min(c.sv,.1);break;}}   // (a move that does not make an existing overlap worse is allowed, so cars can separate)
+  }
   if(c.u<STOPU)c.by=null;
   const nx=c.path[c.i+1];
   if(!c.res&&c.u>=STOPU){
@@ -1978,8 +2015,9 @@ function pose(c){
   const lane=.155+(s.br?.015:0)+(c.pv||0)*.3;   // (on a deck the lane sits a touch further out, clear of the walls)
   const pv=d=>[-UNIT[d][1],UNIT[d][0]];
   let E,X,C;
-  if(s.din<0)E=P;else{const pp=ctr(c.path[c.i-1]>>1),q=pv(s.din);E=[(pp[0]+P[0])/2+q[0]*lane,(pp[1]+P[1])/2+q[1]*lane];}
-  if(s.dout<0)X=P;else{const np=ctr(c.path[c.i+1]>>1),q=pv(s.dout);X=[(P[0]+np[0])/2+q[0]*lane,(P[1]+np[1])/2+q[1]*lane];}
+  if(s.din<0){if(s.dout>=0){const q=pv(s.dout);E=[P[0]+q[0]*lane,P[1]+q[1]*lane];}else E=P;}   // (a car setting off starts in its own lane, not in the middle of the road)
+  else{const pp=ctr(c.path[c.i-1]>>1),q=pv(s.din);E=[(pp[0]+P[0])/2+q[0]*lane,(pp[1]+P[1])/2+q[1]*lane];}
+  if(s.dout<0){if(s.din>=0){const q=pv(s.din);X=[P[0]+q[0]*lane,P[1]+q[1]*lane];}else X=P;}else{const np=ctr(c.path[c.i+1]>>1),q=pv(s.dout);X=[(P[0]+np[0])/2+q[0]*lane,(P[1]+np[1])/2+q[1]*lane];}
   if(s.din<0||s.dout<0)C=[(E[0]+X[0])/2,(E[1]+X[1])/2];
   else{
     const a=pv(s.din),b=pv(s.dout),sx=a[0]+b[0],sy=a[1]+b[1],sl=Math.hypot(sx,sy);
