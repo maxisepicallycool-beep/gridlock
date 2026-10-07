@@ -1,5 +1,10 @@
 # Gridlock changelog
 
+## 1.33.3 — Full stops, visible signs
+- Cars now brake smoothly right down to a full stop at a stop sign or a red light, and wait there, instead of creeping through at a crawl
+- Signs now show up as soon as you place them (the 3D view only drew them after some other change), they are bigger on a taller pole, and each has a white stop line across its lane
+- Clicking a car to see its driver's view only works with the road and one-way road tools, not with highways, bridges or the traffic features (stop signs, lights, coordinators)
+
 ## 1.33.2 — Highway rules and road fixes
 - Fixed ground roads next to a highway reaching up towards it: junctions and road ends now stay flat on the ground
 - Highways can no longer cut roads off: a highway has to be 3 cells along from its end before it can cross a road, and roads can't be built under the low part of a highway ramp

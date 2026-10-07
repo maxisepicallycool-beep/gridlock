@@ -373,7 +373,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.33.2';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.33.3';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -667,7 +667,8 @@ const yieldAt=(nx,d)=>sgAt(nx,d)===2;
 const headsOf=v=>{v=sgCode(v);return v>=16?((v&7)?1:0):v?1:0;};   // one traffic coordinator is one piece, however many light types it carries
 const mvOf=(din,dout)=>{if(dout<0)return 'S';const k=(dout-din)&7;return k===0?'S':(k>=1&&k<=3)?'R':'L';};   // 1-3 clockwise on the map = a right turn (the map is drawn y-down)
 function signPos(idx,s){const C=ctr(idx),u=UNIT[s],din=opp(s),pv=[-UNIT[din][1],UNIT[din][0]];return {x:C[0]+u[0]*.36+pv[0]*.3,y:C[1]+u[1]*.36+pv[1]*.3,C,u,pv};}
-function setSign(ci,s,on){GC.dirty=true;const c=cells[ci];if(!c.sg)c.sg=new Array(8).fill(false);c.sg[s]=on===true?1:(on||0);if(!c.sg.some(Boolean))c.sg=null;tlSync(ci);}
+let signVer=0;
+function setSign(ci,s,on){signVer++;GC.dirty=true;const c=cells[ci];if(!c.sg)c.sg=new Array(8).fill(false);c.sg[s]=on===true?1:(on||0);if(!c.sg.some(Boolean))c.sg=null;tlSync(ci);}
 
 /* ---------- traffic lights: each intersection has its own signal plan (phases with green times, an all-red gap and a start offset) ---------- */
 const TL_AMBER=1.5;
@@ -1921,7 +1922,9 @@ function updateCar(c,dt){
   const s=stepInfo(c);
   let tgt=s.spd*s.tf;   // speed follows the limit and the bend, but eases between them instead of jumping
   if(!s.last&&c.i+2<c.path.length&&c.u>.35){const nn=c.path[c.i+1],d2=dirOf(nn,c.path[c.i+2]),k=(d2-s.dout)&7,t2=k>4?8-k:k;tgt=Math.min(tgt,espd[nn*8+d2]*[1,.85,.55,.4,.3][t2]);}   // brake early for what is coming
-  const lim=uLimit(c,s.L),gapC=Math.max(0,(lim-c.u)*s.L);   // how far it can roll before touching the car ahead in its lane
+  let lim=uLimit(c,s.L);
+  if(!s.last&&c.stopped!==c.path[c.i+1]){const nn=c.path[c.i+1],lg0=lightGate(nn,s.dout,c.path[c.i+2]);if(stopAt(nn,s.dout)||(lg0&&lg0.st!==2))lim=Math.min(lim,STOPU);}   // a stop sign or a red light is a wall at the line: brake smoothly right down to a stop
+  const gapC=Math.max(0,(lim-c.u)*s.L);   // how far it can roll before touching the car ahead in its lane (or the stop line)
   tgt=Math.min(tgt,.92*Math.sqrt(2*TUNE.brk*gapC/SPEED));          // slow down early enough to stop in time (about 1.6 of full speed per second of braking)
   if(c.sv===undefined)c.sv=Math.min(tgt,.12);                 // a new car sets off from rest
   c.sv+=Math.max(-dt*TUNE.dn,Math.min(dt*TUNE.up,tgt-c.sv));           // it takes a couple of seconds to get up to speed; braking is firmer
@@ -1944,8 +1947,7 @@ function updateCar(c,dt){
   }
   if(!s.last){
     const nn=c.path[c.i+1],lg=lightGate(nn,s.dout,c.path[c.i+2]);
-    if(c.u>.45&&c.stopped!==nn&&(stopAt(nn,s.dout)||(lg&&lg.st!==2)))sp*=Math.max(.25,1-(c.u-.45)*1.7);   // brake for a stop sign or a red light
-    else if(c.u>.6&&yieldAt(nn,s.dout))sp*=.65;   // ease off at a yield sign
+    if(c.u>.6&&!(c.stopped!==nn&&(stopAt(nn,s.dout)||(lg&&lg.st!==2)))&&yieldAt(nn,s.dout))sp*=.65;   // ease off at a yield sign
     const scz=SCN[nn];if(scz&&scz.open&&c.u>.3)sp*=.5;   // creeping past a coned-off wreck
   }
   const u0=c.u;c.u+=dt*sp;
@@ -1958,6 +1960,7 @@ function updateCar(c,dt){
     const d=s.dout;
     if(edgeTo[n*8+d]!==nx){if(!reroute(c)){c.lost=(c.lost||0)+1;if(c.lost>6){c.home.demand++;killCar(c);}}return;}
     if(stopAt(nx,d)&&c.stopped!==nx){      // full stop at the line
+      if(c.sv>.02)return;                    // (not counted until the wheels have actually stopped)
       if(c.stopWait<0)c.stopWait=.6;
       c.stopWait-=dt;if(c.stopWait>0)return;c.stopped=nx;c.stopWait=-1;
     }
@@ -3083,7 +3086,7 @@ const gameDown=e=>{
   if(S.modal)return;
   if(locEdgeHits.length){const r=cv.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;const h=locEdgeHits.find(q=>Math.hypot(q.x-px,q.y-py)<20);if(h&&blds.includes(h.b)){focusOn(h.b);return;}}   // an edge arrow: jump to that buildingtry{cv.setPointerCapture(e.pointerId);}catch(_){}
   const [fx,fy]=worldPos(e),x=Math.floor(fx),y=Math.floor(fy);if(!inB(x,y))return;
-  carDown=(e.button===0&&R3D.on&&mode==='play'&&!S.demo&&PK[tool])?{x:e.clientX,y:e.clientY,fx,fy,t:performance.now()}:null;   // a plain click on a car (with a road tool) gets its driver's view
+  carDown=(e.button===0&&R3D.on&&mode==='play'&&!S.demo&&PK[tool]&&PK[tool].kind===0)?{x:e.clientX,y:e.clientY,fx,fy,t:performance.now()}:null;   // a plain click on a car (with a road tool) gets its driver's view
   if(isSb()&&tool.startsWith('sb:')&&e.button===0){sbPaint=true;sbAct(fx,fy,true);return;}
   if(e.button===2&&lineA!==null){lineA=null;lineDrag=false;return;}
   if(layerMode==='routes'&&e.button===0&&tool!=='erase'&&!(isSb()&&tool.startsWith('sb:'))){probeAt(fx,fy);return;}   // in the Routes view a click inspects a road instead of building
@@ -6529,7 +6532,7 @@ R3D.buildSigns=function(){
   const gr=this.signGroup;while(gr.children.length)gr.remove(gr.children[0]);
   this.lenses=[];
   const poles=new GB(),grey=C3('#8d939c'),black=C3('#1b1d27');
-  const M=THREE,plateGeo=new M.CylinderGeometry(.13,.13,.014,8);plateGeo.rotateX(Math.PI/2);plateGeo.rotateZ(Math.PI/8);
+  const M=THREE,plateGeo=new M.CylinderGeometry(.165,.165,.014,8);plateGeo.rotateX(Math.PI/2);plateGeo.rotateZ(Math.PI/8);
   const stopMats=[new M.MeshLambertMaterial({color:0xd8272d}),new M.MeshLambertMaterial({map:signTex('stop')}),new M.MeshLambertMaterial({color:0x8d939c})];
   const triShape=new M.Shape();triShape.moveTo(-.1,.07);triShape.lineTo(.1,.07);triShape.lineTo(0,-.1);triShape.closePath();
   const triGeo=new M.ShapeGeometry(triShape),triIn=new M.ShapeGeometry((()=>{const s=new M.Shape();s.moveTo(-.062,.045);s.lineTo(.062,.045);s.lineTo(0,-.066);s.closePath();return s;})());
@@ -6542,9 +6545,9 @@ R3D.buildSigns=function(){
       const sp=signPos(ci,side),th=Math.atan2(sp.u[0],sp.u[1]),fx=sp.u[0],fz=sp.u[1];   // the sign faces back along the road, to the drivers coming in
       const G=new M.Group();G.position.set(sp.x,0,sp.y);G.rotation.y=th;
       if(code===1||code===2){
-        poles.cyl(.014,.014,.42,8,sp.x,.21,sp.y,grey);
-        if(code===1){const p=new M.Mesh(plateGeo,stopMats);p.position.set(0,.47,.016);p.castShadow=true;G.add(p);}
-        else{const t1=new M.Mesh(triGeo,new M.MeshLambertMaterial({color:0xd8272d,side:M.DoubleSide}));t1.position.set(0,.49,.016);t1.scale.setScalar(1.35);const t2=new M.Mesh(triIn,new M.MeshLambertMaterial({color:0xffffff,side:M.DoubleSide}));t2.position.set(0,.49,.0175);t2.scale.setScalar(1.35);G.add(t1,t2);}
+        poles.cyl(.016,.016,.5,8,sp.x,.25,sp.y,grey);
+        if(code===1){const p=new M.Mesh(plateGeo,stopMats);p.position.set(0,.56,.016);p.castShadow=true;G.add(p);}
+        else{const t1=new M.Mesh(triGeo,new M.MeshLambertMaterial({color:0xd8272d,side:M.DoubleSide}));t1.position.set(0,.58,.016);t1.scale.setScalar(1.7);const t2=new M.Mesh(triIn,new M.MeshLambertMaterial({color:0xffffff,side:M.DoubleSide}));t2.position.set(0,.58,.0175);t2.scale.setScalar(1.7);G.add(t1,t2);}
       } else if(code>=16){
         const mask=code&7,H=.62,toRoad=[-sp.pv[0],-sp.pv[1]];   // the arm reaches in over the road
         poles.cyl(.018,.021,H,8,sp.x,H/2,sp.y,C3('#59606e'));
@@ -6569,6 +6572,13 @@ R3D.buildSigns=function(){
     }
   }
   const pm=new M.Mesh(poles.finish(),this.mat('lit'));pm.castShadow=true;gr.add(pm);
+  {   // the white stop lines across the incoming lanes
+    const sl=new GB(),white=C3('#f4f4f0');
+    for(let ci=0;ci<W*H;ci++){const sg=cells[ci].sg;if(!sg)continue;
+      for(let sd=0;sd<8;sd++){if(!sg[sd]||!(cells[ci].e&&cells[ci].e[sd]))continue;const sp=signPos(ci,sd);
+        this.ribbon(sl,[[sp.C[0]+sp.u[0]*.3+sp.pv[0]*.03,sp.C[1]+sp.u[1]*.3+sp.pv[1]*.03,0],[sp.C[0]+sp.u[0]*.3+sp.pv[0]*.25,sp.C[1]+sp.u[1]*.3+sp.pv[1]*.25,0]],.06,false,white,0,white,ROAD_Y+.005);}}
+    gr.add(new M.Mesh(sl.finish(),this.mat('marks')));
+  }
 };
 R3D.syncSigns=function(){
   const mats={r:[this.mat('red'),this.mat('redOff')],a:[this.mat('amber'),this.mat('amberOff')],g:[this.mat('green'),this.mat('greenOff')]};
@@ -6891,7 +6901,8 @@ R3D.sync=function(w){
   this.initGroups();
   const key=[gfxVer,blds.length,depts.length,hwLook()?1:0,Settings.v.noHw?1:0,TH.snow?1:0,TH.fill[0],R3D.waterKey(),trees.length,props.length,RX0,RX1,RY0,RY1].join(':');
   if(key!==this.sceneKey){this.sceneKey=key;this.buildBuildings();this.buildNature();this.buildWater();this.buildRoads();this.buildLamps();this.buildSigns();this.buildElevated();}
-  this.syncBuildings();this.syncLamps();this.syncWater();this.syncSigns();this.syncCars();this.syncSpots(this.lampOn||0,this.night||0);this.syncCargo();this.syncBeams();this.syncScenes();this.syncWeather(w);
+  this.syncBuildings();this.syncLamps();if(this.signV!==signVer){this.signV=signVer;this.buildSigns();}
+  this.syncWater();this.syncSigns();this.syncCars();this.syncSpots(this.lampOn||0,this.night||0);this.syncCargo();this.syncBeams();this.syncScenes();this.syncWeather(w);
 };
 
 /* ---- the flat overlays (tool previews, layer views, ghost roads) are painted into a transparent texture on the ground ---- */
