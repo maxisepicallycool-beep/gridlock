@@ -373,7 +373,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.33.1';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.33.2';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -1972,7 +1972,7 @@ function updateCar(c,dt){
 }
 function pose(c){
   const s=stepInfo(c),P=ctr(s.n>>1);
-  const lane=.155+(s.br?(s.spd-1)*.055:0)+(c.pv||0)*.3;
+  const lane=.155+(s.br?.015:0)+(c.pv||0)*.3;   // (on a deck the lane sits a touch further out, clear of the walls)
   const pv=d=>[-UNIT[d][1],UNIT[d][0]];
   let E,X,C;
   if(s.din<0)E=P;else{const pp=ctr(c.path[c.i-1]>>1),q=pv(s.din);E=[(pp[0]+P[0])/2+q[0]*lane,(pp[1]+P[1])/2+q[1]*lane];}
@@ -2333,6 +2333,18 @@ function placeEdge(p,ai,d){
     const P=cellIdx(x+dx,y),Q=cellIdx(x,y+dy),dd=DTAB[(dy+1)*3+(-dx+1)];
     if(getEdge(P,dd,p.layer))return {res:'blocked'};
   }
+  if(p.layer==='g'&&!getEdge(ai,d,p.layer)){   // a road cannot be run straight through the place where a highway joins it, in line with the highway
+    for(const [X,dd] of [[ai,d],[bi,opp(d)]]){
+      const c=cells[X];if(!c.f||c.bd!==1)continue;
+      let hd=-1;for(let k=0;k<8;k++){const e=c.f[k];if(e&&!e.ghost&&e.k===1){hd=k;break;}}
+      if(hd<0)continue;
+      const ax=new Set([dd&3]);let sp=1;for(let k=0;k<8;k++){const e=c.e&&c.e[k];if(e&&!e.ghost&&k!==dd){ax.add(k&3);sp++;}}
+      if(sp>=2&&ax.size===1&&ax.has(hd&3))return {res:'blocked',why:'A highway joins here: the road can\u2019t run straight through in line with it'};
+    }
+  }
+  if(p.layer==='g'){   // roads cannot go under the low part of a highway ramp: the deck would cut them off
+    for(const X of [ai,bi]){const c=cells[X];if(c.f&&c.bd>=2&&hgt[X]<.999&&c.f.some(e=>e&&e.k===1&&!e.ghost))return {res:'blocked',why:'That is under a highway ramp. Roads can only pass under a highway once it is 3 cells from its end'};}
+  }
   const ow=p.ow?1:0,old=getEdge(ai,d,p.layer);
   if(old&&old.k===p.kind&&old.ow===ow){
     if(old.ghost){if(old.refunded){if(inv[p.k]<=0)return {res:'empty'};inv[p.k]--;}
@@ -2386,7 +2398,7 @@ function advance(fx,fy){
     const d=((Math.round(Math.atan2(vy,vx)/(Math.PI/4))%8)+8)%8;
     const bi=nbIdx(last,d);if(bi<0)break;
     const r=placeEdge(p,last,d);
-    if(r.res==='blocked')break;
+    if(r.res==='blocked'){if(r.why&&!stroke.warnedB){stroke.warnedB=true;toast(r.why);}break;}
     if(r.res==='empty'){if(!stroke.warned){stroke.warned=true;toast('Out of '+pieceLabel(p).toLowerCase()+'s — more come with weekly cards');}break;}
     stroke.steps.push(r.rec||null);n.push(bi);
     if(r.rec)refreshDock();
@@ -2409,6 +2421,10 @@ function finishStroke(){
     if(!cells[last].e&&!endHw){
       for(let i=s.steps.length-1;i>=0;i--)if(s.steps[i])undoRec(s.steps[i]);
       toast('Highways must end on a road or on another highway');return;
+    }
+    if(s.nodes.slice(1,-1).some(X=>cells[X].e&&cells[X].bd>=2&&hgt[X]<.999)){   // it would cross a road while still too low to clear it
+      for(let i=s.steps.length-1;i>=0;i--)if(s.steps[i])undoRec(s.steps[i]);
+      toast('A highway must be 3 cells along from its end before it can cross a road');return;
     }
     if(n>=2&&((!startHw&&!hwySideOK(first,dirOf(first*2,s.nodes[1]*2)))||(!endHw&&!hwySideOK(last,dirOf(s.nodes[n-2]*2,last*2))))){
       for(let i=s.steps.length-1;i>=0;i--)if(s.steps[i])undoRec(s.steps[i]);
@@ -6140,6 +6156,7 @@ R3D.carObj=function(c){
   o=new THREE.Group();
   const isT=c.truck||c.big;
   const role=c.dot?(c.dot==='cone'?'cone':'rec'):'fire',g=isT?truckGeo(role,c.rk):carGeo(['sedan','hatch','suv'][(c.id||c.color||0)%3],c.color||0);
+  o.scale.setScalar(.92);   // cars are a touch smaller than the road is wide, so they sit well inside the lane
   const m=new THREE.Mesh(g.body,this.mat('lit'));m.castShadow=true;m.receiveShadow=false;o.add(m);
   const lm=new THREE.Mesh(g.lights,this.mat('glow'));o.add(lm);
   o.userData={body:m,lm,isT,g};
@@ -6728,7 +6745,7 @@ R3D.buildRoads=function(){   // every ground road and driveway as real geometry:
     if(ds.length===2){const A=mid(i,ds[0]),B=mid(i,ds[1]);
       if(((ds[0]-ds[1]+8)%8)===4)paths=[[[A[0],A[1],0],[B[0],B[1],0]]];   // a straight run needs only two points
       else{const p=ctr(i),pts=[];for(let s=0;s<=7;s++){const t=s/7,u=1-t;pts.push([u*u*A[0]+2*u*t*p[0]+t*t*B[0],u*u*A[1]+2*u*t*p[1]+t*t*B[1],0]);}paths=[pts];}
-    }else paths=this.deckPath(i,ds);
+    }else{const p=ctr(i);paths=ds.map(d=>{const m=mid(i,d);return [[p[0],p[1],0],[(p[0]+m[0])/2,(p[1]+m[1])/2,0],[m[0],m[1],0]];});}   // (flat: the heights of neighbouring decks must not lift a ground road)
     for(const [w,y,th,c,sc] of LAY){for(const pts of paths)this.ribbon(g,pts,w,true,c,th,sc,y);if(ds.length!==2){const p=ctr(i);disc(g,p[0],p[1],y,w/2,c);}}
     // lane dashes (two-way roads) and one-way arrows
     const p=ctr(i);
@@ -6754,11 +6771,11 @@ R3D.buildElevated=function(){
     const arr=cells[i].f;if(!arr)continue;
     const ds=[];for(let d=0;d<8;d++){const e=arr[d];if(e&&!e.ghost&&e.ow>=0||(e&&!e.ghost&&e.ow<0))ds.push(d);}
     if(!ds.length)continue;any=true;
-    const ks=ds.map(d=>arr[d].k),k=ks.includes(1)?1:2,w=(KW[k]||.6)-.06,fill=k===1?fillHwy:fillBr,side=k===1?sideHwy:sideBr;
+    const ks=ds.map(d=>arr[d].k),k=ks.includes(1)?1:2,w=(KW[k]||.6)+.04,fill=k===1?fillHwy:fillBr,side=k===1?sideHwy:sideBr;
     const paths=this.deckPath(i,ds);
     for(const pts of paths){
       this.ribbon(g,pts,w,true,fill,.1,side,0);
-      if(ds.length<3)this.walls(g,pts,w,k===1?.1:.055,k===1?.06:.03,k===1?C3('#b9b5ab'):C3('#8a7f66'),k===1?C3('#d4d0c6'):C3('#a39878'));
+      if(ds.length<3)this.walls(g,pts,w,k===1?.1:.055,k===1?.04:.03,k===1?C3('#b9b5ab'):C3('#8a7f66'),k===1?C3('#d4d0c6'):C3('#a39878'));
     }
     if(ds.length>=3){   // a junction disc
       const p=ctr(i),z=elevZ(i),N=14;

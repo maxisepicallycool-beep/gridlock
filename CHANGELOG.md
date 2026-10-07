@@ -1,5 +1,11 @@
 # Gridlock changelog
 
+## 1.33.2 — Highway rules and road fixes
+- Fixed ground roads next to a highway reaching up towards it: junctions and road ends now stay flat on the ground
+- Highways can no longer cut roads off: a highway has to be 3 cells along from its end before it can cross a road, and roads can't be built under the low part of a highway ramp
+- A road can no longer be run straight through the place where a highway joins it, in line with the highway (joining the side of a road, a corner, a junction or a loose end is unchanged)
+- Highway and bridge decks are a little wider with thinner walls, the lane sits a touch further out and cars are 8% smaller, so cars no longer sit on the walls
+
 ## 1.33.1 — Cars tilt on ramps, destination windows fixed
 - Cars now tilt to follow the slope of highway and bridge ramps (and the driver's view tilts with them)
 - Fixed windows and other parts that floated in the air on shops, petrol stations and car parks (they came from the windows-on-all-sides change)
