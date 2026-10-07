@@ -1,5 +1,14 @@
 # Gridlock changelog
 
+## 1.32.0 — Real 3D roads, no more cars through each other
+- Every ground road and driveway is now real 3D geometry in the 3D view: a raised kerb and sidewalk, an edge band, the asphalt, lane dashes, one-way arrows and junction surfaces. Cars, signs, wet roads, snow and the lamp glows sit on top of it
+- Bridges and highways now meet the road at its surface and climb in one smooth ramp (bridges had a step: a low land height and a higher water height)
+- Windows now appear on all four sides of houses and shops, not just the front
+- Cars no longer drive through each other: cars now queue up behind the car ahead in the same lane instead of stacking on one spot at stop lines and gates, and anything that still overlaps (junction turns, car parks, wrecks) is pushed apart in the picture, the car behind giving way
+- When two cars meet head-on in a tight spot (a car park aisle or gate), one backs off and shows white reversing lamps
+- Highway and bridge decks lift over roads underneath, and pillars are never placed on roads
+- Fixed the destination pins that piled up in the corner, and the AI pill on the main menu
+
 ## 1.31.0 — Driver's view
 - Click a car (with a road tool selected) in the 3D view to ride along: the camera sits in the driver's seat and looks down the road, with real lights, shadows, other cars and signs. Click anywhere, press Esc or use the Exit button to leave; it also ends when the car finishes its trip
 
