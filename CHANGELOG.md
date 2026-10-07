@@ -1,5 +1,9 @@
 # Gridlock changelog
 
+## 1.33.1 — Cars tilt on ramps, destination windows fixed
+- Cars now tilt to follow the slope of highway and bridge ramps (and the driver's view tilts with them)
+- Fixed windows and other parts that floated in the air on shops, petrol stations and car parks (they came from the windows-on-all-sides change)
+
 ## 1.33.0 — Rivers that run, an inside view of the car, and cars that behave
 - Rivers and lakes are real 3D water: sunken below the ground with banks, a flowing animated surface (long rivers run along their length, lakes stay still), sparkles, foam at the shore and lighting that follows the time of day. Bridge pillars reach down into the water
 - Driver's view is now from inside the car: the dashboard, steering wheel, pillars, roof, bonnet, mirrors and seats. Drag to look around; click without dragging, press Esc or use Exit to leave

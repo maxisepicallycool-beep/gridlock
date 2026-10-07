@@ -373,7 +373,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.33.0';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.33.1';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -5905,7 +5905,7 @@ R3D.driveCam=function(){   // driver's seat: the camera sits in the clicked car,
   const c=this.drive,o=c&&!c.dead?this.objs.cars.get(c):null;
   if(!o||mode!=='play'||S.over||!o.visible){this.driveStop();return false;}
   const cam=this.cam,yaw=-o.rotation.y,u=o.userData,tr=u.isT,L=(u.g&&u.g.len)||.58;
-  const ly=this.lookYaw||0,lp=this.lookPitch||0,hy=yaw+ly,hp=-.07+lp;
+  const ly=this.lookYaw||0,lp=this.lookPitch||0,hy=yaw+ly,hp=-.07+lp+(o.rotation.z||0)*Math.cos(ly);
   o.updateMatrixWorld(true);
   const eye=tr?new THREE.Vector3(L/2-.17,.3,-.075):new THREE.Vector3(-.018,.186,-.065);   // the driver's seat (the left one: they drive on the right)
   o.localToWorld(eye);
@@ -6173,7 +6173,13 @@ R3D.syncCars=function(){
     if(!q)continue;
     const o=this.carObj(c);seen.add(c);o.visible=true;
     const z=(isPark(c.ph)||c.ph==='gout'||c.ph==='gin')?Math.max(.052,this.heightAt(q,c)):this.heightAt(q,c);let pq=q;if(c.ph==='drive'&&!(c.truck&&c.dot))pq=this.steer(c,o,q);else o.userData.trail=null;
-    o.rotation.y=-pq.a;const u=o.userData;items.push({c,o,u,pq,z,idx:items.length});
+    o.rotation.order='YZX';o.rotation.y=-pq.a;const u=o.userData;
+    {   // tilt with the slope of the deck or ramp under the car (eased, so it does not jerk where a ramp starts and ends)
+      let tp=0;
+      if(q.br&&c.path&&c.path[c.i]!==undefined&&c.path[c.i+1]!==undefined&&c.ph==='drive'){const zn=n=>(n&1)?elevZ(n>>1):ROAD_Y,d=dirOf(c.path[c.i],c.path[c.i+1]);tp=Math.atan((zn(c.path[c.i+1])-zn(c.path[c.i]))/(LEN[d]||1));}
+      u.pitch=(u.pitch||0)+(tp-(u.pitch||0))*.2;o.rotation.z=u.pitch;
+    }
+    items.push({c,o,u,pq,z,idx:items.length});
     
     if(c.ph==='drive'){   // braking: slower than it has been cruising, or stopped
       const dtg=time-(u.pt===undefined?time:u.pt);
@@ -6299,7 +6305,7 @@ function destGeo(b){
       for(let i=0;i<5;i++)g.box(.2,.03,.14,-.55+i*.22,.38,-.1,i%2?C3('#ffffff'):c,0,.5,0);
     }
   }
-  return BLD_GEO[key]={body:g.finish(),win:w.around().finish()};
+  return BLD_GEO[key]={body:g.finish(),win:w.finish()};
 }
 
 /* ---- depots (fire station, DOT depot) ---- */
@@ -6312,7 +6318,7 @@ function depotGeo(dot){
   g.box(.3,.7,.82,.55,.37,-.29,band);   // the tower
   if(dot){g.cone(.12,.2,12,.55,.82,-.29,C3('#ff5a1f'));g.cyl(.07,.07,.02,12,.55,.72,-.29,C3('#ffffff'));}
   else{g.sph(.08,.55,.77,-.29,C3('#ffd23a'),1,1,1);w.sph(.04,.55,.77,-.29,C3('#ffffff'));}
-  return BLD_GEO[key]={body:g.finish(),win:w.around().finish()};
+  return BLD_GEO[key]={body:g.finish(),win:w.finish()};
 }
 function shutterGeo(){return BLD_GEO.shutter||(BLD_GEO.shutter=new GB().box(.46,.5,.03,0,-.25,0,C3('#d8d4cc')).finish());}
 
