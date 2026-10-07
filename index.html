@@ -373,7 +373,7 @@ body.inmenu #coach{display:none!important}
 </script>
 <script>
 'use strict';
-const GAME_VERSION='1.33.4';   // kept in step with VERSION by publish.sh
+const GAME_VERSION='1.34.0';   // kept in step with VERSION by publish.sh
 const ERRLOG=[];   // the last few errors, so a bug report can include them
 addEventListener('error',e=>{ERRLOG.push((e.message||'error')+' ('+String(e.filename||'').split('/').pop()+':'+(e.lineno||'?')+')');if(ERRLOG.length>6)ERRLOG.shift();});
 addEventListener('unhandledrejection',e=>{ERRLOG.push('promise: '+String(e.reason&&e.reason.message||e.reason).slice(0,160));if(ERRLOG.length>6)ERRLOG.shift();});
@@ -6708,6 +6708,7 @@ const WATER_Y=-.13;
 R3D.waterKey=function(){let h=0;for(let i=0;i<W*H;i++)if(cells[i].water)h=(h*31+i)|0;return h;};
 R3D.buildWater=function(){   // rivers and lakes as real water: sunken surface, banks, flow direction and shore distance per vertex
   const gr=this.waterGroup;while(gr.children.length)gr.remove(gr.children[0]);
+  {const bg=this.boatGroup;while(bg.children.length)bg.remove(bg.children[0]);this.boats=[];}
   const inR=(x,y)=>x>=RX0&&y>=RY0&&x<RX1&&y<RY1,isW0=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&cells[cellIdx(x,y)].water;
   const isW=(x,y)=>inR(x,y)?isW0(x,y):(x>=0&&y>=0&&x<W&&y<H);   // (beyond the edge of the open land counts as more water: no shore there)
   let any=false;for(let i=0;i<W*H;i++)if(cells[i].water&&inR(i%W,(i/W)|0)){any=true;break;}
@@ -6769,6 +6770,81 @@ R3D.buildWater=function(){   // rivers and lakes as real water: sunken surface, 
   const wm=new THREE.Mesh(geo,this.waterMat);wm.renderOrder=0;gr.add(wm);
   if(!this.bankMat)this.bankMat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
   const bm=new THREE.Mesh(walls.finish(),this.bankMat);bm.receiveShadow=true;gr.add(bm);
+  this.buildBoats(comp,flow,dist,VW,nc,inR);
+};
+/* ---- boats on the water: just for show. They sail along the rivers (under the bridges) and drift in circles on the lakes ---- */
+const BOAT_GEO={};
+function boatGeo(kind,hull,trim){
+  const key=kind+':'+hull+':'+trim;if(BOAT_GEO[key])return BOAT_GEO[key];
+  const L=kind==='row'?.34:kind==='sail'?.5:.46,W2=kind==='row'?.075:.1;
+  const sh=new THREE.Shape();sh.moveTo(L/2,0);sh.bezierCurveTo(L*.22,W2*1.05,-L*.1,W2*1.1,-L/2,W2*.9);sh.lineTo(-L/2,-W2*.9);sh.bezierCurveTo(-L*.1,-W2*1.1,L*.22,-W2*1.05,L/2,0);
+  const hg=new THREE.ExtrudeGeometry(sh,{depth:.05,bevelEnabled:false});hg.rotateX(-Math.PI/2);   // (the outline lies flat; it is .05 tall)
+  const b=new GB(),rig=new GB(),lights=new GB(),hc=C3(hull),tc=C3(trim),white=C3('#f4f1ea'),dark=C3('#22252d'),wood=C3('#a9783f');
+  b.add(hg,0,-.015,0,1,1,1,hc,0,0,0);
+  b.box(L*.66,.012,W2*1.45,-L*.14,.036,0,kind==='row'?wood:white);   // the deck (kept inside the pointed bow)
+  if(kind==='sail'){
+    rig.cyl(.006,.007,.24,6,-.02,.16,0,white);rig.box(.005,.012,.2,-.1,.1,0,white);                       // the mast and the boom
+    const sail=new THREE.Shape();sail.moveTo(0,0);sail.lineTo(0,.2);sail.lineTo(-.18,0);sail.closePath();
+    const sg=new THREE.ShapeGeometry(sail);rig.add(sg,-.02,.1,0,1,1,1,tc,0,Math.PI/2,0);rig.add(sg,-.02,.1,0,1,1,1,tc,0,-Math.PI/2,0);   // a sail (two sided)
+    const jib=new THREE.Shape();jib.moveTo(0,0);jib.lineTo(0,.17);jib.lineTo(.13,0);jib.closePath();const jg=new THREE.ShapeGeometry(jib);rig.add(jg,-.02,.1,0,1,1,1,white,0,Math.PI/2,0);rig.add(jg,-.02,.1,0,1,1,1,white,0,-Math.PI/2,0);
+  } else if(kind==='motor'){
+    b.box(.16,.05,.1,-.05,.075,0,white);b.box(.15,.025,.095,-.05,.112,0,tc);b.box(.012,.03,.09,.036,.082,0,C3('#9fd4ea'));   // the cabin, its roof and the windscreen
+    rig.cyl(.004,.004,.1,6,-.1,.16,0,dark);
+  } else { b.box(.012,.012,W2*1.8,.02,.045,0,wood);b.box(.012,.012,W2*1.8,-.08,.045,0,wood); }   // the seats of a rowing boat
+  lights.box(.012,.012,.012,L*.32,.07,W2*.8,C3('#3cff6a'));lights.box(.012,.012,.012,L*.32,.07,-W2*.8,C3('#ff3b30'));lights.box(.012,.012,.012,-.02,kind==='sail'?.28:.18,0,C3('#fff6d0'));
+  return BOAT_GEO[key]={body:b.finish(),rig:rig.pos.length?rig.finish():null,lights:lights.finish(),len:L};
+}
+R3D.buildBoats=function(comp,flow,dist,VW,nc,inR){
+  const bg=this.boatGroup,HULL=['#2f6fb3','#c4452b','#e3b030','#2f9e6f','#8a5ec9','#f4f1ea'],TRIM=['#f4f1ea','#d8272d','#ffd23a','#ffffff','#ff8a1f'];
+  const cellD=(x,y)=>(dist[y*VW+x]+dist[y*VW+x+1]+dist[(y+1)*VW+x]+dist[(y+1)*VW+x+1])/4;
+  const mat=this.mat('lit'),wakeMat=this.wakeMat||(this.wakeMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.4,depthWrite:false,side:THREE.DoubleSide}));
+  const wakeG=new THREE.BufferGeometry();wakeG.setAttribute('position',new THREE.Float32BufferAttribute([-.2,0,0,-.78,0,.13,-.78,0,-.13],3));wakeG.setIndex([0,1,2]);
+  let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+  const add=(path,loop,count)=>{
+    const segs=[],cum=[0];for(let i=0;i+1<path.length;i++){const l=Math.hypot(path[i+1][0]-path[i][0],path[i+1][1]-path[i][1]);segs.push(l);cum.push(cum[i]+l);}
+    const total=cum[cum.length-1];if(total<2)return;
+    for(let k=0;k<count;k++){
+      const kind=['sail','motor','row','sail','motor'][Math.floor(rnd()*5)],hull=HULL[Math.floor(rnd()*HULL.length)],trim=TRIM[Math.floor(rnd()*TRIM.length)],g=boatGeo(kind,hull,trim);
+      const o=new THREE.Group(),body=new THREE.Mesh(g.body,mat);body.castShadow=true;o.add(body);
+      let rig=null;if(g.rig){rig=new THREE.Mesh(g.rig,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}));rig.castShadow=true;o.add(rig);}
+      const nav=new THREE.Mesh(g.lights,this.mat('glow'));nav.visible=false;o.add(nav);
+      const wake=new THREE.Mesh(wakeG,wakeMat);wake.position.y=-.1;o.add(wake);
+      o.scale.setScalar(1.6);bg.add(o);
+      this.boats.push({o,rig,nav,wake,path,cum,total,loop,s:rnd()*total,sp:(kind==='row'?.2:kind==='sail'?.3:.5)*(.8+rnd()*.4),dir:loop?1:(rnd()<.6?1:-1),phase:rnd()*6.28,kind,rigK:1});
+    }
+  };
+  for(let ci=0;ci<nc;ci++){
+    const cells2=[];for(let i=0;i<W*H;i++)if(comp[i]===ci)cells2.push(i);if(cells2.length<6)continue;
+    let mx=0,my=0,maxD=0;for(const i of cells2){mx+=i%W+.5;my+=((i/W)|0)+.5;maxD=Math.max(maxD,cellD(i%W,(i/W)|0));}mx/=cells2.length;my/=cells2.length;
+    const fx=flow[cells2[0]*2],fy=flow[cells2[0]*2+1];
+    if(fx||fy){   // a river: follow the deepest water along its length
+      const bins=new Map();
+      for(const i of cells2){const x=i%W,y=(i/W)|0,t=Math.round(((x+.5-mx)*fx+(y+.5-my)*fy)),d=cellD(x,y),b=bins.get(t);if(!b||d>b.d)bins.set(t,{d,x:x+.5,y:y+.5});}
+      const ts=[...bins.keys()].sort((a,b)=>a-b);let path=ts.map(t=>[bins.get(t).x,bins.get(t).y]);
+      for(let r=0;r<4;r++)path=path.map((p,i)=>i===0||i===path.length-1?p:[(path[i-1][0]+p[0]*2+path[i+1][0])/4,(path[i-1][1]+p[1]*2+path[i+1][1])/4]);
+      if(path.length>=4)add(path,false,Math.max(1,Math.min(4,Math.round(path.length/8))));
+    } else if(maxD>=1.2){   // a lake: boats drift round in a circle
+      const r=Math.max(.55,Math.min(3.2,maxD-.7)),path=[];for(let a=0;a<=32;a++){const t=a/32*Math.PI*2;path.push([mx+Math.cos(t)*r,my+Math.sin(t)*r*.9]);}
+      add(path,true,r>1.6?2:1);
+    }
+  }
+};
+R3D.syncBoats=function(){
+  if(!this.boats||!this.boats.length)return;
+  const now=performance.now(),T=now/1000,n=this.night||0,dt=Math.min(.1,(now-(this._bt||now))/1000);this._bt=now;
+  for(const b of this.boats){
+    b.s=(b.s+b.sp*b.dir*dt);if(b.loop)b.s=((b.s%b.total)+b.total)%b.total;else{if(b.s>b.total+1)b.s-=b.total+2;if(b.s<-1)b.s+=b.total+2;}
+    const s=Math.max(0,Math.min(b.total,b.s)),path=b.path,cum=b.cum;let i=0;while(i<cum.length-2&&cum[i+1]<s)i++;
+    const l=cum[i+1]-cum[i]||1,t=(s-cum[i])/l,a=path[i],c=path[Math.min(path.length-1,i+1)],x=a[0]+(c[0]-a[0])*t,y=a[1]+(c[1]-a[1])*t;
+    const hd=Math.atan2(c[1]-a[1],c[0]-a[0])+(b.dir<0?Math.PI:0);
+    const out=b.s<0||b.s>b.total;
+    b.o.visible=!out;
+    b.o.position.set(x,WATER_Y+.016+.006*Math.sin(T*1.8+b.phase),y);
+    b.o.rotation.order='YZX';b.o.rotation.y=-hd;b.o.rotation.z=.035*Math.sin(T*1.4+b.phase);b.o.rotation.x=.03*Math.sin(T*1.1+b.phase*2);
+    const under=cells[cellIdx(Math.floor(x),Math.floor(y))].f&&cells[cellIdx(Math.floor(x),Math.floor(y))].f.some(e=>e&&e.k===2);
+    if(b.rig){b.rigK+=((under?0:1)-b.rigK)*.15;b.rig.scale.y=Math.max(.001,b.rigK);b.rig.visible=b.rigK>.02;}   // (the mast is lowered to go under a bridge)
+    b.nav.visible=n>.35;b.wake.visible=true;
+  }
 };
 R3D.syncWater=function(){
   const m=this.waterMat;if(!m)return;
@@ -6857,7 +6933,7 @@ R3D.initGroups=function(){
   if(this.groups)return;
   this.groups=true;
   const sc=this.scene;
-  for(const n of ['waterGroup','roadGroup','bldGroup','natGroup','lampGroup','signGroup','carGroup','elevGroup','sceneGroup','wxGroup']){this[n]=new THREE.Group();sc.add(this[n]);}
+  for(const n of ['boatGroup','waterGroup','roadGroup','bldGroup','natGroup','lampGroup','signGroup','carGroup','elevGroup','sceneGroup','wxGroup']){this[n]=new THREE.Group();sc.add(this[n]);}
   this.objs={cars:new Map(),bld:new Map(),scenes:new Map()};
   this.mats.conem=new THREE.MeshLambertMaterial({vertexColors:true});
   this.beamTex=new THREE.CanvasTexture(beam());
@@ -6940,7 +7016,7 @@ R3D.sync=function(w){
   const key=[gfxVer,blds.length,depts.length,hwLook()?1:0,Settings.v.noHw?1:0,TH.snow?1:0,TH.fill[0],R3D.waterKey(),trees.length,props.length,RX0,RX1,RY0,RY1].join(':');
   if(key!==this.sceneKey){this.sceneKey=key;this.buildBuildings();this.buildNature();this.buildWater();this.buildRoads();this.buildLamps();this.buildSigns();this.buildElevated();}
   this.syncBuildings();this.syncLamps();if(this.signV!==signVer){this.signV=signVer;this.buildSigns();}
-  this.syncWater();this.syncSigns();this.syncCars();this.syncSpots(this.lampOn||0,this.night||0);this.syncCargo();this.syncBeams();this.syncScenes();this.syncWeather(w);
+  this.syncWater();this.syncBoats();this.syncSigns();this.syncCars();this.syncSpots(this.lampOn||0,this.night||0);this.syncCargo();this.syncBeams();this.syncScenes();this.syncWeather(w);
 };
 
 /* ---- the flat overlays (tool previews, layer views, ghost roads) are painted into a transparent texture on the ground ---- */

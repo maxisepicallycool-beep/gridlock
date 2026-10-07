@@ -1,5 +1,8 @@
 # Gridlock changelog
 
+## 1.34.0 — Boats
+- Sailboats, motorboats and rowing boats now sail the rivers and drift round on the lakes in the 3D view. Just for show: they have no effect on the game. They follow the deepest water along each river (some with the current, some against), lower their masts to pass under bridges, leave a little wake, bob on the water and show red and green lights at night
+
 ## 1.33.4 — Traffic rules: stops, gaps and junctions
 - Cars stop further back from the junction at stop signs and red lights, so a waiting car no longer pokes into the junction or into the cars crossing it
 - Cars at a stop or a give-way sign now wait for a safe gap in the traffic (a car arriving within about two and a half seconds), instead of waiting for every car that is on the road
